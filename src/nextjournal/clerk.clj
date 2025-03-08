@@ -57,7 +57,7 @@
                              (when-let [path (paths/path-in-cwd file-or-ns)]
                                {:file-path path})
                              {:nav-path (webserver/->nav-path file-or-ns)}
-                             (parser/parse-file {:doc? true} file))
+                             (parser/parse-file file))
                       (catch java.io.FileNotFoundException e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns}
@@ -648,7 +648,7 @@
   (show! "notebooks/onwards.md")
   (show! "notebooks/pagination.clj")
   (show! "notebooks/how_clerk_works.clj")
-  (show! "notebooks/hello_clojurescript.cljs")
+  (show! "notebooks/hello.cljs")
   (show! "notebooks/conditional_read.cljc")
   (show! "src/nextjournal/clerk/analyzer.clj")
   (show! "src/nextjournal/clerk.clj")

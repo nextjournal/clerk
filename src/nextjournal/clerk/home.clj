@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.home
-  {:nextjournal.clerk/visibility {:code :hide :result :hide}}
+  {:nextjournal.clerk/visibility {:code :hide :result :hide}
+   :nextjournal.clerk/no-cache true}
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [nextjournal.clerk :as clerk]

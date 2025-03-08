@@ -1,13 +1,49 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
-  (:require [clojure.set :as set]
+  (:refer-clojure :exclude [read-string])
+  (:require #?@(:clj [[clojure.tools.reader :as tools.reader]
+                      [taoensso.nippy :as nippy]
+                      [multiformats.base.b58 :as b58]
+                      [multiformats.hash :as hash]]
+                :cljs [[goog.crypt]
+                       [goog.crypt.Sha1]])
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.zip]
+            [edamame.core :as edamame]
             [nextjournal.markdown :as markdown]
             [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
             [rewrite-clj.zip :as z]))
+
+
+
+#?(:clj
+   (defn auto-resolves [ns]
+     (as-> (ns-aliases ns) $
+       (assoc $ :current (ns-name *ns*))
+       (zipmap (keys $)
+               (map ns-name (vals $))))))
+
+#_(auto-resolves (find-ns 'nextjournal.clerk.parser))
+#_(auto-resolves (find-ns 'cards))
+
+
+(defn read-string [s]
+  (edamame/parse-string s {:all true
+                           :read-cond :allow
+                           :regex #(list `re-pattern %)
+                           :features #{:clj}
+                           :end-location false
+                           :row-key :line
+                           :col-key :column
+                           #?@(:clj [:readers *data-readers*
+                                     :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
+                                     :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))])}))
+
+#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
+
 
 (defn ns? [form]
   (and (seq? form) (= 'ns (first form))))
@@ -51,6 +87,7 @@
   #{:nextjournal.clerk/auto-expand-results?
     :nextjournal.clerk/budget
     :nextjournal.clerk/css-class
+    :nextjournal.clerk/no-cache
     :nextjournal.clerk/render-opts
     :nextjournal.clerk/page-size
     :nextjournal.clerk/render-evaluator
@@ -121,18 +158,20 @@
     (if (ns? first-form) :on :off)))
 
 (defn ->open-graph [{:keys [title blocks]}]
-  (merge {:type "article:clerk"
-          :title title
-          :description (first (sequence
-                               (comp (keep :doc)
-                                     (mapcat :content)
-                                     (filter (comp #{:paragraph} :type))
-                                     (map markdown.transform/->text)) blocks))}
+  (merge (let [desc (first (sequence
+                            (comp (keep :doc)
+                                  (mapcat :content)
+                                  (filter (comp #{:paragraph} :type))
+                                  (map markdown.transform/->text))
+                            blocks))]
+           (cond-> {:type "article:clerk"}
+             title (assoc :title title)
+             desc (assoc :description desc)))
          (some #(get-doc-setting (:form %) :nextjournal.clerk/open-graph) blocks)))
 
 #_(->open-graph
    (nextjournal.clerk.analyzer/analyze-doc
-    (parse-file {:doc? true} "notebooks/open_graph.clj")))
+    (parse-file "notebooks/open_graph.clj")))
 
 (defn add-open-graph-metadata [doc]
   (assoc doc :open-graph (->open-graph doc)))
@@ -164,6 +203,7 @@
 #_(parse-local-block-settings '^{:nextjournal.clerk/budget nil
                                  :nextjournal.clerk/visibility {:code :fold}}(inc 1))
 
+
 (defn ->doc-settings [first-form]
   (let [doc-css-class (when (ns? first-form)
                         (:nextjournal.clerk/doc-css-class (first (filter map? first-form))))]
@@ -175,9 +215,12 @@
                                                                (merge (-> first-form second meta)
                                                                       (first (filter map? first-form)))))))
                                  false)
-             :block-settings (merge-with merge
-                                         {:nextjournal.clerk/visibility {:code :show :result :show}}
-                                         (parse-global-block-settings first-form))}
+             :no-cache (boolean
+                        (:nextjournal.clerk/no-cache
+                         (or (when (map? first-form)
+                               first-form)
+                             (when (ns? first-form)
+                               (first (filter map? first-form))))))}
       doc-css-class (assoc :doc-css-class (cond-> doc-css-class
                                             (or (keyword? doc-css-class) (string? doc-css-class))
                                             vector) ))))
@@ -204,18 +247,6 @@
       (merge (dissoc new-settings :nextjournal.clerk/visibility))))
 
 #_(merge-settings {:nextjournal.clerk/visibility {:code :show :result :show}} {:nextjournal.clerk/visibility {:code :fold}})
-
-(defn add-block-settings [{:as analyzed-doc :keys [blocks]}]
-  (-> (reduce (fn [{:as state :keys [block-settings]} {:as block :keys [form]}]
-                (let [next-block-settings (merge-settings block-settings (parse-global-block-settings form))]
-                  (cond-> (update state :blocks conj
-                                  (cond-> block
-                                    (code? block)
-                                    (assoc :settings (merge-settings next-block-settings (parse-local-block-settings form)))))
-                    (code? block) (assoc :block-settings next-block-settings))))
-              (assoc analyzed-doc :blocks [])
-              blocks)
-      (dissoc :block-settings)))
 
 (def code-tags
   #{:deref :map :meta :multi-line :list :quote :syntax-quote :reader-macro :set :token :var :vector})
@@ -297,54 +328,185 @@
         (update :blocks conj {:type :markdown
                               :doc (select-keys doc [:type :content :footnotes])}))))
 
+
+
+
+#?(:clj
+   (defn sha1-base58 [s]
+     (->> s hash/sha1 hash/encode b58/format-btc)))
+
+#?(:cljs
+   (defn hash-sha1 [x]
+     (let [hasher (goog.crypt.Sha1.)]
+       (.update hasher (goog.crypt/stringToUtf8ByteArray (pr-str x)))
+       (.digest hasher))))
+
+(defn guess-var
+  "An best guess to say if the given `form` defines a var without running
+  macroexpansion. Will be refined during analysis."
+  [form]
+  (when (and (sequential? form)
+             (simple-symbol? (first form))
+             (simple-symbol? (second form))
+             (str/starts-with? (name (first form)) "def"))
+    (symbol (str *ns*) (name (second form)))))
+
+(comment
+  (guess-var '(def my-range (range 500)))
+  (guess-var '(defonce !state (atom {}))))
+
+(defn supports-meta? [x]
+  #?(:clj (instance? clojure.lang.IObj x)
+     :cljs (satisfies? IMeta x)))
+
+(defn get-block-id [!id->count {:as block :keys [form type doc]}]
+  (let [id->count @!id->count
+        id (if-let [var (if (contains? block :vars)
+                          (:var block)
+                          (guess-var form))]
+             var
+             (let [hash-fn (fn [x]
+                             #?(:clj (-> x nippy/fast-freeze sha1-base58)
+                                :cljs (hash-sha1 x)))]
+               (symbol (str *ns*)
+                       (case type
+                         :code (str "anon-expr-" (hash-fn (cond-> form
+                                                            (supports-meta? form)
+                                                            (with-meta {}))))
+                         :markdown (str "markdown-" (hash-fn doc))))))]
+    (swap! !id->count update id (fnil inc 0))
+    (if (id->count id)
+      (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
+      id)))
+
+(defn add-block-id [!id->count block]
+  (assoc block :id (get-block-id !id->count block)))
+
+#?(:cljs (def Exception js/Error))
+
+#?(:clj
+   (defn extract-file
+     "Extracts the string file path from the given `resource` to for usage
+  on the `:clojure.core/eval-file` form meta key."
+     [^java.net.URL resource]
+     (case (.getProtocol resource)
+       "file" (str (.getFile resource))
+       "jar" (str (.getJarEntry ^java.net.JarURLConnection (.openConnection resource))))))
+
+#_(extract-file (clojure.java.io/resource "clojure/core.clj"))
+#_(extract-file (clojure.java.io/resource "nextjournal/clerk.clj"))
+
+(defn add-loc [{:as opts :keys [file]} loc form]
+  (cond-> form
+    (supports-meta? form)
+    (vary-meta merge (cond-> loc
+                       (:file opts) (assoc :clojure.core/eval-file
+                                           (str #?(:clj (cond-> (:file opts)
+                                                          (instance? java.net.URL (:file opts))
+                                                          extract-file)
+                                                   :cljs (:file opts))))))))
+
+(defn add-doc-settings [{:as doc :keys [blocks]}]
+  (if-let [first-form (some :form blocks)]
+    (merge doc (->doc-settings first-form))
+    doc))
+
+(def md-context-keys-to-select
+  [:footnotes :title :toc])
+
 (defn parse-clojure-string
   ([s] (parse-clojure-string {} s))
-  ([{:as opts :keys [doc?]} s]
-   (let [doc (parse-clojure-string opts {:blocks [] :md-context markdown/empty-doc} s)]
-     (select-keys (cond-> doc doc? (merge (:md-context doc)))
-                  [:blocks :title :toc :footnotes])))
-  ([{:as _opts :keys [doc?]} initial-state s]
-   (loop [{:as state :keys [nodes blocks add-comment-on-line?]} (assoc initial-state :nodes (:children (p/parse-string-all s)))]
-     (if-let [node (first nodes)]
-       (recur (cond
-                (code-tags (n/tag node))
-                (-> state
-                    (assoc :add-comment-on-line? true)
-                    (update :nodes rest)
-                    (update :blocks conj {:type :code
-                                          :text (n/string node)
-                                          :loc (-> (meta node)
-                                                   (set/rename-keys {:row :line :end-row :end-line
-                                                                     :col :column :end-col :end-column})
-                                                   (select-keys [:line :end-line :column :end-column]))}))
+  ([{:as opts :keys [skip-doc?]} s]
+   (let [parsed-doc (parse-clojure-string opts
+                                          (cond-> {:blocks []
+                                                   :md-context markdown/empty-doc}
+                                            (:file opts)
+                                            (assoc :file (:file opts)))
+                                          s)]
+     (-> (cond-> parsed-doc
+           (not skip-doc?)
+           (merge (select-keys (:md-context parsed-doc)
+                               md-context-keys-to-select)))
+         (dissoc :md-context)
+         add-open-graph-metadata
+         add-doc-settings)))
+  ([{:as opts :keys [skip-doc?]} initial-state s]
+   (binding [*ns* (:ns initial-state *ns*)]
+     (loop [{:as state :keys [nodes blocks block-settings add-comment-on-line? add-block-id]}
 
-                (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
-                (-> state
-                    (assoc :add-comment-on-line? (not (n/comment? node)))
-                    (update :nodes rest)
-                    (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
+            (assoc initial-state
+                   :nodes (:children (try (p/parse-string-all s)
+                                          (catch Exception e
+                                            (throw (ex-info (str "Clerk failed parsing: "
+                                                                 (ex-message e))
+                                                            (cond-> {:string s}
+                                                              (:file opts) (assoc :file (:file opts)))
+                                                            e)))))
+                   :add-block-id (partial add-block-id (atom {})))]
+       (if-let [node (first nodes)]
+         (recur (cond
+                  (code-tags (n/tag node))
+                  (let [form (try (read-string (n/string node))
+                                  (catch Exception e
+                                    (throw (ex-info (str "Clerk failed reading block: "
+                                                         (ex-message e)
+                                                         e)
+                                                    (cond-> {:code (n/string node)}
+                                                      (:file opts) (assoc :file (:file opts)))
+                                                    e))))
+                        loc (-> (meta node)
+                                (set/rename-keys {:row :line :end-row :end-line
+                                                  :col :column :end-col :end-column})
+                                (select-keys [:line :end-line :column :end-column]))
+                        next-block-settings (merge-settings
+                                             (or (:block-settings state)
+                                                 (merge-with merge
+                                                             {:nextjournal.clerk/visibility {:code :show :result :show}}
+                                                             (parse-global-block-settings form)))
+                                             (parse-global-block-settings form))
+                        code-block {:type :code
+                                    :settings (merge-settings next-block-settings (parse-local-block-settings form))
+                                    :text (n/string node)
+                                    :form (add-loc opts loc form)
+                                    :loc loc}]
+                    (when (ns? form)
+                      (eval form))
+                    (cond-> (-> state
+                                (assoc :add-comment-on-line? true)
+                                (update :nodes rest)
+                                (assoc :block-settings next-block-settings)
+                                (update :blocks conj (add-block-id code-block)))
+                      (not (contains? state :ns))
+                      (assoc :ns *ns*)))
 
-                (and doc? (n/comment? node))
-                (-> state
-                    (assoc :add-comment-on-line? false)
-                    (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
-                    (update-markdown-blocks (apply str (map (comp remove-leading-semicolons n/string)
-                                                            (take-while (some-fn n/comment? n/linebreak?) nodes)))))
-                :else
-                (-> state
-                    (assoc :add-comment-on-line? false)
-                    (update :nodes rest))))
-       state))))
+                  (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
+                  (-> state
+                      (assoc :add-comment-on-line? (not (n/comment? node)))
+                      (update :nodes rest)
+                      (update-in [:blocks (dec (count blocks)) :text] str (-> node n/string str/trim-newline)))
 
-#_(parse-clojure-string {:doc? true} "'code ;; foo\n;; bar")
-#_(parse-clojure-string "'code , ;; foo\n;; bar")
-#_(parse-clojure-string "'code\n;; foo\n;; bar")
-#_(keys (parse-clojure-string {:doc? true} (slurp "notebooks/viewer_api.clj")))
-#_(parse-clojure-string {:doc? true} ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section")
+                  (and (not skip-doc?) (n/comment? node))
+                  (-> state
+                      (assoc :add-comment-on-line? false)
+                      (assoc :nodes (drop-while (some-fn n/comment? n/linebreak?) nodes))
+                      (update-markdown-blocks (apply str (map (comp remove-leading-semicolons n/string)
+                                                              (take-while (some-fn n/comment? n/linebreak?) nodes)))))
+                  :else
+                  (-> state
+                      (assoc :add-comment-on-line? false)
+                      (update :nodes rest))))
+         (dissoc state :add-block-id :nodes :add-comment-on-line?))))))
 
-(defn parse-markdown-cell [{:as state :keys [nodes]} opts]
-  (assoc (parse-clojure-string opts state (markdown.transform/->text (first nodes)))
-         :nodes (rest nodes)
+(comment
+  (parse-clojure-string {:file "foo.clj"} "'code ;; foo\n;; bar")
+  (parse-clojure-string "'code , ;; foo\n;; bar")
+  (parse-clojure-string "'code\n;; foo\n;; bar")
+  (keys (parse-clojure-string (slurp "notebooks/viewer_api.clj")))
+  (parse-clojure-string ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section"))
+
+(defn parse-markdown-cell [state opts]
+  (assoc (parse-clojure-string opts state (markdown.transform/->text (first (:nodes state))))
+         :nodes (rest (:nodes state))
          ::md-slice []))
 
 (defn runnable-code-block? [{:as block :keys [info language]}]
@@ -364,36 +526,48 @@
 (defn filter-code-blocks-without-form [doc]
   (update doc :blocks #(filterv (some-fn :form (complement code?)) %)))
 
-(defn parse-markdown-string [{:as opts :keys [doc?]} s]
-  (let [{:as ctx :keys [content]} (markdown/parse* markdown/empty-doc s)]
-    (loop [{:as state :keys [nodes] ::keys [md-slice]} {:blocks [] ::md-slice [] :nodes content :md-context ctx}]
-      (if-some [node (first nodes)]
-        (recur
-         (if (runnable-code-block? node)
+(defn parse-markdown-string
+  ([s] (parse-markdown-string {} s))
+  ([opts s]
+   (binding [*ns* *ns*]
+     (let [{:as ctx :keys [content]} (markdown/parse* markdown/empty-doc s)]
+       (loop [{:as state :keys [nodes] ::keys [md-slice]} (merge
+                                                           {:blocks []
+                                                            ::md-slice []
+                                                            :nodes content
+                                                            :md-context ctx}
+                                                           (select-keys opts [:file]))]
+         (if-some [node (first nodes)]
+           (recur
+            (if (runnable-code-block? node)
+              (-> state
+                  (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
+                  (parse-markdown-cell opts))
+              (-> state (update :nodes rest) (update ::md-slice conj node))))
+
            (-> state
                (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-               (parse-markdown-cell opts))
-           (-> state (update :nodes rest) (cond-> doc? (update ::md-slice conj node)))))
+               (dissoc ::md-slice :md-context)
+               (merge (select-keys ctx md-context-keys-to-select))
+               add-open-graph-metadata
+               add-doc-settings)))))))
 
-        (-> state
-            (update :blocks #(cond-> % (seq md-slice) (conj {:type :markdown :doc {:type :doc :content md-slice}})))
-            (select-keys [:blocks :visibility])
-            (merge (when doc?
-                     (select-keys ctx [:footnotes :title :toc]))))))))
-
-#_(parse-markdown-string {:doc? true} "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
+#_(parse-markdown-string "# Hello\n```\n1\n;; # 1️⃣ Hello\n2\n\n```\nhey\n```\n3\n;; # 2️⃣ Hello\n4\n```\n")
 
 #?(:clj
    (defn parse-file
      ([file] (parse-file {} file))
-     ([opts file] (-> (if (str/ends-with? file ".md")
-                        (parse-markdown-string opts (slurp file))
-                        (parse-clojure-string opts (slurp file)))
-                      (assoc :file file)))))
+     ([opts file]
+      (-> (if (str/ends-with? file ".md")
+            (parse-markdown-string (assoc opts :file file) (slurp file))
+            (parse-clojure-string (assoc opts :file file) (slurp file)))))))
 
-#_(parse-file {:doc? true} "notebooks/visibility.clj")
-#_(parse-file "notebooks/visibility.clj")
-#_(parse-file "notebooks/elements.clj")
-#_(parse-file "notebooks/markdown.md")
-#_(parse-file {:doc? true} "notebooks/rule_30.clj")
-#_(parse-file "notebooks/src/demo/lib.cljc")
+(comment
+  (parse-file "notebooks/hello.clj")
+  (parse-file "notebooks/hello.md")
+  (parse-file "notebooks/visibility.clj")
+  (parse-file {:skip-doc? true} "notebooks/visibility.clj")
+  (parse-file "notebooks/elements.clj")
+  (parse-file "notebooks/rule_30.clj")
+  (parse-file "notebooks/src/demo/lib.cljc"))
+

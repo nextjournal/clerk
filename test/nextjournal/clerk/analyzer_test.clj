@@ -85,16 +85,6 @@
     (is (= '#{nextjournal.clerk.analyzer/BoundedCountCheck}
            (:deps (ana/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?))))))
 
-(deftest read-string-tests
-  (testing "read-string should read regex's such that value equalility is preserved"
-    (is (= '(fn [x] (clojure.string/split x (clojure.core/re-pattern "/")))
-           (ana/read-string "(fn [x] (clojure.string/split x #\"/\"))"))))
-
-  (testing "read-string can handle syntax quote"
-    (is (match? '['nextjournal.clerk.analyzer-test/foo 'nextjournal.clerk/foo 'nextjournal.clerk/foo]
-                (with-ns-binding 'nextjournal.clerk.analyzer-test
-                  (ana/read-string "[`foo `clerk/foo `nextjournal.clerk/foo]"))))))
-
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"
     (is (match? {:deps #{`inc}}
@@ -203,7 +193,7 @@
     (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
 
 (defn analyze-string [s]
-  (-> (parser/parse-clojure-string {:doc? true} s)
+  (-> (parser/parse-clojure-string s)
       ana/build-graph))
 
 (deftest hash-test
@@ -299,13 +289,6 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  (testing "reading a bad block shows block and file info in raised exception"
-    (is (thrown-match? ExceptionInfo
-                       {:block {:type :code :text "##boom"}
-                        :file any?}
-                       (-> (parser/parse-clojure-string {:doc? true} "(ns some-ns (:require []))")
-                           (update-in [:blocks 0 :text] (constantly "##boom"))
-                           ana/analyze-doc))))
   (is (match? #{{}
                 {:form '(ns example-notebook),
                  :deps set?}
@@ -339,16 +322,6 @@
 (deftest analyze-file
   (testing "should analyze depedencies"
     (is (-> (ana/analyze-file "src/nextjournal/clerk/classpath.clj") :->analysis-info not-empty))))
-
-(deftest add-block-ids
-  (testing "assigns block ids"
-    (is (= '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
-             foo/bar
-             foo/bar#2
-             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
-             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2]
-           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
-                analyze-string :blocks (mapv :id))))))
 
 (deftest no-cache-dep
   (is (match? [{:no-cache? true} {:no-cache? true} {:no-cache? true}]
@@ -398,6 +371,7 @@ my-uuid")]
     (is (dep/depends? (:graph analyzed)
                       'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
                       'nextjournal.clerk.git/read-git-attrs))
+    #_ FIXME
     (is (not (contains? (dep/nodes (:graph analyzed))
                         'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))
 

@@ -1,13 +1,11 @@
 (ns nextjournal.clerk.analyzer
   {:nextjournal.clerk/no-cache true}
-  (:refer-clojure :exclude [hash read-string])
+  (:refer-clojure :exclude [hash])
   (:require [babashka.fs :as fs]
-            [edamame.core :as edamame]
             [clojure.core :as core]
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.reader :as tools.reader]
             [clojure.tools.analyzer :as ana]
             [clojure.tools.analyzer.ast :as ana-ast]
             [clojure.tools.analyzer.jvm :as ana-jvm]
@@ -84,29 +82,6 @@
     form))
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
-
-(defn auto-resolves [ns]
-  (as-> (ns-aliases ns) $
-    (assoc $ :current (ns-name *ns*))
-    (zipmap (keys $)
-            (map ns-name (vals $)))))
-
-#_(auto-resolves (find-ns 'nextjournal.clerk.parser))
-#_(auto-resolves (find-ns 'cards))
-
-(defn read-string [s]
-  (edamame/parse-string s {:all true
-                           :syntax-quote {:resolve-symbol tools.reader/resolve-symbol}
-                           :readers *data-readers*
-                           :read-cond :allow
-                           :regex #(list `re-pattern %)
-                           :features #{:clj}
-                           :end-location false
-                           :row-key :line
-                           :col-key :column
-                           :auto-resolve (auto-resolves (or *ns* (find-ns 'user)))}))
-
-#_(read-string "(ns rule-30 (:require [nextjournal.clerk.viewer :as v]))")
 
 (defn unresolvable-symbol-handler [ns sym ast-node]
   ast-node)
@@ -297,20 +272,6 @@
                   (filter (comp #{:code} :type)
                           blocks)))))
 
-(defn get-block-id [!id->count {:as block :keys [var form type doc]}]
-  (let [id->count @!id->count
-        id (if var
-             var
-             (let [hash-fn #(-> % nippy/fast-freeze sha1-base58)]
-               (symbol (str *ns*)
-                       (case type
-                         :code (str "anon-expr-" (hash-fn (cond-> form (instance? clojure.lang.IObj form) (with-meta {}))))
-                         :markdown (str "markdown-" (hash-fn doc))))))]
-    (swap! !id->count update id (fnil inc 0))
-    (if (id->count id)
-      (symbol (str *ns*) (str (name id) "#" (inc (id->count id))))
-      id)))
-
 (defn ^:private internal-proxy-name?
   "Returns true if `sym` represents a var name interned by `clojure.core/proxy`."
   [sym]
@@ -377,41 +338,21 @@
    (analyze-doc {:doc? true} doc))
   ([{:as state :keys [doc?]} doc]
    (binding [*ns* *ns*]
-     (let [!id->count (atom {})]
+     (let [add-block-id (partial parser/add-block-id (atom {}))]
        (cond-> (reduce (fn [{:as state notebook-ns :ns} {:as block :keys [type text loc]}]
                          (if (not= type :code)
-                           (update state :blocks conj (assoc block :id (get-block-id !id->count block)))
-                           (let [form (try (read-string text)
-                                           (catch Exception e
-                                             (throw (ex-info (str "Clerk analysis failed reading block: "
-                                                                  (ex-message e))
-                                                             {:block block
-                                                              :file (:file doc)}
-                                                             e))))
-                                 form+loc (cond-> form
-                                            (instance? clojure.lang.IObj form)
-                                            (vary-meta merge (cond-> loc
-                                                               (:file doc) (assoc :clojure.core/eval-file
-                                                                                  (str (cond-> (:file doc)
-                                                                                         (instance? java.net.URL (:file doc)) extract-file))))))
-                                 {:as analyzed :keys [ns-effect?]} (cond-> (analyze form+loc)
-                                                                     (:file doc) (assoc :file (:file doc)))
-                                 _ (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
-                                     (eval form))
-                                 block-id (get-block-id !id->count (merge analyzed block))
-                                 analyzed (assoc analyzed :id block-id)]
-
+                           (update state :blocks conj (add-block-id block))
+                           (let [{:as form-analysis :keys [ns-effect? form]} (cond-> (analyze (:form block))
+                                                                               (:file doc) (assoc :file (:file doc)))
+                                 block+analysis (add-block-id (merge block form-analysis))]
+                             (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
+                               (eval form))
                              (-> state
-                                 (store-info analyzed)
-                                 (track-var->block+redefs analyzed)
-                                 (update :blocks conj (-> block
-                                                          (merge (dissoc analyzed :deps :no-cache? :ns-effect?))
-                                                          (cond->
-                                                              (parser/ns? form) (assoc :ns? true)
-                                                              doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns))))))
-                                 (cond->
-                                     (and doc? (not (contains? state :ns)))
-                                   (merge (parser/->doc-settings form) {:ns *ns*}))))))
+                                 (store-info block+analysis)
+                                 (track-var->block+redefs block+analysis)
+                                 (update :blocks conj (cond-> (dissoc block+analysis :deps :no-cache? :ns-effect?)
+                                                        (parser/ns? form) (assoc :ns? true)
+                                                        doc? (assoc :text-without-meta (parser/text-with-clerk-metadata-removed text (ns-resolver notebook-ns)))))))))
 
                        (-> state
                            (cond-> doc? (merge doc))
@@ -421,11 +362,9 @@
                        (:blocks doc))
 
          true (dissoc :doc?)
-         doc? (-> parser/add-block-settings
-                  parser/add-open-graph-metadata
-                  parser/filter-code-blocks-without-form))))))
+         doc? parser/filter-code-blocks-without-form)))))
 
-#_(let [parsed (nextjournal.clerk.parser/parse-clojure-string "clojure.core/dec")]
+#_(let [parsed (parser/parse-clojure-string "clojure.core/dec")]
     (build-graph (analyze-doc parsed)))
 
 (defonce !file->analysis-cache
@@ -603,7 +542,7 @@
             analyze-doc-deps
             set-no-cache-on-redefs
             make-deps-inherit-no-cache
-            (dissoc :analyzed-file-set :counter))))))
+            (dissoc :analyzed-file-set :counter)))))) 
 
 (comment
   (reset! !file->analysis-cache {})

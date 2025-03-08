@@ -8,8 +8,8 @@
       ".clerk/cache"))
 
 (def cache-disabled?
-  (when-let [prop (System/getProperty "clerk.disable_cache")]
-    (not= "false" prop)))
+  (boolean (when-let [prop (System/getProperty "clerk.disable_cache")]
+             (not= "false" prop))))
 
 (def resource-manifest-from-props
   (when-let [prop (System/getProperty "clerk.resource_manifest")]

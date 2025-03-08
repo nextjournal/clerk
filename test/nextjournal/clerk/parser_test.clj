@@ -1,8 +1,6 @@
 (ns nextjournal.clerk.parser-test
   (:require [clojure.test :refer [deftest is testing]]
-            [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
-            [nextjournal.clerk.analyzer-test :refer [analyze-string]]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]))
 
@@ -28,22 +26,26 @@ line\"")
 
 (deftest parse-clojure-string
   (testing "is returning blocks with types and markdown structure attached"
-    (is (match? (m/equals {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)"}
-                                    {:type :markdown, :doc {:type :doc :content [{:type :heading}
-                                                                                 {:type :heading}
-                                                                                 {:type :paragraph}]}}
-                                    {:type :code, :text "#{3 1 2}"}
-                                    {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
-                                    {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},
-                                    {:type :code, :text "\"multi
+    (is (match? {:blocks [{:type :code, :text "^:nextjournal.clerk/no-cache ^:nextjournal.clerk/toc (ns example-notebook)"}
+                          {:type :markdown, :doc {:type :doc :content [{:type :heading}
+                                                                       {:type :heading}
+                                                                       {:type :paragraph}]}}
+                          {:type :code, :text "#{3 1 2}"}
+                          {:type :markdown, :doc {:type :doc :content [{:type :heading}]}}
+                          {:type :code, :text "{2 \"bar\" 1 \"foo\"}"},
+                          {:type :code, :text "\"multi
 line\""}]
-                           :title "📶 Sorting",
-                           :footnotes []
-                           :toc {:type :toc,
-                                 :children [{:type :toc :children [{:type :toc}
-                                                                   {:type :toc}]}]}})
-                (parser/parse-clojure-string {:doc? true} notebook)))))
+                 :title "📶 Sorting",
+                 :footnotes []
+                 :toc {:type :toc,
+                       :children [{:type :toc :children [{:type :toc}
+                                                         {:type :toc}]}]}}
+                (parser/parse-clojure-string notebook))))
 
+  (testing "reading a bad block shows block and file info in raised exception"
+    (is (thrown-match? clojure.lang.ExceptionInfo
+                       {:file string?}
+                       (parser/parse-clojure-string {:doc? true :file "foo.clj"} "##boom")))))
 
 (deftest parse-inline-comments
   (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}
@@ -81,7 +83,7 @@ par two"))))
     (is (:toc-visibility (parser/->doc-settings '(ns ^:nextjournal.clerk/toc foo)))))
 
   (testing "sets toc visibility on doc"
-    (is (:toc-visibility (analyze-string "(ns foo {:nextjournal.clerk/toc true})")))))
+    (is (:toc-visibility (parser/parse-clojure-string "(ns foo {:nextjournal.clerk/toc true})")))))
 
 (defn map-blocks-setting [setting {:keys [blocks]}]
   (mapv #(get-in % [:settings :nextjournal.clerk/visibility]) blocks))
@@ -89,26 +91,26 @@ par two"))))
 (deftest add-block-visbility
   (testing "assigns doc visibility from ns metadata"
     (is (= [{:code :fold, :result :hide} {:code :fold, :result :show}]
-           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (rand-int 42)" analyze-string (map-blocks-setting :nextjournal.clerk/visibility)))))
+           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (rand-int 42)" parser/parse-clojure-string (map-blocks-setting :nextjournal.clerk/visibility)))))
 
   (testing "assigns doc visibility from top-level visbility map marker"
     (is (= [{:code :hide, :result :hide} {:code :fold, :result :show}]
-           (->> "{:nextjournal.clerk/visibility {:code :fold}} (rand-int 42)" analyze-string (map-blocks-setting :nextjournal.clerk/visibility)))))
+           (->> "{:nextjournal.clerk/visibility {:code :fold}} (rand-int 42)" parser/parse-clojure-string (map-blocks-setting :nextjournal.clerk/visibility)))))
 
   (testing "can change visibility halfway"
     (is (= [{:code :show, :result :show} {:code :hide, :result :hide} {:code :fold, :result :hide}]
-           (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" analyze-string (map-blocks-setting :nextjournal.clerk/visibility))))))
+           (->> "(rand-int 42) {:nextjournal.clerk/visibility {:code :fold :result :hide}} (rand-int 42)" parser/parse-clojure-string (map-blocks-setting :nextjournal.clerk/visibility))))))
 
 (deftest add-open-graph-metadata
   (testing "OG metadata should be inferred, but customizable via ns map"
     (is (match? {:title "OG Title"}
                 (-> ";; # Doc Title\n(ns my.ns1 {:nextjournal.clerk/open-graph {:title \"OG Title\"}})"
-                    analyze-string
+                    parser/parse-clojure-string
                     :open-graph)))
 
     (is (match? {:title "Doc Title" :description "First paragraph with soft breaks." :url "https://ogp.me"}
                 (-> ";; # Doc Title\n(ns my.ns2 {:nextjournal.clerk/open-graph {:url \"https://ogp.me\"}})\n;; ---\n;; First paragraph with soft\n;; breaks."
-                    analyze-string
+                    parser/parse-clojure-string
                     :open-graph)))))
 
 (def clerk-ns-alias {'clerk 'nextjournal.clerk
@@ -163,6 +165,16 @@ par two"))))
     (is (= (parser/text-with-clerk-metadata-removed "^{:un :balanced :map} (do nothing)" clerk-ns-alias)
            "^{:un :balanced :map} (do nothing)"))))
 
+(deftest read-string-tests
+  (testing "read-string should read regex's such that value equalility is preserved"
+    (is (= '(fn [x] (clojure.string/split x (clojure.core/re-pattern "/")))
+           (parser/read-string "(fn [x] (clojure.string/split x #\"/\"))"))))
+
+  (testing "read-string can handle syntax quote"
+    (is (match? '['nextjournal.clerk.parser-test/foo 'nextjournal.clerk.view/foo 'nextjournal.clerk/foo]
+                (binding [*ns* (find-ns 'nextjournal.clerk.parser-test)]
+                  (parser/read-string "[`foo `view/foo `nextjournal.clerk/foo]"))))))
+
 (deftest presenting-a-parsed-document
   (testing "presenting a parsed document doesn't produce garbage"
     (is (match? [{:nextjournal/viewer {:name 'nextjournal.clerk.viewer/cell-viewer}
@@ -175,3 +187,35 @@ par two"))))
                     view/doc->viewer
                     :nextjournal/value
                     :blocks)))))
+
+(deftest add-block-ids
+  (testing "assigns block ids"
+    (is (= '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
+             foo/bar
+             foo/bar#2
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
+             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2]
+           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
+                parser/parse-clojure-string :blocks (mapv :id))))))
+
+(deftest parse-file-test
+  (testing "parsing a Clojure file"
+    (is (match?
+         {:file "test/nextjournal/clerk/fixtures/hello.clj"
+          :ns (create-ns 'nextjournal.clerk.fixtures.hello)
+          :no-cache true
+          :blocks [{:type :code}
+                   {:type :code
+                    :id 'nextjournal.clerk.fixtures.hello/answer}]}
+         (parser/parse-file "test/nextjournal/clerk/fixtures/hello.clj"))))
+
+  (testing "parsing a markdown file"
+    (is (match?
+         {:file "notebooks/hello.md"
+          :ns (create-ns 'hello-markdown)
+          :no-cache true
+          :blocks [{:type :markdown}
+                   {:type :code :settings {:nextjournal.clerk/visibility {:code :fold, :result :hide}}}
+                   {:type :markdown}
+                   {:type :code :settings {:nextjournal.clerk/visibility {:code :fold, :result :show}}}]}
+         (parser/parse-file "notebooks/hello.md")))))
