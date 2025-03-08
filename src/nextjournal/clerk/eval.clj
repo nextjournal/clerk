@@ -135,8 +135,7 @@
           var-from-def? (and var (var? result) (= var (symbol result)))
           no-cache? (or ns-effect?
                         no-cache?
-                        (boolean (seq @!interned-vars))
-                        config/cache-disabled?)]
+                        (boolean (seq @!interned-vars)))]
       (when (and (not no-cache?)
                  (not ns-effect?)
                  freezable?
@@ -287,14 +286,18 @@
 (defn eval-doc
   "Evaluates the given `doc`."
   ([doc] (eval-doc {} doc))
-  ([in-memory-cache doc] (+eval-results in-memory-cache doc)))
+  ([in-memory-cache doc]
+   (+eval-results in-memory-cache
+                  (cond-> doc
+                    config/cache-disabled?
+                    (assoc :no-cache true)))))
 
 (defn eval-file
   "Reads given `file` (using `slurp`) and evaluates it."
   ([file] (eval-file {} file))
   ([in-memory-cache file]
    (->> file
-        (parser/parse-file {:doc? true})
+        parser/parse-file
         (eval-doc in-memory-cache))))
 
 #_(eval-file "notebooks/hello.clj")

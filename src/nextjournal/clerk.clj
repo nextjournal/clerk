@@ -57,7 +57,7 @@
                              (when-let [path (paths/path-in-cwd file-or-ns)]
                                {:file-path path})
                              {:nav-path (webserver/->nav-path file-or-ns)}
-                             (parser/parse-file {:doc? true} file))
+                             (parser/parse-file file))
                       (catch java.io.FileNotFoundException e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns}
