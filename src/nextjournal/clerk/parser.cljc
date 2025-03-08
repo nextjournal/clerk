@@ -385,14 +385,17 @@
 #_(extract-file (clojure.java.io/resource "clojure/core.clj"))
 #_(extract-file (clojure.java.io/resource "nextjournal/clerk.clj"))
 
+
 (defn add-loc [{:as opts :keys [file]} loc form]
-  #?(:cljs (throw (ex-info "not yet implemented for cljs" {}))
-     :clj (cond-> form
-            (instance? clojure.lang.IObj form)
-            (vary-meta merge (cond-> loc
-                               (:file opts) (assoc :clojure.core/eval-file
-                                                   (str (cond-> (:file opts)
-                                                          (instance? java.net.URL (:file opts)) extract-file))))))))
+  (cond-> form
+    #?(:clj (instance? clojure.lang.IObj form)
+       :cljs (satisfies? cljs.core.IMeta form))
+    (vary-meta merge (cond-> loc
+                       (:file opts) (assoc :clojure.core/eval-file
+                                           (str #?(:clj (cond-> (:file opts)
+                                                          (instance? java.net.URL (:file opts))
+                                                          extract-file)
+                                                   :cljs (:file opts))))))))
 
 (defn add-doc-settings [{:as doc :keys [blocks]}]
   (if-let [first-form (some :form blocks)]
