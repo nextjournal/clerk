@@ -128,23 +128,33 @@
     (if-let [target (and sym-ns
                          (not (resolve-ns (symbol sym-ns) env))
                          (maybe-class-literal sym-ns))]          ;; Class/field
-      (let [opname (name form)]
+      (let [opname (name form)
+            opname-sym (symbol opname)]
         (if (and (= (count opname) 1)
-                 (Character/isDigit (char (first opname))))
+                 (Character/isDigit ^Character (first opname)))
           form ;; Array/<n>
-          (with-meta (list '. target (symbol (str "-" opname))) ;; transform to (. Class -field)
-            (meta form))))
+          (if (or (.startsWith opname ".")
+                  (let [members (u/members target)]
+                    ;; TODO: only pick non-methods!
+                    (some #(= opname-sym (:name %)) members)))
+            `(fn
+               ([x#] (~form x#))
+               ;; TODO: analyze method and return properly expanded fn
+               )
+            (with-meta (list '. target (symbol (str "-" opname))) ;; transform to (. Class -field)
+              (meta form)))))
       form)))
 
 (defn desugar-host-expr [form env]
   (let [[op & expr] form]
     (if (symbol? op)
       (let [opname (name op)
-            opns   (namespace op)]
+            opns   (namespace op)
+            opns-class ^Class (maybe-class-literal opns)]
         (if-let [target (and opns
                              (not (resolve-ns (symbol opns) env))
-                             (maybe-class-literal opns))] ; (class/field ..)
-
+                             (when-not (.startsWith opname ".")
+                               opns-class))] ; (class/field ..)
           (let [op (symbol opname)]
             (with-meta (list '. target (if (zero? (count expr))
                                          op
@@ -154,10 +164,13 @@
           (cond
            (.startsWith opname ".")     ; (.foo bar ..)
            (let [[target & args] expr
-                 target (if-let [target (maybe-class-literal target)]
+                 target (if opns-class
                           (with-meta (list 'do target)
-                            {:tag 'java.lang.Class})
-                          target)
+                            {:tag (symbol (.getName opns-class))})
+                          (if-let [target (maybe-class-literal target)]
+                            (with-meta (list 'do target)
+                              {:tag 'java.lang.Class})
+                            target))
                  args (list* (symbol (subs opname 1)) args)]
              (with-meta (list '. target (if (= 1 (count args)) ;; we don't know if (.foo bar) is
                                           (first args) args))  ;; a method call or a field access
@@ -626,3 +639,19 @@
   ([form env opts]
      (binding [run-passes emit-form]
        (analyze form env opts))))
+
+(comment
+  (analyze+eval '(String/.length "foo"))
+  (analyze+eval 'String/.length)
+  (with-bindings {#'ana/macroexpand-1 macroexpand-1
+                  #'ana/parse parse}
+    (env/ensure (global-env)
+                (-analyze '(fn [x]
+                             (String/.length x)) (empty-env))))
+
+  (macroexpand-1 'String/.length)
+  (macroexpand-1 'Integer/parseInt)
+  (clojure.core/macroexpand-1 'Integer/parseInt)
+  (macroexpand-1 'Long/parseLong)
+  (eval (macroexpand-1 '(fn [x]
+                          (String/.length x)))))
