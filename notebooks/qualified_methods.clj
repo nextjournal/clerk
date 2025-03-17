@@ -10,11 +10,10 @@ Integer/parseInt ;; method value
 
 String/CASE_INSENSITIVE_ORDER ;; field
 
-;; TODO:
-;; (String/new "dude")
+(String/new "dude") ;; constructor
 
-;; TODO
-;; (map String/new ["dude"])
+String/new
 
-;; TODO
-;; (map Integer/parseInt ["1" "2" "3"])
+(map String/new ["dude"])
+
+(map Integer/parseInt ["1" "2" "3"])

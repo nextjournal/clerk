@@ -133,16 +133,23 @@
         (if (and (= (count opname) 1)
                  (Character/isDigit ^Character (first opname)))
           form ;; Array/<n>
-          (if (or (.startsWith opname ".")
-                  (let [members (u/members target)]
-                    ;; TODO: only pick non-methods!
-                    (some #(when (and (= opname-sym (:name %))
-                                      (not (instance? clojure.reflect.Field %)))
-                             %) members)))
+          (cond
+            (= "new" opname)
+            `(fn
+               ([x#] (new ~(symbol sym-ns) x#))
+               ;; TODO: analyze method and return properly expanded fn
+               )
+            (or (.startsWith opname ".")
+                (let [members (u/members target)]
+                  ;; TODO: only pick non-methods!
+                  (some #(when (and (= opname-sym (:name %))
+                                    (not (instance? clojure.reflect.Field %)))
+                           %) members)))
             `(fn
                ([x#] (~form x#))
                ;; TODO: analyze method and return properly expanded fn
                )
+            :else
             (with-meta (list '. target (symbol (str "-" opname))) ;; transform to (. Class -field)
               (meta form)))))
       form)))
@@ -158,10 +165,13 @@
                              (when-not (.startsWith opname ".")
                                opns-class))] ; (class/field ..)
           (let [op (symbol opname)]
-            (with-meta (list '. target (if (zero? (count expr))
-                                         op
-                                         (list* op expr)))
-              (meta form)))
+            (if (= 'new op)
+              (with-meta (list* 'new (symbol opns) expr)
+                (meta form))
+              (with-meta (list '. target (if (zero? (count expr))
+                                           op
+                                           (list* op expr)))
+                (meta form))))
 
           (cond
            (.startsWith opname ".")     ; (.foo bar ..)
@@ -181,7 +191,6 @@
            (.endsWith opname ".") ;; (class. ..)
            (with-meta (list* 'new (symbol (subs opname 0 (dec (count opname)))) expr)
              (meta form))
-
            :else form)))
       form)))
 
@@ -659,4 +668,6 @@
                           (String/.length x))))
 
   (macroexpand-1 'clojure.lang.Compiler/LOADER)
+  (macroexpand-1 '(String/new "foo"))
+  (macroexpand-1 'String/new)
   )
