@@ -1,6 +1,5 @@
 (ns build
   (:require
-   [babashka.process :as process]
    [clojure.string :as str]
    [clojure.tools.build.api :as b]
    [nextjournal.clerk.config :as config]
@@ -38,7 +37,7 @@
                   [:license
                    [:name "ISC License"]
                    [:url "https://opensource.org/license/isc-license-txt"]]]]})
-  (b/copy-dir {:src-dirs ["src" "resources"]
+  (b/copy-dir {:src-dirs ["src" "resources" "tools-analyzer"]
                :target-dir class-dir
                :replace {}})
   (package-clerk-asset-map {:target-dir class-dir})
