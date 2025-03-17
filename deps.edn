@@ -1,4 +1,4 @@
-{:paths ["src" "resources" "bb"]
+{:paths ["src" "resources" "bb" "tools-analyzer"]
  :deps {org.clojure/clojure {:mvn/version "1.10.3"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         org.clojure/tools.analyzer {:mvn/version "1.2.0"}
