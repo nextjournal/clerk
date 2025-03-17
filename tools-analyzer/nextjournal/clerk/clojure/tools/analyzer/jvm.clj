@@ -136,7 +136,9 @@
           (if (or (.startsWith opname ".")
                   (let [members (u/members target)]
                     ;; TODO: only pick non-methods!
-                    (some #(= opname-sym (:name %)) members)))
+                    (some #(when (and (= opname-sym (:name %))
+                                      (not (instance? clojure.reflect.Field %)))
+                             %) members)))
             `(fn
                ([x#] (~form x#))
                ;; TODO: analyze method and return properly expanded fn
@@ -654,4 +656,7 @@
   (clojure.core/macroexpand-1 'Integer/parseInt)
   (macroexpand-1 'Long/parseLong)
   (eval (macroexpand-1 '(fn [x]
-                          (String/.length x)))))
+                          (String/.length x))))
+
+  (macroexpand-1 'clojure.lang.Compiler/LOADER)
+  )

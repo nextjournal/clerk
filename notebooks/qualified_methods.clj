@@ -6,7 +6,9 @@
 
 String/1
 
-Integer/parseInt
+Integer/parseInt ;; method value
+
+String/CASE_INSENSITIVE_ORDER ;; field
 
 ;; TODO:
 ;; (String/new "dude")
