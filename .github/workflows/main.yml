@@ -101,6 +101,7 @@ jobs:
           key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}
 
       - name: 🧪 Run tests
+        shell: bash
         run: |
           bb test:clj :kaocha/reporter '[kaocha.report/documentation]' \
           :clojure '"${{ matrix.clojure }}"'
