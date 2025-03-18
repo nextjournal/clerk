@@ -1,4 +1,5 @@
-(ns qualified-methods)
+(ns qualified-methods
+  {:nextjournal.clerk/no-cache true})
 
 (String/.length "foo")
 
@@ -10,12 +11,10 @@ Integer/parseInt ;; method value
 
 String/CASE_INSENSITIVE_ORDER ;; field
 
-;; TODO: get rid of reflection
 (String/new "dude") ;; constructor
 
-String/new
+^[String] String/new
 
-(map String/new ["dude"])
+(map ^[String] String/new ["dude"])
 
 (map Integer/parseInt ["1" "2" "3"])
-

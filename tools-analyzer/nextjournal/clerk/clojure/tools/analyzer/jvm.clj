@@ -136,7 +136,7 @@
           (cond
             (= "new" opname)
             `(fn
-               ([x#] (new ~(symbol sym-ns) x#))
+               ([x#] (new ~(symbol sym-ns) x# d))
                ;; TODO: analyze method and return properly expanded fn
                )
             (or (.startsWith opname ".")
@@ -669,5 +669,5 @@
 
   (macroexpand-1 'clojure.lang.Compiler/LOADER)
   (macroexpand-1 '(String/new "foo"))
-  (macroexpand-1 'String/new)
+
   )
