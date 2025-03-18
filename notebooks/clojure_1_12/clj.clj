@@ -1,4 +1,4 @@
-(ns qualified-methods
+(ns clojure-1-12.clj
   {:nextjournal.clerk/no-cache true})
 
 (String/.length "foo")

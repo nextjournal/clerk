@@ -4,5 +4,5 @@
 
 (when (>= (:minor *clojure-version*) 12)
   (deftest notebook-is-analyzed-without-errors-test
-    (is (do (clerk/show! "notebooks/qualified_methods.clj")
+    (is (do (clerk/show! "notebooks/clojure_1_12.clj")
             true))))
