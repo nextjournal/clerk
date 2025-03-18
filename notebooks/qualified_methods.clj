@@ -10,6 +10,7 @@ Integer/parseInt ;; method value
 
 String/CASE_INSENSITIVE_ORDER ;; field
 
+;; TODO: get rid of reflection
 (String/new "dude") ;; constructor
 
 String/new
@@ -18,4 +19,3 @@ String/new
 
 (map Integer/parseInt ["1" "2" "3"])
 
-(throw (ex-info "dude" {})) ;; this if CI fails
