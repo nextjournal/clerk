@@ -1,4 +1,4 @@
-(ns clojure-1-12.clj
+(ns clojure-1-12
   {:nextjournal.clerk/no-cache true})
 
 (String/.length "foo")
