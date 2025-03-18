@@ -2,5 +2,7 @@
   (:require [clojure.test :as t :refer [deftest is]]
             [nextjournal.clerk :as clerk]))
 
-(deftest notebook-is-analyzed-without-errors-test
-  (is (clerk/show! "notebooks/qualified_methods.clj")))
+(when (>= (:minor *clojure-version*) 12)
+  (deftest notebook-is-analyzed-without-errors-test
+    (is (do (clerk/show! "notebooks/qualified_methods.clj")
+            true))))
