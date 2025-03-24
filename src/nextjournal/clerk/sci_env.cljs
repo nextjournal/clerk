@@ -185,11 +185,9 @@
                  clojure.pprint cljs.pprint}
    :namespaces (merge {'nextjournal.clerk.viewer viewer-namespace
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
-                       'nextjournal.clerk.sci-env {'load-string+
-
-                                                   load-string+
-                                                   'sci-async-eval-string*
-                                                   sci-async-eval-string*}
+                       'nextjournal.clerk.sci-env {'load-string+ load-string+
+                                                   'sci-async-eval-string* sci-async-eval-string*
+                                                   'pending-promises viewer/pending-promises}
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)

@@ -698,10 +698,11 @@
   (intern-atoms! (-> doc :nextjournal/value :atom-var-name->state))
   (w/postwalk (fn [x]
                 (if (viewer/render-eval? x)
-                  (try (deref (:f x))
-                       (catch js/Error e
-                         (js/console.error "error in render-eval" e (:form x))
-                         (swap! !render-errors conj (Throwable->map e))))
+                  (try
+                    (viewer/eval-after #(deref (:f x)))
+                    (catch js/Error e
+                      (js/console.error "error in render-eval" e (:form x))
+                      (swap! !render-errors conj (Throwable->map e))))
                   x))
               doc))
 

@@ -209,7 +209,15 @@
                                    (mapv slurp-resource (keep ns->resource (all-ns state)))))]
       (-> doc
           ;; make sure :cljs-libs is the first key, so these are read + evaluated first
-          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->render-eval `(nextjournal.clerk.sci-env/sci-async-eval-string* ~code-str))) cljs-sources))
+          (aam/assoc-before :cljs-libs (mapv (fn [code-str]
+                                               (v/->render-eval `
+                                                (do
+                                                  (swap!
+                                                   ;; TODO: chain multiple code-strs
+                                                   nextjournal.clerk.sci-env/pending-promises
+                                                   conj
+                                                   (nextjournal.clerk.sci-env/sci-async-eval-string* ~code-str)))))
+                                             cljs-sources))
           (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources)))
       doc)))
 

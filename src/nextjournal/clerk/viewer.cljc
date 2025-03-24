@@ -32,6 +32,13 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
+#?(:cljs (def pending-promises (atom [])))
+
+#?(:cljs
+   (defn eval-after [f]
+     (swap! pending-promises conj (.then (js/Promise.all @pending-promises)
+                                         f))))
+
 (defrecord RenderFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [_] (@f))
@@ -65,7 +72,9 @@
 (defn ->render-fn [form]
   (map->RenderFn {:form form
                   #?@(:cljs [:f (let [bound-eval *eval*]
-                                  (delay (bound-eval form)))])}))
+                                  (delay
+                                    (eval-after
+                                     #(bound-eval form))))])}))
 
 (defn ->render-fn+opts
   ([opts+form] (->render-fn+opts (first opts+form) (second opts+form)))
