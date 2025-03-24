@@ -37,9 +37,10 @@
             [nextjournal.markdown.transform]
             [reagent.dom.server :as dom-server]
             [reagent.ratom :as ratom]
+            [sci.async :as scia]
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
-            [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.configs.cljs.pprint :as sci.configs.pprint]
+            [sci.configs.reagent.reagent :as sci.configs.reagent]
             [sci.core :as sci]
             [sci.ctx-store]
             [sci.nrepl.server :as nrepl]
@@ -148,6 +149,22 @@
     (sci/set! sci/ns ns)
     val))
 
+(defn sci-async-eval-string* [s]
+  (-> (sci.async/eval-string+ (sci.ctx-store/get-ctx) s)
+      (.then (fn [{:keys [ns val]}]
+               (reset! last-ns ns)
+               (sci/set! sci/ns ns)
+               val))))
+
+(defn async-load-fn
+  [{:keys [libname ctx]}]
+  (js/Promise.resolve
+   (-> (shadow.esm/dynamic-import libname)
+       (.then (fn [lib]
+                (sci/add-js-lib! (sci.ctx-store/get-ctx) libname lib)
+                (js/console.log "lib" lib)
+                {:handled true})))))
+
 (def initial-sci-opts
   {:classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
@@ -170,7 +187,9 @@
                        'nextjournal.clerk viewer-namespace ;; TODO: expose cljs variant of `nextjournal.clerk` with docstrings
                        'nextjournal.clerk.sci-env {'load-string+
 
-                                                   load-string+}
+                                                   load-string+
+                                                   'sci-async-eval-string*
+                                                   sci-async-eval-string*}
                        'clojure.core {'read-string read-string
                                       'implements? (sci/copy-var implements?* core-ns)
                                       'time (sci/copy-var time core-ns)
@@ -195,7 +214,8 @@
 
                       sci.configs.js-interop/namespaces
                       sci.configs.reagent/namespaces
-                      sci.configs.pprint/namespaces)})
+                      sci.configs.pprint/namespaces)
+   :async-load-fn async-load-fn})
 
 (defn ^:export eval-form [f]
   (sci/binding [sci/ns @last-ns]

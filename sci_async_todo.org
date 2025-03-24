@@ -1,0 +1,8 @@
+- [ ] In require-cljs we are returning a blob of code that looks like this:
+
+  ``` clojure
+  (nextjournal.clerk.sci-env/sci-async-eval-string* ~code-str)
+  ```
+
+  This returns a promise and has to be resolved before any other code is executed...
+

@@ -1,9 +1,9 @@
 (ns nextjournal.clerk.viewer
   (:refer-clojure :exclude [var?])
-  (:require [clojure.string :as str]
+  (:require [clojure.datafy :as datafy]
             [clojure.pprint :as pprint]
-            [clojure.datafy :as datafy]
             [clojure.set :as set]
+            [clojure.string :as str]
             [flatland.ordered.map :as omap :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
@@ -21,8 +21,8 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as w]
             [nextjournal.markdown :as md]
-            [nextjournal.markdown.utils :as md.utils]
-            [nextjournal.markdown.transform :as md.transform])
+            [nextjournal.markdown.transform :as md.transform]
+            [nextjournal.markdown.utils :as md.utils])
   #?(:clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref IAtom)
                    (java.lang Throwable)

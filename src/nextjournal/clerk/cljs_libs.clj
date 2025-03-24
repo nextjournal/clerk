@@ -108,7 +108,9 @@
                         (read-ns-decl rdr))
               ns-decl (e/parse-ns-form ns-decl)
               nom (name-from-ns-decl ns-decl)
-              deps (remove @already-loaded-sci-namespaces
+              deps (remove (fn [lib]
+                             (or (@already-loaded-sci-namespaces lib)
+                                 (str/starts-with? lib "http")))
                            (deps-from-ns-decl ns-decl))]
           (apply require-cljs* state deps)
           (swap! state (fn [state]
@@ -207,7 +209,7 @@
                                    (mapv slurp-resource (keep ns->resource (all-ns state)))))]
       (-> doc
           ;; make sure :cljs-libs is the first key, so these are read + evaluated first
-          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->render-eval `(load-string ~code-str))) cljs-sources))
+          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->render-eval `(nextjournal.clerk.sci-env/sci-async-eval-string* ~code-str))) cljs-sources))
           (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources)))
       doc)))
 
