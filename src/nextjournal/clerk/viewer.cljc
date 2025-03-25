@@ -36,14 +36,20 @@
 
 #?(:cljs
    (defn eval-after [f]
-     (swap! pending-promises conj (.then (js/Promise.all @pending-promises)
-                                         f))))
+     (last (swap! pending-promises
+                  (fn [pending-promises]
+                    (conj pending-promises (.then (js/Promise.all pending-promises)
+                                                  f)))))))
 
 (defrecord RenderFn [form #?(:cljs f)]
   #?@(:cljs [IFn
-             (-invoke [_] (@f))
-             (-invoke [_ x] (@f x))
-             (-invoke [_ x y] (@f x y))]))
+             (-invoke [_] (.then @f (fn [f]
+                                      (f))))
+             (-invoke [_ x] (.then @f (fn [f]
+                                        (f x))))
+             (-invoke [_ x y]
+                      (.then @f (fn [f]
+                                  (f x y))))]))
 
 ;; Make sure `RenderFn` is changed atomically
 #?(:clj
