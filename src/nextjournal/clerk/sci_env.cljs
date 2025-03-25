@@ -247,7 +247,6 @@
 
 (defn ^:export onmessage [ws-msg]
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
-        _ (prn :type type)
         dispatch-fn (get message-type->fn
                          type
                          (fn [_]
