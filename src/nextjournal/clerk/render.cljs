@@ -551,6 +551,11 @@
                                           (:nextjournal/render-opts x)
                                           {:viewer viewer :path path})]]))))
 
+(declare await-render-fns)
+(defn await+inspect-presented [x]
+  (when-let [desc (hooks/use-promise (await-render-fns x))]
+    [inspect-presented desc]))
+
 (defn inspect [value]
   (r/with-let [!state   (r/atom nil)
                fetch-fn (fn [fetch-opts]
@@ -565,7 +570,7 @@
              :value value
              :desc (viewer/present value)))
     [view-context/provide {:fetch-fn fetch-fn}
-     [inspect-presented (:desc @!state)]]))
+     [await+inspect-presented (:desc @!state)]]))
 
 (defn show-panel [panel-id panel]
   (swap! !panels assoc panel-id panel))
@@ -686,6 +691,15 @@
 (defn remount? [doc-or-patch]
   (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
 
+(defn await-render-fns [x]
+  (let [viewer-fns (set (filter viewer/render-fn? (tree-seq coll? seq x)))
+        !viewer-fns->resolved (atom {})]
+    (doseq [viewer-fn viewer-fns]
+      (.then (js/Promise.resolve (:f viewer-fn))
+             #(swap! !viewer-fns->resolved assoc viewer-fn (assoc viewer-fn :f %))))
+    (-> (js/Promise.allSettled (into-array (map #(js/Promise.resolve (:f %)) viewer-fns)))
+        (.then #(clojure.walk/postwalk-replace @!viewer-fns->resolved x)))))
+
 (defn re-eval-render-fns [doc]
   ;; TODO: `intern-atoms!` is currently called twice in case of a
   ;; remount patch-state! event
@@ -727,12 +741,21 @@
 (defn apply-patch [x patch]
   (eval-cljs-evals (editscript/patch x (editscript/edits->script patch))))
 
-(defn patch-state! [{:keys [patch effects]}]
+#_(defn patch-state! [{:keys [patch effects]}]
   (run-effects! effects)
   (if (remount? patch)
     (do (swap! !doc #(re-eval-render-fns (apply-patch % patch)))
         ;; TODO: figure out why it doesn't work without `js/setTimeout`
         (js/setTimeout #(swap! !eval-counter inc) 10))
+    (swap! !doc apply-patch patch)))
+
+(defn patch-state! [{:keys [patch]}]
+  (if (remount? patch)
+    (-> (await-render-fns (re-eval-render-fns (apply-patch @!doc patch)))
+        (.then #(do (reset! !doc %)
+                    ;; TODO: figure out why it doesn't work without `js/setTimeout`
+                    (js/setTimeout (fn [] (swap! !eval-counter inc)) 10)
+                    %)))
     (swap! !doc apply-patch patch)))
 
 (defonce !pending-clerk-eval-replies
@@ -908,9 +931,14 @@
   (when (and react-root (not hydrate?))
     (.render react-root (r/as-element [root]))))
 
-(defn ^:dev/after-load ^:after-load re-render []
+#_(defn ^:dev/after-load ^:after-load re-render []
   (swap! !doc re-eval-render-fns)
   (mount))
+
+(defn ^:dev/after-load ^:after-load re-render []
+  (-> (await-render-fns (re-eval-render-fns @!doc))
+      (.then #(do (reset! !doc %)
+                  (mount)))))
 
 (defn ^:export init [{:as state :keys [render-router path->doc]}]
   (setup-router! state)
