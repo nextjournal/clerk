@@ -219,7 +219,10 @@
   (sci/binding [sci/ns @last-ns]
     (-> (scia/eval-form+ (sci.ctx-store/get-ctx) f)
         (.then (fn [{:keys [val ns]}]
+                 (prn :form f :val val :ns ns)
                  (reset! last-ns ns)
+                 (when (instance? js/Promise val)
+                   (.then val js/console.log))
                  val)))))
 
 #_(defn ^:export eval-form [f]
@@ -244,12 +247,14 @@
 
 (defn ^:export onmessage [ws-msg]
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
+        _ (prn :type type)
         dispatch-fn (get message-type->fn
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
-    (-> (render/await-render-fns msg)
-        (.then #(dispatch-fn %)))))
+    (->
+     (render/await-render-fns msg)
+     (.then #(dispatch-fn %)))))
 
 #_(defn ^:export onmessage [ws-msg]
   (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
@@ -262,7 +267,8 @@
 
 (defn ^:export init [state]
   (-> (render/await-render-fns state)
-      (.then #(render/init %))))
+      (.then (fn [v]
+               (render/init v)))))
 
 (defn ^:export ssr [state-str]
   (init (read-string state-str))

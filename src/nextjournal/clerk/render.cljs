@@ -689,7 +689,7 @@
     (reset! !synced-atom-vars vars-in-use)))
 
 (defn remount? [doc-or-patch]
-  (true? (some #(= % :nextjournal.clerk/remount) (tree-seq coll? seq doc-or-patch))))
+  (true? (some #(= :nextjournal.clerk/remount %) (tree-seq coll? seq doc-or-patch))))
 
 (defn await-render-fns [x]
   (let [viewer-fns (set (filter viewer/render-fn? (tree-seq coll? seq x)))
@@ -697,8 +697,11 @@
     (doseq [viewer-fn viewer-fns]
       (.then (js/Promise.resolve (:f viewer-fn))
              #(swap! !viewer-fns->resolved assoc viewer-fn (assoc viewer-fn :f %))))
-    (-> (js/Promise.allSettled (into-array (map #(js/Promise.resolve (:f %)) viewer-fns)))
-        (.then #(clojure.walk/postwalk-replace @!viewer-fns->resolved x)))))
+    (-> (js/Promise.allSettled (mapv #(js/Promise.resolve (:f %)) viewer-fns))
+        (.then (fn [_settled]
+                 (let [v (w/postwalk-replace @!viewer-fns->resolved x)]
+                   (prn :v v)
+                   v))))))
 
 (defn re-eval-render-fns [doc]
   ;; TODO: `intern-atoms!` is currently called twice in case of a
@@ -713,7 +716,7 @@
   (w/postwalk (fn [x]
                 (if (viewer/render-eval? x)
                   (try
-                    (viewer/eval-after #(deref (:f x)))
+                    (deref (:f x))
                     (catch js/Error e
                       (js/console.error "error in render-eval" e (:form x))
                       (swap! !render-errors conj (Throwable->map e))))
@@ -749,13 +752,16 @@
         (js/setTimeout #(swap! !eval-counter inc) 10))
     (swap! !doc apply-patch patch)))
 
-(defn patch-state! [{:keys [patch]}]
+(defn patch-state! [{:keys [patch effects]}]
+  (run-effects! effects)
   (if (remount? patch)
     (-> (await-render-fns (re-eval-render-fns (apply-patch @!doc patch)))
-        (.then #(do (reset! !doc %)
-                    ;; TODO: figure out why it doesn't work without `js/setTimeout`
-                    (js/setTimeout (fn [] (swap! !eval-counter inc)) 10)
-                    %)))
+        (.then #(do
+                  (prn :doc %)
+                  (reset! !doc %)
+                  ;; TODO: figure out why it doesn't work without `js/setTimeout`
+                  (js/setTimeout (fn [] (swap! !eval-counter inc)) 10)
+                  %)))
     (swap! !doc apply-patch patch)))
 
 (defonce !pending-clerk-eval-replies

@@ -43,13 +43,12 @@
 
 (defrecord RenderFn [form #?(:cljs f)]
   #?@(:cljs [IFn
-             (-invoke [_] (.then @f (fn [f]
-                                      (f))))
-             (-invoke [_ x] (.then @f (fn [f]
-                                        (f x))))
+             (-invoke [_]
+                      (@f))
+             (-invoke [_ x]
+                      (@f x))
              (-invoke [_ x y]
-                      (.then @f (fn [f]
-                                  (f x y))))]))
+                      (@f x y))]))
 
 ;; Make sure `RenderFn` is changed atomically
 #?(:clj

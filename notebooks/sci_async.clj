@@ -3,7 +3,8 @@
   (:require [nextjournal.clerk :as clerk]))
 
 (clerk/with-viewer
-  {:render-fn 'sci-async/my-viewer
-   :require-cljs true}
+  {:render-fn '(fn [_]
+                 [:div "Hello there"])#_sci-async/my-viewer
+   #_#_:require-cljs true}
   nil
   )
