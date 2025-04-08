@@ -12,9 +12,9 @@
             [clojure.tools.analyzer.utils :as ana-utils]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
-            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as walk]
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
@@ -166,6 +166,7 @@
                         deref-deps
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
+        _ (def d deps)
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
     (cond-> {#_#_:analyzed analyzed
              :form form
@@ -181,6 +182,9 @@
       (seq vars-) (assoc :vars- vars-)
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
+
+#_(analyze '(assoc {} :a :b))
+#_(analyze '(Class/forName "dude"))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
 #_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
