@@ -138,14 +138,21 @@
 
 (defn analyze [form]
   (let [!deps      (atom #{})
+        !forms     (atom [])
         mexpander (fn [form env]
+                    (swap! !forms conj form)
                     (let [f (if (seq? form) (first form) form)
+                          _ (def f' f)
                           v (ana-utils/resolve-sym f env)]
+                      (def v v)
                       (when (and (not (-> env :locals (get f))) (var? v))
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
         analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
         nodes (ana-ast/nodes analyzed)
+        _ (def n* nodes)
+        _ (def d @!deps)
+        _ (def f @!forms)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))
@@ -166,7 +173,6 @@
                         deref-deps
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
-        _ (def d deps)
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
     (cond-> {#_#_:analyzed analyzed
              :form form
@@ -183,7 +189,16 @@
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
 
+(comment
+  (nextjournal.clerk.analyzer2/get-vars+forward-declarations n*)
+  (nextjournal.clerk.analyzer/get-vars+forward-declarations n*)
+  d
+  f
+  )
+
 #_(analyze '(assoc {} :a :b))
+#_(analyze '[[assoc]])
+#_(analyze nil)
 #_(analyze '(Class/forName "dude"))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w

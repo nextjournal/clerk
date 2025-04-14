@@ -1,4 +1,7 @@
 (ns nextjournal.clerk.analyzer2
+  (:require [clojure.set :as set]
+            [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.parser :as parser])
   (:refer-clojure :exclude [macroexpand-1 macroexpand update-vals])
   (:import (clojure.lang IObj)))
 ;; based off of https://github.com/hyperfiddle/rcf/blob/master/src/hyperfiddle/rcf/analyzer.clj
@@ -51,9 +54,9 @@
   ;; Cannot use `cc/binding` as it relies on var which does a read-time resolve,
   ;; while we want a runtime var resolve.
   `(do (push-thread-bindings {(resolve 'cljs.analyzer/*cljs-warnings*)
-                            (reduce (fn [r# k#] (assoc r# k# false))
-                              (deref (resolve 'cljs.analyzer/*cljs-warnings*))
-                              ~disabled-warnings)})
+                              (reduce (fn [r# k#] (assoc r# k# false))
+                                      (deref (resolve 'cljs.analyzer/*cljs-warnings*))
+                                      ~disabled-warnings)})
        (try ~@body
             (finally (pop-thread-bindings)))))
 
@@ -82,7 +85,7 @@
 (def specials "Set of special forms common to every clojure variant" ;; TODO replace with cc/special-symbol?
   '#{do if new quote set! try var catch throw finally def . let* letfn* loop* recur fn*})
 
-(defn var-sym [v] 
+(defn var-sym [v]
   (cond
     (var? v) (symbol v)
     (var?' v) (symbol (str (:ns v)) (str (:name v)))))
@@ -435,7 +438,7 @@
         (and (var? v) (= ns (ns-name (if-bb (:ns (meta v)) (.ns ^clojure.lang.Var v)))))
         (do (when-some [m (meta sym)]
               (if-bb (alter-meta! v (constantly (update-vals m unquote')))
-                (.setMeta v (update-vals m unquote')))) v)
+                     (.setMeta v (update-vals m unquote')))) v)
         :else (throw (ex-info (str "(def " sym " ...) resolved to an existing mapping of an unexpected type.")
                               {:sym         sym
                                :ns          ns
@@ -450,7 +453,7 @@
 
 (defn- to-cljs-var [var]
   (let [m (-> (meta var))
-        m (as-> m $ 
+        m (as-> m $
             (update $ :ns ns-name)
             (assoc $ :name (symbol (str (:ns $)) (str (:name $)))))]
     (assoc m :meta m)))
@@ -474,7 +477,7 @@
         args (apply pfn expr)
         env (if (some? (namespace sym))
               env ;; Can't intern namespace-qualified symbol, ignore
-              (let [var (create-var sym env)] ;; side effect, FIXME should be a pass  
+              (let [var (create-var sym env)] ;; side effect, FIXME should be a pass
                 (when (cljs? env)
                   (intern-cljs-var! (to-cljs-var var)))
                 (assoc-in env [:namespaces ns :mappings sym] var)))
@@ -662,12 +665,15 @@
 
 (defn- tag-with-form [ast parent form] (assoc ast :raw-forms (conj (:raw-forms parent ()) (list 'quote form))))
 
+(def ^:dynamic *deps* nil)
+
 (defn macroexpand-node [{:keys [env] :as ast}]
+  (when-let [v (:var ast)]
+    (swap! *deps* conj v))
   (let [{:keys [op var]} (:fn ast)
-        [f & args :as form] (:form ast)]
+        [f & args :as form] (when (seq? (:form ast)) (:form ast))]
     (if (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
-      (let [
-            mform (macroexpand-hook var form env args)
+      (let [mform (macroexpand-hook var form env args)
             var'  (when (seq? mform) (resolve-sym (first mform) env))]
         (cond
           (= form mform)   (reduced ast)
@@ -684,20 +690,21 @@
   ([ast] (macroexpand-pass ##Inf ast))
   ([n ast]
    (let [state (atom n)]
-     (prewalk (only-nodes #{:invoke} (fn rec [ast]
-                                       (if-not (pos? @state)
-                                         (reduced ast) ;; stop walking
-                                         (let [ast' (macroexpand-node ast)]
-                                           (binding [*global-env* (build-ns-map)]
-                                             (let [ast'-resolved (resolve-syms-pass (unreduced ast'))]
-                                               (cond
-                                                 (reduced? ast') (reduced ast'-resolved)
-                                                 (= ast ast')    ast'-resolved
-                                                 :else           (if (pos? (swap! state dec))
-                                                                   (if (= :invoke (:op ast'-resolved))
-                                                                     (rec ast'-resolved)
-                                                                     ast'-resolved)
-                                                                   ast'-resolved))))))))
+     (prewalk (only-nodes (constantly true) ;; was #{:invoke}
+                          (fn rec [ast]
+                            (if-not (pos? @state)
+                              (reduced ast) ;; stop walking
+                              (let [ast' (macroexpand-node ast)]
+                                (binding [*global-env* (build-ns-map)]
+                                  (let [ast'-resolved (resolve-syms-pass (unreduced ast'))]
+                                    (cond
+                                      (reduced? ast') (reduced ast'-resolved)
+                                      (= ast ast')    ast'-resolved
+                                      :else           (if (pos? (swap! state dec))
+                                                        (if (= :invoke (:op ast'-resolved))
+                                                          (rec ast'-resolved)
+                                                          ast'-resolved)
+                                                        ast'-resolved))))))))
               ast))))
 
 (defn macroexpand-n
@@ -726,31 +733,35 @@
   (macroexpand-all '(dude (foo 1 2 3)))
   (binding [*ns* *ns*]
     (let [env (to-env {})
-          exprs '[(assoc {} :a 1)]]
-       (binding [*emit-options* {:simplify-do true}]
-         (->> (cons 'do exprs)
-              (analyze env)
-              (resolve-syms-pass)
-              (macroexpand-pass)
-              #_(rewrite env)
-              #_(ana/emit)))))
+          exprs '[(assoc {} :a 1) String]]
+      (binding [*emit-options* {:simplify-do true}]
+        (->> (cons 'do exprs)
+             (analyze env)
+             (resolve-syms-pass)
+             (macroexpand-pass)
+             #_(rewrite env)
+             #_(ana/emit)))))
   )
 
 
+(defn form->ex-data
+  "Returns ex-data map with the form and its location info from metadata."
+  [form]
+  (merge (select-keys (meta form) [:line :col :clojure.core/eval-file])
+         {:form form}))
 
-
-#_(defn- analyze-form
+(defn- analyze-form
   ([form] (analyze-form {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
      (try
-       (let [old-deftype-hack ana-jvm/-deftype]
-         ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
-         (with-redefs [ana-jvm/-deftype (fn [name class-name args interfaces]
-                                          (when-not (resolve class-name)
-                                            (old-deftype-hack name class-name args interfaces)))]
-           (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
-                                                      :passes-opts analyzer-passes-opts})))
+       (analyze (to-env bindings) form)
+       #_(let [#_#_old-deftype-hack ana-jvm/-deftype]
+           ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
+           (with-redefs [#_#_ana-jvm/-deftype (fn [name class-name args interfaces]
+                                                (when-not (resolve class-name)
+                                                  (old-deftype-hack name class-name args interfaces)))]
+             (analyze (to-env bindings) form)))
        (catch java.lang.AssertionError e
          (throw (ex-info "Failed to analyze form"
                          (form->ex-data form)
@@ -775,16 +786,75 @@
           (filter (every-pred (comp #{:def} :op) :var)
                   nodes)))
 
-#_(defn analyze [form]
+#_(get-vars+forward-declarations n*)
+#_(get-vars+forward-declarations '[{:op :var,
+                                    :local? false,
+                                    :env {:locals {}, :namespaces {}, :ns nextjournal.clerk.analyzer2},
+                                    :form assoc,
+                                    :ns nil,
+                                    :name "assoc",
+                                    :var #'clojure.core/assoc}])
+
+(defn nodes
+  "Returns a lazy-seq of all the nodes in the given AST, in depth-first pre-order."
+  [ast]
+  (lazy-seq
+   (cons ast (mapcat nodes (children ast)))))
+
+(defn no-cache-from-meta [form]
+  (when (contains? (meta form) :nextjournal.clerk/no-cache)
+    (-> form meta :nextjournal.clerk/no-cache)))
+
+(defn no-cache? [& subjects]
+  (or (->> subjects
+           (map no-cache-from-meta)
+           (filter some?)
+           first)
+      false))
+
+(defn ^:private ensure-symbol [class-or-sym]
+  (cond
+    (symbol? class-or-sym) class-or-sym
+    (class? class-or-sym) (symbol (pr-str class-or-sym))
+    :else (throw (ex-info "not a symbol or a class" {:class-or-sym class-or-sym} (IllegalArgumentException.)))))
+
+(defn class-deps [analyzed]
+  (set/union (into #{}
+                   (comp (keep :class)
+                         (filter class?)
+                         (map ensure-symbol))
+                   (nodes analyzed))
+             (into #{}
+                   (comp (filter (comp #{:const} :op))
+                         (filter (comp #{:class} :type))
+                         (keep :form)
+                         (map ensure-symbol))
+                   (nodes analyzed))))
+
+(defn rewrite-defcached [form]
+  (if (and (list? form)
+           (symbol? (first form))
+           (= (resolve 'nextjournal.clerk/defcached)
+              (resolve (first form))))
+    (conj (rest form) 'def)
+    form))
+
+;; renamed because analyze already exists in this ns
+(defn analyze-main [form]
   (let [!deps      (atom #{})
+        ;; TODO:
         mexpander (fn [form env]
+                    (def f form)
                     (let [f (if (seq? form) (first form) form)
-                          v (ana-utils/resolve-sym f env)]
+                          v (resolve-sym f env)]
                       (when (and (not (-> env :locals (get f))) (var? v))
                         (swap! !deps conj v)))
-                    (ana-jvm/macroexpand-1 form env))
-        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
-        nodes (ana-ast/nodes analyzed)
+                    (macroexpand-1 form env))
+        analyzed (binding [*deps* !deps]
+                   (-> (analyze-form (rewrite-defcached form))
+                       (resolve-syms-pass)
+                       (macroexpand-pass)))
+        nodes (nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))
@@ -805,7 +875,7 @@
                         deref-deps
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
-        _ (def d deps)
+        ;; _ (def d deps)
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
     (cond-> {#_#_:analyzed analyzed
              :form form
@@ -821,3 +891,18 @@
       (seq vars-) (assoc :vars- vars-)
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
+
+#_(analyze-main '(assoc {} 1 2))
+#_(analyze-main '[[assoc]])
+#_(analyze-main '(let [inc assoc]
+                   )) ;; just assoc :)
+;; m
+
+#_(analyze-main '(defn foo [] 1))
+(comment
+  (get-vars+forward-declarations n*)
+  )
+
+;; TODO:
+;; - [ ] var dependencies
+;; - [ ] classes
