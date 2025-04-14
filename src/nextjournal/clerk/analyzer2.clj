@@ -668,8 +668,6 @@
 (def ^:dynamic *deps* nil)
 
 (defn macroexpand-node [{:keys [env] :as ast}]
-  (when-let [v (:var ast)]
-    (swap! *deps* conj v))
   (let [{:keys [op var]} (:fn ast)
         [f & args :as form] (when (seq? (:form ast)) (:form ast))]
     (if (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
@@ -692,7 +690,7 @@
   ([ast] (macroexpand-pass ##Inf ast))
   ([n ast]
    (let [state (atom n)]
-     (prewalk (only-nodes (constantly true) ;; was #{:invoke}
+     (prewalk (only-nodes #{:invoke}
                           (fn rec [ast]
                             (if-not (pos? @state)
                               (reduced ast) ;; stop walking
@@ -848,6 +846,9 @@
                    (-> (analyze-form (rewrite-defcached form))
                        (resolve-syms-pass)
                        (macroexpand-pass)))
+        _ (prewalk (only-nodes #{:var} (fn [var-node]
+                                            (swap! !deps conj (:var var-node))
+                                            var-node)) analyzed)
         nodes (nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
@@ -886,7 +887,7 @@
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
 
-#_(analyze-main '(assoc {} 1 2))
+#_(analyze-main '(assoc {} (dissoc {} :a) 2))
 #_(analyze-main '[[assoc]])
 #_(analyze-main '(let [inc assoc]
                    )) ;; just assoc :), let is missing
