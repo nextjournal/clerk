@@ -138,8 +138,8 @@
                      {:pre (map? env)}
                      (classify form)))
 
-(defn analyze
-  ([env]      (partial analyze env))
+(defn analyze*
+  ([env]      (partial analyze* env))
   ([env form] (-analyze env form)))
 
 (defn obj? [x] (instance? IObj x))
@@ -169,7 +169,7 @@
       expr)))
 
 (defmethod -analyze :vector [env form]
-  (let [items (mapv (analyze env) form)]
+  (let [items (mapv (analyze* env) form)]
     (wrapping-meta
      {:op       :vector
       :env      env
@@ -181,8 +181,8 @@
   (wrapping-meta
    {:op       :map
     :env      env
-    :keys     (mapv (analyze env) (keys form))
-    :vals     (mapv (analyze env) (vals form))
+    :keys     (mapv (analyze* env) (keys form))
+    :vals     (mapv (analyze* env) (vals form))
     :form     form
     :children [:keys :vals]}))
 
@@ -190,7 +190,7 @@
   (wrapping-meta
    {:op       :set
     :env      env
-    :items    (mapv (analyze env) form)
+    :items    (mapv (analyze* env) form)
     :form     form
     :children [:items]}))
 
@@ -267,7 +267,7 @@
         (let [bind-expr {:op       :binding
                          :env      env
                          :name     name
-                         :init     (analyze env init)
+                         :init     (analyze* env init)
                          :form     name
                          :local    :let
                          :children [:init]}]
@@ -342,16 +342,16 @@
   {:op         :do
    :env        env
    :form       form
-   :statements (mapv (analyze env) exprs)
+   :statements (mapv (analyze* env) exprs)
    :children   [:statements]})
 
 (defmethod -parse 'if [env [_ test then else :as form]]
   {:op       :if
    :form     form
    :env      env
-   :test     (analyze env test)
-   :then     (analyze env then)
-   :else     (analyze env else)
+   :test     (analyze* env test)
+   :then     (analyze* env then)
+   :else     (analyze* env else)
    :children [:test :then :else]})
 
 (defmethod -parse 'quote [env form]
@@ -381,7 +381,7 @@
                :local :catch ;; maybe not needed
                }]
     {:op       :catch
-     :class    (analyze (assoc env :locals {}) etype)
+     :class    (analyze* (assoc env :locals {}) etype)
      :local    local
      :env      env
      :form     form
@@ -406,10 +406,10 @@
       {:op       :invoke
        :form     form
        :env      env
-       :fn       (analyze env f)
-       :args     (mapv (analyze env) args)
+       :fn       (analyze* env f)
+       :args     (mapv (analyze* env) args)
        :children [:fn :args]})
-    (analyze env form)))
+    (analyze* env form)))
 
 (defn ns-sym [ns] (cond (symbol? ns) ns
                         (map? ns) (:name ns)
@@ -482,7 +482,7 @@
                   (intern-cljs-var! (to-cljs-var var)))
                 (assoc-in env [:namespaces ns :mappings sym] var)))
         args (when-let [[_ init] (find args :init)]
-               (assoc args :init (analyze env init)))]
+               (assoc args :init (analyze* env init)))]
     (merge {:op       :def
             :env      env
             :form     form
@@ -531,7 +531,7 @@
         binds    (reduce-kv (fn [binds name bind]
                               (assoc binds name
                                      (merge bind
-                                            {:init     (analyze e (bindings name))
+                                            {:init     (analyze* e (bindings name))
                                              :children [:init]})))
                             {} binds)
         e        (update-in env [:locals] merge (update-vals binds dissoc-env))]
@@ -682,8 +682,8 @@
                                      f (if (contains? (methods macroexpand-hook) f)
                                          (vary-meta f assoc ::prevent-macroexpand true)
                                          f)]
-                                 (tag-with-form (analyze env (cons f args)) ast form))
-              :else            (tag-with-form (analyze env mform) ast form))))
+                                 (tag-with-form (analyze* env (cons f args)) ast form))
+              :else            (tag-with-form (analyze* env mform) ast form))))
       ast)))
 
 (defn macroexpand-pass
@@ -711,7 +711,7 @@
   ([n form] (macroexpand-n n (empty-env) form))
   ([n env form]
    (binding [*global-env* (build-ns-map)]
-     (->> (analyze env form)
+     (->> (analyze* env form)
           (resolve-syms-pass)
           (macroexpand-pass n)
           (emit)))))
@@ -736,7 +736,7 @@
           exprs '[(assoc {} :a 1) String]]
       (binding [*emit-options* {:simplify-do true}]
         (->> (cons 'do exprs)
-             (analyze env)
+             (analyze* env)
              (resolve-syms-pass)
              (macroexpand-pass)
              #_(rewrite env)
@@ -755,7 +755,7 @@
   ([bindings form]
    (binding [config/*in-clerk* true]
      (try
-       (analyze (to-env bindings) form)
+       (analyze* (to-env bindings) form)
        #_(let [#_#_old-deftype-hack ana-jvm/-deftype]
            ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
            (with-redefs [#_#_ana-jvm/-deftype (fn [name class-name args interfaces]
@@ -839,16 +839,26 @@
     (conj (rest form) 'def)
     form))
 
-;; renamed because analyze already exists in this ns
-(defn analyze-main [form]
+;; (def !deps      (atom #{}))
+
+(defn analyze [form]
   (let [!deps      (atom #{})
         analyzed (binding [*deps* !deps]
                    (-> (analyze-form (rewrite-defcached form))
                        (resolve-syms-pass)
                        (macroexpand-pass)))
-        _ (prewalk (only-nodes #{:var} (fn [var-node]
-                                            (swap! !deps conj (:var var-node))
-                                            var-node)) analyzed)
+        _ (prewalk (only-nodes #{:var :binding :symbol}
+                               (fn [var-node]
+                                 (case (:op var-node)
+                                   :var (let [var (:var var-node)]
+                                          (swap! !deps conj var))
+                                   :binding (when-let [t (:tag (meta (:form var-node)))]
+                                              (when-let [clazz (try (resolve t)
+                                                                    (catch Exception _ nil))]
+                                                (swap! !deps conj (.getName ^Class clazz))))
+                                   :symbol (when-not (:local? var-node)
+                                             (swap! !deps conj (:form var-node))))
+                                 var-node)) analyzed)
         nodes (nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
@@ -878,7 +888,8 @@
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)
+             #_#_:analyzed analyzed}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)
@@ -887,14 +898,20 @@
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
 
-#_(analyze-main '(assoc {} (dissoc {} :a) 2))
-#_(analyze-main '[[assoc]])
-#_(analyze-main '(let [inc assoc]
-                   )) ;; just assoc :), let is missing
+#_(analyze '(assoc {} (dissoc {} :a) 2))
+#_(analyze '[[assoc]])
+#_(analyze '(let [inc assoc]
+              )) ;; just assoc :), let is missing
+#_(analyze '(fn [^String x] #_(.length x))) ;; TODO
+#_(analyze-form 'String)
+#_(binding [*deps* (atom #{})]
+    (-> (analyze-form '(fn [^String x] (.length x)))
+        (resolve-syms-pass)
+        (macroexpand-pass)))
 (comment
   (defmacro foobar [x] x)
   (analyze-main '(foobar assoc))
-  )
+  @!deps)
 ;; m
 
 #_(analyze-main '(defn foo [] 1))

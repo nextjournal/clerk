@@ -180,7 +180,8 @@
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)
+             :analyzed analyzed}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)
@@ -201,6 +202,8 @@
 #_(analyze nil)
 #_(analyze '(let [inc assoc]))
 #_(analyze '(Class/forName "dude"))
+#_(:deps (analyze '(fn [^String x] (.length x))))
+#_(:deps (analyze '(ns foo (:import [java.lang String]))))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
 #_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
