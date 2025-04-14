@@ -199,6 +199,7 @@
 #_(analyze '(assoc {} :a :b))
 #_(analyze '[[assoc]])
 #_(analyze nil)
+#_(analyze '(let [inc assoc]))
 #_(analyze '(Class/forName "dude"))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w

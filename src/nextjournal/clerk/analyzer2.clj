@@ -673,17 +673,19 @@
   (let [{:keys [op var]} (:fn ast)
         [f & args :as form] (when (seq? (:form ast)) (:form ast))]
     (if (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
-      (let [mform (macroexpand-hook var form env args)
-            var'  (when (seq? mform) (resolve-sym (first mform) env))]
-        (cond
-          (= form mform)   (reduced ast)
-          (reduced? mform) (reduced (tag-with-form (parse env (unreduced mform)) ast form))
-          (= var var')     (let [[f & args] mform
-                                 f (if (contains? (methods macroexpand-hook) f)
-                                     (vary-meta f assoc ::prevent-macroexpand true)
-                                     f)]
-                             (tag-with-form (analyze env (cons f args)) ast form))
-          :else            (tag-with-form (analyze env mform) ast form)))
+      (do
+        (swap! *deps* conj var) ;; collect macro var
+        (let [mform (macroexpand-hook var form env args)
+              var'  (when (seq? mform) (resolve-sym (first mform) env))]
+            (cond
+              (= form mform)   (reduced ast)
+              (reduced? mform) (reduced (tag-with-form (parse env (unreduced mform)) ast form))
+              (= var var')     (let [[f & args] mform
+                                     f (if (contains? (methods macroexpand-hook) f)
+                                         (vary-meta f assoc ::prevent-macroexpand true)
+                                         f)]
+                                 (tag-with-form (analyze env (cons f args)) ast form))
+              :else            (tag-with-form (analyze env mform) ast form))))
       ast)))
 
 (defn macroexpand-pass
@@ -701,7 +703,7 @@
                                       (reduced? ast') (reduced ast'-resolved)
                                       (= ast ast')    ast'-resolved
                                       :else           (if (pos? (swap! state dec))
-                                                        (if (= :invoke (:op ast'-resolved))
+                                                        (if true #_(= :invoke (:op ast'-resolved))
                                                           (rec ast'-resolved)
                                                           ast'-resolved)
                                                         ast'-resolved))))))))
@@ -842,14 +844,6 @@
 ;; renamed because analyze already exists in this ns
 (defn analyze-main [form]
   (let [!deps      (atom #{})
-        ;; TODO:
-        mexpander (fn [form env]
-                    (def f form)
-                    (let [f (if (seq? form) (first form) form)
-                          v (resolve-sym f env)]
-                      (when (and (not (-> env :locals (get f))) (var? v))
-                        (swap! !deps conj v)))
-                    (macroexpand-1 form env))
         analyzed (binding [*deps* !deps]
                    (-> (analyze-form (rewrite-defcached form))
                        (resolve-syms-pass)
@@ -895,7 +889,11 @@
 #_(analyze-main '(assoc {} 1 2))
 #_(analyze-main '[[assoc]])
 #_(analyze-main '(let [inc assoc]
-                   )) ;; just assoc :)
+                   )) ;; just assoc :), let is missing
+(comment
+  (defmacro foobar [x] x)
+  (analyze-main '(foobar assoc))
+  )
 ;; m
 
 #_(analyze-main '(defn foo [] 1))
