@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.analyzer2
   (:require [clojure.set :as set]
+            [clojure.string :as str]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser])
   (:refer-clojure :exclude [macroexpand-1 macroexpand update-vals])
@@ -669,8 +670,11 @@
 
 (defn macroexpand-node [{:keys [env] :as ast}]
   (let [{:keys [op var]} (:fn ast)
-        [f & args :as form] (when (seq? (:form ast)) (:form ast))]
-    (if (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
+        [f & args :as form] (:form ast)]
+    (cond
+      (and (symbol? f) (not= '. f) (str/starts-with? (name f) "."))
+      (analyze* env (list* '. (symbol (subs (name f) 1)) args))
+      (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
       (do
         (swap! *deps* conj var) ;; collect macro var
         (let [mform (macroexpand-hook var form env args)
@@ -684,7 +688,7 @@
                                          f)]
                                  (tag-with-form (analyze* env (cons f args)) ast form))
               :else            (tag-with-form (analyze* env mform) ast form))))
-      ast)))
+      :else ast)))
 
 (defn macroexpand-pass
   ([ast] (macroexpand-pass ##Inf ast))
@@ -692,6 +696,7 @@
    (let [state (atom n)]
      (prewalk (only-nodes #{:invoke}
                           (fn rec [ast]
+                            (prn :ast-rec (emit ast))
                             (if-not (pos? @state)
                               (reduced ast) ;; stop walking
                               (let [ast' (macroexpand-node ast)]
@@ -701,7 +706,7 @@
                                       (reduced? ast') (reduced ast'-resolved)
                                       (= ast ast')    ast'-resolved
                                       :else           (if (pos? (swap! state dec))
-                                                        (if true #_(= :invoke (:op ast'-resolved))
+                                                        (if (= :invoke (:op ast'-resolved))
                                                           (rec ast'-resolved)
                                                           ast'-resolved)
                                                         ast'-resolved))))))))
@@ -755,7 +760,8 @@
   ([bindings form]
    (binding [config/*in-clerk* true]
      (try
-       (analyze* (to-env bindings) form)
+       (analyze* (assoc (to-env bindings)
+                        :ns (ns-name *ns*)) form)
        #_(let [#_#_old-deftype-hack ana-jvm/-deftype]
            ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
            (with-redefs [#_#_ana-jvm/-deftype (fn [name class-name args interfaces]
@@ -857,7 +863,10 @@
                                                                     (catch Exception _ nil))]
                                                 (swap! !deps conj (.getName ^Class clazz))))
                                    :symbol (when-not (:local? var-node)
-                                             (swap! !deps conj (:form var-node))))
+                                             (when-let [clazz (try (resolve (:form var-node))
+                                                                   (catch Exception _ nil))]
+                                               (when (class? clazz)
+                                                 (swap! !deps conj (.getName ^Class clazz))))))
                                  var-node)) analyzed)
         nodes (nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
@@ -901,9 +910,12 @@
 #_(analyze '(assoc {} (dissoc {} :a) 2))
 #_(analyze '[[assoc]])
 #_(analyze '(let [inc assoc]
-              )) ;; just assoc :), let is missing
-#_(analyze '(fn [^String x] #_(.length x))) ;; TODO
-#_(analyze-form 'String)
+              )) ;; let + assoc, no inc since it's a binding
+#_(analyze '(fn [^String x] (.length x)))
+#_(analyze '(.length "foo"))
+#_(analyze '(quote [inc clojure.core/inc])) ;; no deps
+#_(analyze 'String)
+#_(analyze '(defprotocol Dude))
 #_(binding [*deps* (atom #{})]
     (-> (analyze-form '(fn [^String x] (.length x)))
         (resolve-syms-pass)
@@ -913,8 +925,7 @@
   (analyze-main '(foobar assoc))
   @!deps)
 ;; m
-
-#_(analyze-main '(defn foo [] 1))
+#_(:deps (analyze-main '(defn foo [] 1)))
 (comment
   (get-vars+forward-declarations n*)
   )

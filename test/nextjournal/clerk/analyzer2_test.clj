@@ -63,45 +63,46 @@
   (is (match? #{'clojure.string/includes?
                 'clojure.core/fn
                 'clojure.core/defn
-                'rewrite-clj.parser/parse-string-all}
+                'rewrite-clj.parser/parse-string-all
+                `foo}
               (:deps (ana2/analyze '(defn foo
                                       ([] (foo "s"))
                                       ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
 
   (testing "finds deps inside maps and sets"
-    (is (match? '#{nextjournal.clerk.analyzer-test/foo
-                   nextjournal.clerk.analyzer-test/bar}
-                (with-ns-binding 'nextjournal.clerk.analyzer-test
+    (is (match? #{`foo
+                  `bar}
+                (with-ns-binding 'nextjournal.clerk.analyzer2-test
                   (intern *ns* 'foo :foo)
                   (intern *ns* 'bar :bar)
-                  (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}}))))))
+                  (:deps (ana2/analyze '{:k-1 foo :k-2 #{bar}}))))))
 
   (testing "deps should all be symbols"
-    (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler)))))
-
-    (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
-                                               (-check [_])))))))
+    (is (every? symbol? (:deps (ana2/analyze '(.hashCode clojure.lang.Compiler)))))
+    (is (every? symbol? (:deps (ana2/analyze '(defprotocol MyProtocol
+                                                (-check [_])))))))
 
   (testing "protocol methods are resolved to protocol in deps"
     (is (= '#{nextjournal.clerk.analyzer/BoundedCountCheck}
-           (:deps (ana/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?))))))
+           (:deps (ana2/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?))))))
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"
     (is (match? {:deps #{`inc}}
-                (ana/analyze '(do inc))))
-    (is (empty? (:deps (ana/analyze '(do 'inc))))))
+                (ana2/analyze '(do inc))))
+    (is (empty? (:deps (ana2/analyze '(do 'inc))))))
 
   (testing "locals that shadow existing vars shouldn't show up in the deps"
-    (is (= #{'clojure.core/let} (:deps (ana/analyze '(let [+ 2] +))))))
+    (is (= #{'clojure.core/let} (:deps (ana2/analyze '(let [+ 2] +))))))
 
   (testing "symbol referring to a java class"
     (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
-                (ana/analyze 'io.methvin.watcher.PathUtils))))
+                (ana2/analyze 'io.methvin.watcher.PathUtils))))
 
+  ;; TODO:
   (testing "namespaced symbol referring to a java thing"
     (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
-                (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
+                (ana2/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer/foo}
