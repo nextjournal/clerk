@@ -489,8 +489,9 @@
             :form     form
             :name     sym
             :doc      (or (:doc args) (-> sym meta :doc))
-            :children (into [] (when (:init args) [:init]))}
-           args)))
+            :children (into [] (when (:init args) [:init]))
+            :var (get-in env [:namespaces ns :mappings sym])}
+           args))) 
 
 (defmethod -parse 'fn* [env [op & args :as form]]
   (wrapping-meta
@@ -696,7 +697,6 @@
    (let [state (atom n)]
      (prewalk (only-nodes #{:invoke}
                           (fn rec [ast]
-                            (prn :ast-rec (emit ast))
                             (if-not (pos? @state)
                               (reduced ast) ;; stop walking
                               (let [ast' (macroexpand-node ast)]
@@ -793,6 +793,8 @@
                   nodes)))
 
 #_(get-vars+forward-declarations n*)
+#_(analyze '(def x))
+#_(analyze '(declare y))
 #_(get-vars+forward-declarations '[{:op :var,
                                     :local? false,
                                     :env {:locals {}, :namespaces {}, :ns nextjournal.clerk.analyzer2},
@@ -845,8 +847,6 @@
     (conj (rest form) 'def)
     form))
 
-;; (def !deps      (atom #{}))
-
 (defn analyze [form]
   (let [!deps      (atom #{})
         analyzed (binding [*deps* !deps]
@@ -863,12 +863,20 @@
                                                                     (catch Exception _ nil))]
                                                 (swap! !deps conj (.getName ^Class clazz))))
                                    :symbol (when-not (:local? var-node)
-                                             (when-let [clazz (try (resolve (:form var-node))
-                                                                   (catch Exception _ nil))]
-                                               (when (class? clazz)
-                                                 (swap! !deps conj (.getName ^Class clazz))))))
+                                             (let [form (:form var-node)]
+                                               (if (qualified-symbol? form)
+                                                 (let [clazz-sym (symbol (namespace form))]
+                                                   (when-let [clazz (try (resolve clazz-sym)
+                                                                         (catch Exception _ nil))]
+                                                     (when (class? clazz)
+                                                       (swap! !deps conj (.getName ^Class clazz)))))
+                                                 (when-let [clazz (try (resolve form)
+                                                                       (catch Exception _ nil))]
+                                                   (when (class? clazz)
+                                                     (swap! !deps conj (.getName ^Class clazz))))))))
                                  var-node)) analyzed)
         nodes (nodes analyzed)
+        _ (def n* nodes)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))

@@ -136,6 +136,9 @@
           (filter (every-pred (comp #{:def} :op) :var)
                   nodes)))
 
+#_(analyze '(def x))
+#_(do n*)
+
 (defn analyze [form]
   (let [!deps      (atom #{})
         !forms     (atom [])

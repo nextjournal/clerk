@@ -99,47 +99,48 @@
     (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
                 (ana2/analyze 'io.methvin.watcher.PathUtils))))
 
-  ;; TODO:
   (testing "namespaced symbol referring to a java thing"
     (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
                 (ana2/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
 
   (is (match? {:ns-effect? false
-               :vars '#{nextjournal.clerk.analyzer/foo}
+               :vars '#{nextjournal.clerk.analyzer2/foo}
                :deps       #{'rewrite-clj.parser/parse-string-all
                              'clojure.core/fn
                              'clojure.core/defn
                              'clojure.string/includes?}}
-              (with-ns-binding 'nextjournal.clerk.analyzer
-                (ana/analyze '(defn foo [s]
-                                (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
+              (with-ns-binding 'nextjournal.clerk.analyzer2
+                (ana2/analyze '(defn foo [s]
+                                 (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
 
   (is (match? {:ns-effect?   false
-               :vars '#{nextjournal.clerk.analyzer/segments}
-               :deps         #{'clojure.string/split
-                               'clojure.core/let
-                               'clojure.core/defn
-                               'clojure.core/fn
-                               'clojure.string/join}}
-              (with-ns-binding 'nextjournal.clerk.analyzer
-                (ana/analyze '(defn segments [s] (let [segments (clojure.string/split s)]
+              :vars '#{nextjournal.clerk.analyzer/segments}
+              :deps         #{'clojure.string/split
+                              'clojure.core/let
+                              'clojure.core/defn
+                              'clojure.core/fn
+                              'clojure.string/join}}
+             (with-ns-binding 'nextjournal.clerk.analyzer
+               (ana2/analyze '(defn segments [s] (let [segments (clojure.string/split s)]
                                                    (clojure.string/join segments)))))))
 
   (is (match? {:form       '(in-ns 'user)
                :ns-effect? true
                :deps       #{'clojure.core/in-ns}}
-              (ana/analyze '(in-ns 'user))))
+              (ana2/analyze '(in-ns 'user))))
 
   (is (match? {:ns-effect? true
                :deps       (m/embeds #{'clojure.core/in-ns})}
-              (ana/analyze '(do (ns foo)))))
+              (ana2/analyze '(do (ns foo)))))
 
   (is (match? {:ns-effect? false
                :deps       #{'clojure.core/inc}}
-              (ana/analyze '(def my-inc inc))))
+              (ana2/analyze '(def my-inc inc))))
 
+  ;; TODO: no assertion?
   (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
 
+  ;; TODO: fix
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
                :deps       #{'clojure.lang.Var
@@ -148,7 +149,7 @@
                              'clojure.core/when-not
                              'clojure.core/defonce}}
               (with-ns-binding 'nextjournal.clerk.analyzer-test
-                (ana/analyze '(defonce !state (atom {}))))))
+                (ana2/analyze '(defonce !state (atom {}))))))
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/foo nextjournal.clerk.analyzer-test/foo-2}}
