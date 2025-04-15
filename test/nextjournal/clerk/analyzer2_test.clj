@@ -175,33 +175,32 @@
       (intern *ns* 'foo :bar)
       (is (empty? (-> '(fn [foo] (deref foo)) ana2/analyze :deref-deps)))))
 
-  ;; TODO:
   (testing "defcached should be treated like a normal def"
     (with-ns-binding 'nextjournal.clerk.analyzer2-test
-      (is (= (dissoc (ana/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)))))
+      (is (= (dissoc (ana2/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (ana2/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (ana2/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (ana2/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)))))
 
   (testing "tools.analyzer AssertionError is rethrown as ExceptionInfo (#307)"
-    (is (thrown? ExceptionInfo (ana/analyze '(def foo [] :bar))))))
+    (is (thrown? ExceptionInfo (ana2/analyze '(def foo [] :bar))))))
 
 (deftest symbol->jar
-  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
-  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils/cast))
+  (is (ana2/symbol->jar 'io.methvin.watcher.PathUtils))
+  (is (ana2/symbol->jar 'io.methvin.watcher.PathUtils/cast))
   (testing "does not resolve jdk builtins"
-    (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
+    (is (not (ana2/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
 
 (deftest find-location
   (testing "clojure.core/inc"
-    (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc))))
+    (is (re-find #"clojure-1\..*\.jar" (ana2/find-location 'clojure.core/inc))))
 
   (testing "weavejester.dependency/graph"
-    (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
+    (is (re-find #"dependency-.*\.jar" (ana2/find-location 'weavejester.dependency/graph)))))
 
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string s)
-      ana/build-graph))
+      ana2/build-graph))
 
 (deftest hash-test
   (testing "The hash of weavejester/dependency is the same across OSes"
@@ -209,7 +208,7 @@
          {:jar
           #"repository/weavejester/dependency/0.2.1/dependency-0.2.1.jar",
           :hash "5dsZiMRBpbMfWTafMoHEaNdGfEYxpx"}
-         (ana/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
+         (ana2/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
 
   (testing "an edge-case with a particular sorting of the graph nodes"
     (is (-> (analyze-string "
@@ -217,7 +216,7 @@
   (declare b)
   (def a 1))
 
-(inc a)") ana/hash)))
+(inc a)") ana2/hash)))
 
   (testing "expressions do not depend on forward declarations"
     (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
@@ -226,7 +225,7 @@
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana/hash)
+                    analyze-string ana2/hash)
           block-3-id (-> ana-1 :blocks (nth 2) :id)
           hash-1 (-> ana-1 :->hash block-3-id)
           ana-2 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
@@ -235,7 +234,7 @@
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana/hash)
+                    analyze-string ana2/hash)
           hash-2 (-> ana-2 :->hash block-3-id)]
 
       (is hash-1) (is hash-2)
