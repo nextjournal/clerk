@@ -142,17 +142,12 @@
         mexpander (fn [form env]
                     (swap! !forms conj form)
                     (let [f (if (seq? form) (first form) form)
-                          _ (def f' f)
                           v (ana-utils/resolve-sym f env)]
-                      (def v v)
                       (when (and (not (-> env :locals (get f))) (var? v))
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
         analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
         nodes (ana-ast/nodes analyzed)
-        _ (def n* nodes)
-        _ (def d @!deps)
-        _ (def f @!forms)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))

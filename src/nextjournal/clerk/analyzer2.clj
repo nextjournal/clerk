@@ -146,7 +146,7 @@
                                             (when (class? clazz)
                                               (swap! !deps conj (.getName ^Class clazz))))))))
                           var-node)) analyzed)
-        nodes (nodes analyzed)
+        nodes (ana/nodes analyzed)
         _ (def n* nodes)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)

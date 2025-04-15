@@ -219,22 +219,22 @@
 (inc a)") ana2/hash)))
 
   (testing "expressions do not depend on forward declarations"
-    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer2-test.forward-declarations)
 
 (declare x)
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana2/hash)
+                    analyze-string ana/hash)
           block-3-id (-> ana-1 :blocks (nth 2) :id)
           hash-1 (-> ana-1 :->hash block-3-id)
-          ana-2 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
+          ana-2 (-> "(ns nextjournal.clerk.analyzer2-test.forward-declarations)
 
 (declare x y)
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana2/hash)
+                    analyze-string ana/hash)
           hash-2 (-> ana-2 :->hash block-3-id)]
 
       (is hash-1) (is hash-2)
