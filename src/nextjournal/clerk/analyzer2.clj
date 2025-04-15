@@ -840,7 +840,7 @@
                    (nodes analyzed))))
 
 (defn rewrite-defcached [form]
-  (if (and (list? form)
+  (if (and (seq? form)
            (symbol? (first form))
            (= (resolve 'nextjournal.clerk/defcached)
               (resolve (first form))))

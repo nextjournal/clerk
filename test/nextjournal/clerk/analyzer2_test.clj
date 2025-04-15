@@ -137,43 +137,47 @@
                :deps       #{'clojure.core/inc}}
               (ana2/analyze '(def my-inc inc))))
 
-  ;; TODO: no assertion?
-  (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
+  (is (match? {:form '(do (def my-inc inc) (def my-dec dec)),
+               :deps '#{clojure.core/inc clojure.core/dec},
+               :vars
+               '#{nextjournal.clerk.analyzer2-test/my-inc
+                  nextjournal.clerk.analyzer2-test/my-dec},}
+              (ana2/analyze '(do (def my-inc inc) (def my-dec dec)))))
 
-  ;; TODO: fix
   (is (match? {:ns-effect? false
-               :vars '#{nextjournal.clerk.analyzer-test/!state}
-               :deps       #{'clojure.lang.Var
+               :vars '#{nextjournal.clerk.analyzer2-test/!state}
+               :deps       #{;; 'clojure.lang.Var
                              'clojure.core/atom
                              'clojure.core/let
                              'clojure.core/when-not
                              'clojure.core/defonce}}
-              (with-ns-binding 'nextjournal.clerk.analyzer-test
+              (with-ns-binding 'nextjournal.clerk.analyzer2-test
                 (ana2/analyze '(defonce !state (atom {}))))))
 
   (is (match? {:ns-effect? false
-               :vars '#{nextjournal.clerk.analyzer-test/foo nextjournal.clerk.analyzer-test/foo-2}}
-              (with-ns-binding 'nextjournal.clerk.analyzer-test
-                (ana/analyze '(do (def foo :bar) (def foo-2 :bar))))))
+               :vars '#{nextjournal.clerk.analyzer2-test/foo nextjournal.clerk.analyzer2-test/foo-2}}
+              (with-ns-binding 'nextjournal.clerk.analyzer2-test
+                (ana2/analyze '(do (def foo :bar) (def foo-2 :bar))))))
 
   (testing "dereferenced var isn't detected as a deref dep"
-    (with-ns-binding 'nextjournal.clerk.analyzer-test
+    (with-ns-binding 'nextjournal.clerk.analyzer2-test
       (intern *ns* 'foo :bar)
-      (is (empty? (-> '(deref #'foo) ana/analyze :deref-deps)))))
+      (is (empty? (-> '(deref #'foo) ana2/analyze :deref-deps)))))
 
   (testing "deref dep inside fn is detected"
-    (with-ns-binding 'nextjournal.clerk.analyzer-test
+    (with-ns-binding 'nextjournal.clerk.analyzer2-test
       (intern *ns* 'foo :bar)
-      (is (= #{`(deref nextjournal.clerk.analyzer-test/foo)}
-             (-> '(fn [] (deref foo)) ana/analyze :deref-deps)))))
+      (is (= #{`(deref nextjournal.clerk.analyzer2-test/foo)}
+             (-> '(fn [] (deref foo)) ana2/analyze :deref-deps)))))
 
   (testing "deref dep is empty when shadowed"
-    (with-ns-binding 'nextjournal.clerk.analyzer-test
+    (with-ns-binding 'nextjournal.clerk.analyzer2-test
       (intern *ns* 'foo :bar)
-      (is (empty? (-> '(fn [foo] (deref foo)) ana/analyze :deref-deps)))))
+      (is (empty? (-> '(fn [foo] (deref foo)) ana2/analyze :deref-deps)))))
 
+  ;; TODO:
   (testing "defcached should be treated like a normal def"
-    (with-ns-binding 'nextjournal.clerk.analyzer-test
+    (with-ns-binding 'nextjournal.clerk.analyzer2-test
       (is (= (dissoc (ana/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (ana/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
              (dissoc (ana/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
