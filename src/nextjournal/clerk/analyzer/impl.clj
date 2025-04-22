@@ -1,10 +1,9 @@
 (ns nextjournal.clerk.analyzer.impl
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.parser :as parser])
+  (:require [clojure.string :as str])
     (:refer-clojure :exclude [macroexpand-1 macroexpand update-vals])
     (:import (clojure.lang IObj)))
+
+(def ^:dynamic *deps* nil)
 
 ;; based off of https://github.com/hyperfiddle/rcf/blob/master/src/hyperfiddle/rcf/analyzer.clj
 
@@ -670,8 +669,6 @@
 (defn resolve-syms-pass [ast] (prewalk (only-nodes #{:symbol} resolve-sym-node) ast))
 
 (defn- tag-with-form [ast parent form] (assoc ast :raw-forms (conj (:raw-forms parent ()) (list 'quote form))))
-
-(def ^:dynamic *deps* nil)
 
 (defn macroexpand-node [{:keys [env] :as ast}]
   (let [{:keys [op var]} (:fn ast)

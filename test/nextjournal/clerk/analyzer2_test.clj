@@ -303,6 +303,11 @@
                                   (inc a#))))))))
 
 ;; TODO: FIXME
+(comment
+  (ana/analyze '(do (ns foo) #{1 2 3}))
+  (analyze-string "#{}")
+  )
+
 (deftest analyze-doc
   (is (match? #{{}
                 {:form '(ns example-notebook),
