@@ -202,6 +202,14 @@
   (-> (parser/parse-clojure-string s)
       ana2/build-graph))
 
+
+(comment
+  (ana2/analyze '(declare x))
+  ana2/a*
+  (ana/analyze '(declare x))
+  ana/a*
+  )
+
 (deftest hash-test
   (testing "The hash of weavejester/dependency is the same across OSes"
     (is (match?
@@ -225,7 +233,7 @@
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana/hash)
+                    analyze-string ana2/hash)
           block-3-id (-> ana-1 :blocks (nth 2) :id)
           hash-1 (-> ana-1 :->hash block-3-id)
           ana-2 (-> "(ns nextjournal.clerk.analyzer2-test.forward-declarations)
@@ -234,7 +242,7 @@
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana/hash)
+                    analyze-string ana2/hash)
           hash-2 (-> ana-2 :->hash block-3-id)]
 
       (is hash-1) (is hash-2)

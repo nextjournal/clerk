@@ -147,6 +147,7 @@
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
         analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
+        _ (def a* analyzed)
         nodes (ana-ast/nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
@@ -175,7 +176,8 @@
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)
+             :declared declared}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)

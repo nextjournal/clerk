@@ -123,6 +123,7 @@
                    (-> (analyze-form (rewrite-defcached form))
                        (ana/resolve-syms-pass)
                        (ana/macroexpand-pass)))
+        _ (def a* analyzed)
         _ (ana/prewalk (ana/only-nodes
                         #{:var :binding :symbol}
                         (fn [var-node]
@@ -177,7 +178,8 @@
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
              :no-cache? (no-cache? form (-> def-node :form second) *ns*)
-             #_#_:analyzed analyzed}
+             #_#_:analyzed analyzed
+             :declared declared}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)

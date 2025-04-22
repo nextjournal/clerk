@@ -469,6 +469,7 @@
     nil))
 
 (defmethod -parse 'def [{:keys [ns] :as env} [_ sym & expr :as form]]
+  (def s* sym)
   (let [pfn  (fn
                ([])
                ([init]
@@ -490,9 +491,10 @@
             :form     form
             :name     sym
             :doc      (or (:doc args) (-> sym meta :doc))
-            :children (into [] (when (:init args) [:init]))
-            :var (get-in env [:namespaces ns :mappings sym])}
-           args))) 
+            :children (into [:meta] (when (:init args) [:init]))
+            :var (get-in env [:namespaces ns :mappings sym])
+            :meta {:val (meta sym)}}
+           args)))
 
 (defmethod -parse 'fn* [env [op & args :as form]]
   (wrapping-meta
