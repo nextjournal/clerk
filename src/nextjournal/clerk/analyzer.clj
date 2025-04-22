@@ -561,7 +561,7 @@
             analyze-doc-deps
             set-no-cache-on-redefs
             make-deps-inherit-no-cache
-            (dissoc :analyzed-file-set :counter)))))) 
+            (dissoc :analyzed-file-set :counter))))))
 
 (comment
   (reset! !file->analysis-cache {})

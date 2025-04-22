@@ -133,7 +133,8 @@
                             :binding (when-let [t (:tag (meta (:form var-node)))]
                                        (when-let [clazz (try (resolve t)
                                                              (catch Exception _ nil))]
-                                         (swap! !deps conj (.getName ^Class clazz))))
+                                         (when (class? clazz)
+                                           (swap! !deps conj (.getName ^Class clazz)))))
                             :symbol (when-not (:local? var-node)
                                       (let [form (:form var-node)]
                                         (if (qualified-symbol? form)
