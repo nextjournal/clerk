@@ -302,6 +302,7 @@
              (hash-single-form `(let [a# 1]
                                   (inc a#))))))))
 
+;; TODO: FIXME
 (deftest analyze-doc
   (is (match? #{{}
                 {:form '(ns example-notebook),
