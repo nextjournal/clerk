@@ -352,7 +352,7 @@ my-uuid")]
 (def a (str \"boom \" b))"))))
 
 
-#_(deftest build-graph
+(deftest build-graph
   (testing "should have no unhashed deps for clojure.set"
     (is (empty? (-> "(ns foo (:require [clojure.set :as set])) (set/union #{1} #{2})" analyze-string :->analysis-info ana/unhashed-deps))))
 
@@ -361,11 +361,11 @@ my-uuid")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
 
-  (testing "should establish dependencies across files"
+  #_(testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
-#_(deftest graph-nodes-with-anonymous-ids
+(deftest graph-nodes-with-anonymous-ids
   (testing "nodes with \"anonymous ids\" from dependencies in foreign files respect graph dependencies"
 
     (def analyzed (analyze-string "(ns nextjournal.clerk.analyzer-test.graph-nodes
