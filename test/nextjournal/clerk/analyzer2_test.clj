@@ -63,8 +63,7 @@
   (is (match? #{'clojure.string/includes?
                 'clojure.core/fn
                 'clojure.core/defn
-                'rewrite-clj.parser/parse-string-all
-                `foo}
+                'rewrite-clj.parser/parse-string-all}
               (:deps (ana2/analyze '(defn foo
                                       ([] (foo "s"))
                                       ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
