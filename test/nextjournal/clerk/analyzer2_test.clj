@@ -361,7 +361,7 @@ my-uuid")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
 
-  #_(testing "should establish dependencies across files"
+  (testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
@@ -375,7 +375,6 @@ my-uuid")]
     (is (dep/depends? (:graph analyzed)
                       'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
                       'nextjournal.clerk.git/read-git-attrs))
-    #_ FIXME
     (is (not (contains? (dep/nodes (:graph analyzed))
                         'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))
 
