@@ -45,7 +45,9 @@
      (get-type [_] :val)))
 
 (defn render-fn? [x]
-  (instance? RenderFn x))
+  #?(:clj (and (some? x)
+               (str/includes? (.getName (class x)) "RenderFn"))
+     :cljs (instance? RenderFn x)))
 
 (defn render-eval? [x]
   (and (render-fn? x)
