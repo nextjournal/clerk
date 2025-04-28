@@ -314,8 +314,8 @@
                   analyze-string :->analysis-info vals set)))
 
   (testing "preserves *ns*"
-    (with-ns-binding 'nextjournal.clerk.analyzer-test
-      (is (= (find-ns 'nextjournal.clerk.analyzer-test)
+    (with-ns-binding 'nextjournal.clerk.analyzer2-test
+      (is (= (find-ns 'nextjournal.clerk.analyzer2-test)
              (do (analyze-string ";; boo\n\n (ns example-notebook)") *ns*)))))
 
   (testing "has empty analysis info for JDK built-in"
