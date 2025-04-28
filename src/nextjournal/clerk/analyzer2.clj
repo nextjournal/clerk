@@ -123,7 +123,6 @@
                    (-> (analyze-form (rewrite-defcached form))
                        (ana/resolve-syms-pass)
                        (ana/macroexpand-pass)))
-        _ (def a* analyzed)
         _ (ana/prewalk (ana/only-nodes
                         #{:var :binding :symbol}
                         (fn [var-node]
@@ -149,7 +148,6 @@
                                               (swap! !deps conj (.getName ^Class clazz))))))))
                           var-node)) analyzed)
         nodes (ana/nodes analyzed)
-        _ (def n* nodes)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))

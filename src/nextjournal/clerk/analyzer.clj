@@ -147,7 +147,6 @@
                         (swap! !deps conj v)))
                     (ana-jvm/macroexpand-1 form env))
         analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
-        _ (def a* analyzed)
         nodes (ana-ast/nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
@@ -185,13 +184,6 @@
       (seq vars-) (assoc :vars- vars-)
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
-
-(comment
-  (nextjournal.clerk.analyzer2/get-vars+forward-declarations n*)
-  (nextjournal.clerk.analyzer/get-vars+forward-declarations n*)
-  d
-  f
-  )
 
 #_(analyze '(assoc {} :a :b))
 #_(analyze '[[assoc]])
