@@ -361,7 +361,8 @@ my-uuid")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
 
-  #_(testing "should establish dependencies across files"
+  ;; TODO: FIXME this test causes viewer tests to fail afterwards, perhaps due to reloading
+  (testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
