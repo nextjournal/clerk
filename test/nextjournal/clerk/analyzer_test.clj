@@ -297,7 +297,6 @@
               (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
                   analyze-string :->analysis-info vals set)))
-
   (testing "preserves *ns*"
     (with-ns-binding 'nextjournal.clerk.analyzer-test
       (is (= (find-ns 'nextjournal.clerk.analyzer-test)

@@ -303,16 +303,13 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  ;; TODO: FIXME
-  (is (match? #{{}
-                {:form '(ns example-notebook),
+  (is (match? #{{:form '(ns example-notebook),
                  :deps set?}
                 {:form '#{1 3 2}}
                 {:jar string? :hash string?}}
-              (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
+              (->> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
-                  analyze-string :->analysis-info vals set)))
-
+                   analyze-string :->analysis-info vals set)))
   (testing "preserves *ns*"
     (with-ns-binding 'nextjournal.clerk.analyzer2-test
       (is (= (find-ns 'nextjournal.clerk.analyzer2-test)
