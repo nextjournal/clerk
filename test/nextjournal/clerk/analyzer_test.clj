@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.analyzer-test
-  (:require [babashka.fs :as fs]
+  #_(:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.matchers :as m]
@@ -12,7 +12,7 @@
             [nextjournal.clerk.fixtures.dep-b]
             [nextjournal.clerk.parser :as parser]
             [weavejester.dependency :as dep])
-  (:import (clojure.lang ExceptionInfo)))
+  #_(:import (clojure.lang ExceptionInfo)))
 
 ;; (defmacro with-ns-binding [ns-sym & body]
 ;;   `(binding [*ns* (find-ns ~ns-sym)]
