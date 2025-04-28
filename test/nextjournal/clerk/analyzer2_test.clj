@@ -142,7 +142,8 @@
                :vars
                '#{nextjournal.clerk.analyzer2-test/my-inc
                   nextjournal.clerk.analyzer2-test/my-dec},}
-              (ana2/analyze '(do (def my-inc inc) (def my-dec dec)))))
+              (with-ns-binding 'nextjournal.clerk.analyzer2-test
+                (ana2/analyze '(do (def my-inc inc) (def my-dec dec))))))
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer2-test/!state}
