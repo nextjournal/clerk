@@ -32,7 +32,7 @@
     (is (= (str (fs/file "src" "nextjournal" "clerk" "viewer.cljc")) (ana/ns->file 'nextjournal.clerk.viewer)))))
 
 (deftest no-cache?
-  (with-ns-binding 'nextjournal.clerk.analyzer-test
+  (with-ns-binding 'nextjournal.clerk.analyzer2-test
     (testing "are variables set to no-cache?"
       (is (not (:no-cache? (ana/analyze '(rand-int 10)))))
       (is (not (:no-cache? (ana/analyze '(def random-thing (rand-int 1000))))))
