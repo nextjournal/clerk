@@ -175,8 +175,7 @@
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form (-> def-node :form second) *ns*)
-             :declared declared}
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)
