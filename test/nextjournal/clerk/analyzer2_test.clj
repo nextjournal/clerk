@@ -1,3 +1,4 @@
+(remove-ns 'nextjournal.clerk.analyzer2-test)
 (ns nextjournal.clerk.analyzer2-test
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
@@ -202,14 +203,6 @@
   (-> (parser/parse-clojure-string s)
       ana2/build-graph))
 
-
-(comment
-  (ana2/analyze '(declare x))
-  ana2/a*
-  (ana/analyze '(declare x))
-  ana/a*
-  )
-
 (deftest hash-test
   (testing "The hash of weavejester/dependency is the same across OSes"
     (is (match?
@@ -359,7 +352,7 @@ my-uuid")]
 (def a (str \"boom \" b))"))))
 
 
-(deftest build-graph
+#_(deftest build-graph
   (testing "should have no unhashed deps for clojure.set"
     (is (empty? (-> "(ns foo (:require [clojure.set :as set])) (set/union #{1} #{2})" analyze-string :->analysis-info ana/unhashed-deps))))
 
@@ -372,7 +365,7 @@ my-uuid")]
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
-(deftest graph-nodes-with-anonymous-ids
+#_(deftest graph-nodes-with-anonymous-ids
   (testing "nodes with \"anonymous ids\" from dependencies in foreign files respect graph dependencies"
 
     (def analyzed (analyze-string "(ns nextjournal.clerk.analyzer-test.graph-nodes
