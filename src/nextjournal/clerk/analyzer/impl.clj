@@ -92,6 +92,10 @@
     (var?' v) (symbol (str (:ns v)) (str (:name v)))))
 
 (defmulti macroexpand-hook (fn [the-var _&form _&env _args] (var-sym the-var)))
+
+(defmethod macroexpand-hook 'clojure.core/gen-interface [_ _ _ _]
+  nil)
+
 (defmethod macroexpand-hook :default [the-var &form &env args]
   (if (cljs? &env)
     (if (:cljs.analyzer/numeric (meta the-var))
