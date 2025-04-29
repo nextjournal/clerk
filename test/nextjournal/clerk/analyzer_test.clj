@@ -146,8 +146,7 @@
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
-               :deps       #{ ;; 'clojure.lang.Var
-                             'clojure.core/atom
+               :deps       #{'clojure.core/atom
                              'clojure.core/let
                              'clojure.core/when-not
                              'clojure.core/defonce}}
