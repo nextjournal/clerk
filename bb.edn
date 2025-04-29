@@ -54,7 +54,7 @@
             (let [{clojure-version :clojure} (cli/parse-opts *command-line-args*)]
               (apply clojure (cond-> "-X:test"
                                clojure (str ":" clojure-version))
-                     *command-line-args*))}}
+                     *command-line-args*))}
 
   playwright:version {:doc "Print used playwright version from ui_tests/yarn.json"
                       :task (print (->> (babashka.process/shell {:out :string} "grep -E 'playwright-core \"(.*)\"' ui_tests/yarn.lock")
