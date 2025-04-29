@@ -445,6 +445,6 @@ my-uuid")]
   (ana/analyze '(deftype Dude []))
   (ana/analyze '(definterface Dude))
   (require '[nextjournal.clerk] :reload-all)
-  (= (#'nextjournal.clerk.analyzer/analyze-form '(nextjournal.clerk/comment 123))
-     (#'nextjournal.clerk.analyzer-old/analyze-form '(nextjournal.clerk/comment 123)))
+  (#'nextjournal.clerk.analyzer/analyze-form '(nextjournal.clerk/comment 123))
+  (#'nextjournal.clerk.analyzer-old/analyze-form '(nextjournal.clerk/comment 123))
   )
