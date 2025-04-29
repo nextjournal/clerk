@@ -11,9 +11,6 @@
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
 
-#_(nextjournal.clerk/clear-cache!)
-#_(require '[nextjournal.clerk] :reload-all)
-
 (defn resolve-elision [desc]
   (let [elision (v/find-elision desc)
         _ (when-not elision
