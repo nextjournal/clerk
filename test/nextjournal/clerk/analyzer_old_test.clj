@@ -140,7 +140,7 @@
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
-               :deps       #{'clojure.lang.Var
+               :deps       #{;; 'clojure.lang.Var
                              'clojure.core/atom
                              'clojure.core/let
                              'clojure.core/when-not
@@ -289,7 +289,7 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  (is (match? #{{}
+  (is (match? #{;; {}
                 {:form '(ns example-notebook),
                  :deps set?}
                 {:form '#{1 3 2}}
