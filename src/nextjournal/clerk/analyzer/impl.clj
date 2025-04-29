@@ -686,7 +686,13 @@
         [f & args :as form] (:form ast)]
     (cond
       (and (symbol? f) (not= '. f) (str/starts-with? (name f) "."))
-      (analyze* env (list* '. (symbol (subs (name f) 1)) args))
+      (do
+        (when-let [ns (namespace f)]
+          (def ns* ns)
+          (when-let [clazz (resolve (symbol ns))]
+            (when (class? clazz)
+              (swap! *deps* conj (symbol (.getName ^Class clazz))))))
+        (analyze* env (list* '. (symbol (subs (name f) 1)) args)))
       (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
       (do
         (swap! *deps* conj var) ;; collect macro var

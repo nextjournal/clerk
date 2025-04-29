@@ -2,6 +2,7 @@
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [edamame.core :as e]
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
             #_:clj-kondo/ignore
@@ -440,13 +441,36 @@ my-uuid")]
       (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
       (is (not= static-hash runtime-hash)))))
 
+
+
+(defmacro when-clojure-12 [& body]
+  (when (>= 12 (:minor *clojure-version*))
+    `(do ~@body)))
+
+(deftest clojure-1.12-test
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze '(String/.length "foo"))))
+  (is (match? '{:deps #{java.lang.String clojure.core/map}}
+              (ana/analyze '(map String/.length ["f" "fo" "foo"]))))
+  (is (match? '{:deps #{java.lang.String clojure.core/map}}
+              (ana/analyze '(map String/.length ["f" "fo" "foo"]))))
+  (is (match? '{:deps #{java.lang.Integer}}
+              (ana/analyze 'Integer/parseInt)))
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze 'String/CASE_INSENSITIVE_ORDER)))
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze '(String/new "dude"))))
+  (is (match? '{:deps #{java.lang.Integer clojure.core/map}}
+              (ana/analyze '(map Integer/parseInt ["1" "2" "3"]))))
+  (when-clojure-12
+    (is (match? '{:deps #{java.lang.String}}
+                (ana/analyze (e/parse-string "String/1"))))
+    (is (match? '{:deps #{java.lang.String}}
+                (ana/analyze (e/parse-string "^[String] String/new"))))
+    (is (match? '{:deps #{java.lang.String clojure.core/map}}
+                (ana/analyze (e/parse-string "(map ^[String] String/new [\"dude\"])"))))))
+
 ;;;; scratch
 (comment
-  (ana/analyze '(deftype Dude []))
-  (ana/analyze '(definterface Dude))
-  #_:clj-kondo/ignore
-  (require '[nextjournal.clerk] :reload-all)
-  (#'nextjournal.clerk.analyzer/analyze-form '(nextjournal.clerk/comment 123))
-  (require '[nextjournal.clerk.analyzer-old])
-  (#'nextjournal.clerk.analyzer-old/analyze-form '(nextjournal.clerk/comment 123))
+  
   )
