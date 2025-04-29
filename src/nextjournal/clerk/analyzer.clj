@@ -119,7 +119,8 @@
 
 (defn analyze [form]
   (let [!deps      (atom #{})
-        analyzed (binding [ana/*deps* !deps]
+        analyzed (with-bindings {#'ana/*deps* !deps
+                                 clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
                    (-> (analyze-form (rewrite-defcached form))
                        (ana/resolve-syms-pass)
                        (ana/macroexpand-pass)))
