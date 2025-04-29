@@ -6,7 +6,7 @@
             [matcher-combinators.test :refer [match?]]
             #_:clj-kondo/ignore
             [nextjournal.clerk :as clerk :refer [defcached]]
-            [nextjournal.clerk.analyzer :as ana]
+            [nextjournal.clerk.analyzer-old :as ana]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.fixtures.dep-a]
             [nextjournal.clerk.fixtures.dep-b]
@@ -49,7 +49,7 @@
   (testing "is evaluating namespace set to no-cache?"
     (is (not (ana/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.analyzer-test))))
 
-    (is (nextjournal.clerk.analyzer/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.analyzer)))))
+    (is (ana/no-cache? '(rand-int 10) (find-ns 'nextjournal.clerk.analyzer)))))
 
 (deftest exceeds-bounded-count-limit?
   (is (ana/exceeds-bounded-count-limit? (range config/*bounded-count-limit*)))
@@ -140,7 +140,7 @@
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
-               :deps       #{;; 'clojure.lang.Var
+               :deps       #{'clojure.lang.Var
                              'clojure.core/atom
                              'clojure.core/let
                              'clojure.core/when-not
@@ -289,7 +289,7 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  (is (match? #{;; {}
+  (is (match? #{{}
                 {:form '(ns example-notebook),
                  :deps set?}
                 {:form '#{1 3 2}}
