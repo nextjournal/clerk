@@ -479,7 +479,6 @@
     nil))
 
 (defmethod -parse 'def [{:keys [ns] :as env} [_ sym & expr :as form]]
-  (def s* sym)
   (let [pfn  (fn
                ([])
                ([init]
@@ -490,7 +489,8 @@
         args (apply pfn expr)
         env (if (some? (namespace sym))
               env ;; Can't intern namespace-qualified symbol, ignore
-              (let [var (create-var sym env)] ;; side effect, FIXME should be a pass
+              (let [var (or (resolve env sym)
+                            (create-var sym env))] ;; side effect, FIXME should be a pass
                 (when (cljs? env)
                   (intern-cljs-var! (to-cljs-var var)))
                 (assoc-in env [:namespaces ns :mappings sym] var)))
