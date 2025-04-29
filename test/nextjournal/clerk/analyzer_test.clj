@@ -299,7 +299,7 @@
                  :deps set?}
                 {:form '#{1 3 2}}
                 {:jar string? :hash string?}}
-              (->> "^:nextjournal.clerk/no-cache (ns example-notebook)
+              (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
                    analyze-string :->analysis-info vals set)))
   (testing "preserves *ns*"
