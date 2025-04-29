@@ -69,8 +69,8 @@
                                      ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
 
   (testing "finds deps inside maps and sets"
-    (is (match? #{`foo
-                  `bar}
+    (is (match? '#{nextjournal.clerk.analyzer-test/foo
+                   nextjournal.clerk.analyzer-test/bar}
                 (with-ns-binding 'nextjournal.clerk.analyzer-test
                   (intern *ns* 'foo :foo)
                   (intern *ns* 'bar :bar)
