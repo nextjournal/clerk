@@ -95,9 +95,9 @@
 
 (defmulti macroexpand-hook (fn [the-var _&form _&env _args] (var-sym the-var)))
 
-#_(defmethod macroexpand-hook 'clojure.core/deftype [_ &form &env [name class-name args interfaces]]
-    (when-not (resolve class-name)
-      (apply #'clojure.core/deftype &form &env name class-name args interfaces)))
+(defmethod macroexpand-hook 'clojure.core/deftype [_ &form &env [name fields & opts+specs]]
+  (when-not (resolve name)
+    (apply #'clojure.core/deftype &form &env name fields opts+specs)))
 
 (defmethod macroexpand-hook :default [the-var &form &env args]
   (if (cljs? &env)
