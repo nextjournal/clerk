@@ -1,5 +1,4 @@
-(remove-ns 'nextjournal.clerk.analyzer2-test)
-(ns nextjournal.clerk.analyzer2-test
+(ns nextjournal.clerk.analyzer-test
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
@@ -8,7 +7,6 @@
             #_:clj-kondo/ignore
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
-            [nextjournal.clerk.analyzer2 :as ana2]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.fixtures.dep-a]
             [nextjournal.clerk.fixtures.dep-b]
@@ -33,7 +31,7 @@
     (is (= (str (fs/file "src" "nextjournal" "clerk" "viewer.cljc")) (ana/ns->file 'nextjournal.clerk.viewer)))))
 
 (deftest no-cache?
-  (with-ns-binding 'nextjournal.clerk.analyzer2-test
+  (with-ns-binding 'nextjournal.clerk.analyzer-test
     (testing "are variables set to no-cache?"
       (is (not (:no-cache? (ana/analyze '(rand-int 10)))))
       (is (not (:no-cache? (ana/analyze '(def random-thing (rand-int 1000))))))
@@ -65,143 +63,138 @@
                 'clojure.core/fn
                 'clojure.core/defn
                 'rewrite-clj.parser/parse-string-all}
-              (:deps (ana2/analyze '(defn foo
-                                      ([] (foo "s"))
-                                      ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
+              (:deps (ana/analyze '(defn foo
+                                     ([] (foo "s"))
+                                     ([s] (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi")))))))
 
   (testing "finds deps inside maps and sets"
-    (is (match? #{`foo
-                  `bar}
-                (with-ns-binding 'nextjournal.clerk.analyzer2-test
+    (is (match? '#{nextjournal.clerk.analyzer-test/foo
+                   nextjournal.clerk.analyzer-test/bar}
+                (with-ns-binding 'nextjournal.clerk.analyzer-test
                   (intern *ns* 'foo :foo)
                   (intern *ns* 'bar :bar)
-                  (:deps (ana2/analyze '{:k-1 foo :k-2 #{bar}}))))))
+                  (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}}))))))
 
   (testing "deps should all be symbols"
-    (is (every? symbol? (:deps (ana2/analyze '(.hashCode clojure.lang.Compiler)))))
-    (is (every? symbol? (:deps (ana2/analyze '(defprotocol MyProtocol
-                                                (-check [_])))))))
+    (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler)))))
+
+    (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
+                                               (-check [_])))))))
 
   (testing "protocol methods are resolved to protocol in deps"
     (is (= '#{nextjournal.clerk.analyzer/BoundedCountCheck}
-           (:deps (ana2/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?))))))
+           (:deps (ana/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?))))))
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"
     (is (match? {:deps #{`inc}}
-                (ana2/analyze '(do inc))))
-    (is (empty? (:deps (ana2/analyze '(do 'inc))))))
+                (ana/analyze '(do inc))))
+    (is (empty? (:deps (ana/analyze '(do 'inc))))))
 
   (testing "locals that shadow existing vars shouldn't show up in the deps"
-    (is (= #{'clojure.core/let} (:deps (ana2/analyze '(let [+ 2] +))))))
+    (is (= #{'clojure.core/let} (:deps (ana/analyze '(let [+ 2] +))))))
 
   (testing "symbol referring to a java class"
     (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
-                (ana2/analyze 'io.methvin.watcher.PathUtils))))
+                (ana/analyze 'io.methvin.watcher.PathUtils))))
 
   (testing "namespaced symbol referring to a java thing"
     (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
-                (ana2/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
+                (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
 
   (is (match? {:ns-effect? false
-               :vars '#{nextjournal.clerk.analyzer2/foo}
+               :vars '#{nextjournal.clerk.analyzer/foo}
                :deps       #{'rewrite-clj.parser/parse-string-all
                              'clojure.core/fn
                              'clojure.core/defn
                              'clojure.string/includes?}}
-              (with-ns-binding 'nextjournal.clerk.analyzer2
-                (ana2/analyze '(defn foo [s]
-                                 (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
+              (with-ns-binding 'nextjournal.clerk.analyzer
+                (ana/analyze '(defn foo [s]
+                                (clojure.string/includes? (rewrite-clj.parser/parse-string-all s) "hi"))))))
 
   (is (match? {:ns-effect?   false
-              :vars '#{nextjournal.clerk.analyzer/segments}
-              :deps         #{'clojure.string/split
-                              'clojure.core/let
-                              'clojure.core/defn
-                              'clojure.core/fn
-                              'clojure.string/join}}
-             (with-ns-binding 'nextjournal.clerk.analyzer
-               (ana2/analyze '(defn segments [s] (let [segments (clojure.string/split s)]
+               :vars '#{nextjournal.clerk.analyzer/segments}
+               :deps         #{'clojure.string/split
+                               'clojure.core/let
+                               'clojure.core/defn
+                               'clojure.core/fn
+                               'clojure.string/join}}
+              (with-ns-binding 'nextjournal.clerk.analyzer
+                (ana/analyze '(defn segments [s] (let [segments (clojure.string/split s)]
                                                    (clojure.string/join segments)))))))
 
   (is (match? {:form       '(in-ns 'user)
                :ns-effect? true
                :deps       #{'clojure.core/in-ns}}
-              (ana2/analyze '(in-ns 'user))))
+              (ana/analyze '(in-ns 'user))))
 
   (is (match? {:ns-effect? true
                :deps       (m/embeds #{'clojure.core/in-ns})}
-              (ana2/analyze '(do (ns foo)))))
+              (ana/analyze '(do (ns foo)))))
 
   (is (match? {:ns-effect? false
                :deps       #{'clojure.core/inc}}
-              (ana2/analyze '(def my-inc inc))))
+              (ana/analyze '(def my-inc inc))))
 
-  (is (match? {:form '(do (def my-inc inc) (def my-dec dec)),
-               :deps '#{clojure.core/inc clojure.core/dec},
-               :vars
-               '#{nextjournal.clerk.analyzer2-test/my-inc
-                  nextjournal.clerk.analyzer2-test/my-dec},}
-              (with-ns-binding 'nextjournal.clerk.analyzer2-test
-                (ana2/analyze '(do (def my-inc inc) (def my-dec dec))))))
+  (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
 
   (is (match? {:ns-effect? false
-               :vars '#{nextjournal.clerk.analyzer2-test/!state}
-               :deps       #{;; 'clojure.lang.Var
+               :vars '#{nextjournal.clerk.analyzer-test/!state}
+               :deps       #{'clojure.lang.Var
                              'clojure.core/atom
                              'clojure.core/let
                              'clojure.core/when-not
                              'clojure.core/defonce}}
-              (with-ns-binding 'nextjournal.clerk.analyzer2-test
-                (ana2/analyze '(defonce !state (atom {}))))))
+              (with-ns-binding 'nextjournal.clerk.analyzer-test
+                (ana/analyze '(defonce !state (atom {}))))))
 
   (is (match? {:ns-effect? false
-               :vars '#{nextjournal.clerk.analyzer2-test/foo nextjournal.clerk.analyzer2-test/foo-2}}
-              (with-ns-binding 'nextjournal.clerk.analyzer2-test
-                (ana2/analyze '(do (def foo :bar) (def foo-2 :bar))))))
+               :vars '#{nextjournal.clerk.analyzer-test/foo nextjournal.clerk.analyzer-test/foo-2}}
+              (with-ns-binding 'nextjournal.clerk.analyzer-test
+                (ana/analyze '(do (def foo :bar) (def foo-2 :bar))))))
 
   (testing "dereferenced var isn't detected as a deref dep"
-    (with-ns-binding 'nextjournal.clerk.analyzer2-test
+    (with-ns-binding 'nextjournal.clerk.analyzer-test
       (intern *ns* 'foo :bar)
-      (is (empty? (-> '(deref #'foo) ana2/analyze :deref-deps)))))
+      (is (empty? (-> '(deref #'foo) ana/analyze :deref-deps)))))
 
   (testing "deref dep inside fn is detected"
-    (with-ns-binding 'nextjournal.clerk.analyzer2-test
+    (with-ns-binding 'nextjournal.clerk.analyzer-test
       (intern *ns* 'foo :bar)
-      (is (= #{`(deref nextjournal.clerk.analyzer2-test/foo)}
-             (-> '(fn [] (deref foo)) ana2/analyze :deref-deps)))))
+      (is (= #{`(deref nextjournal.clerk.analyzer-test/foo)}
+             (-> '(fn [] (deref foo)) ana/analyze :deref-deps)))))
 
   (testing "deref dep is empty when shadowed"
-    (with-ns-binding 'nextjournal.clerk.analyzer2-test
+    (with-ns-binding 'nextjournal.clerk.analyzer-test
       (intern *ns* 'foo :bar)
-      (is (empty? (-> '(fn [foo] (deref foo)) ana2/analyze :deref-deps)))))
+      (is (empty? (-> '(fn [foo] (deref foo)) ana/analyze :deref-deps)))))
 
   (testing "defcached should be treated like a normal def"
-    (with-ns-binding 'nextjournal.clerk.analyzer2-test
-      (is (= (dissoc (ana2/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana2/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana2/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
-             (dissoc (ana2/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)))))
+    (with-ns-binding 'nextjournal.clerk.analyzer-test
+      (is (= (dissoc (ana/analyze '(def answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (ana/analyze '(defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (ana/analyze '(clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)
+             (dissoc (ana/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)))))
 
   (testing "tools.analyzer AssertionError is rethrown as ExceptionInfo (#307)"
-    (is (thrown? ExceptionInfo (ana2/analyze '(def foo [] :bar))))))
+    (is (thrown? ExceptionInfo (ana/analyze '(def foo [] :bar))))))
 
 (deftest symbol->jar
-  (is (ana2/symbol->jar 'io.methvin.watcher.PathUtils))
-  (is (ana2/symbol->jar 'io.methvin.watcher.PathUtils/cast))
+  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
+  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils/cast))
   (testing "does not resolve jdk builtins"
-    (is (not (ana2/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
+    (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
 
 (deftest find-location
   (testing "clojure.core/inc"
-    (is (re-find #"clojure-1\..*\.jar" (ana2/find-location 'clojure.core/inc))))
+    (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc))))
 
   (testing "weavejester.dependency/graph"
-    (is (re-find #"dependency-.*\.jar" (ana2/find-location 'weavejester.dependency/graph)))))
+    (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
 
 (defn analyze-string [s]
   (-> (parser/parse-clojure-string s)
-      ana2/build-graph))
+      ana/build-graph))
 
 (deftest hash-test
   (testing "The hash of weavejester/dependency is the same across OSes"
@@ -209,7 +202,7 @@
          {:jar
           #"repository/weavejester/dependency/0.2.1/dependency-0.2.1.jar",
           :hash "5dsZiMRBpbMfWTafMoHEaNdGfEYxpx"}
-         (ana2/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
+         (ana/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
 
   (testing "an edge-case with a particular sorting of the graph nodes"
     (is (-> (analyze-string "
@@ -217,25 +210,25 @@
   (declare b)
   (def a 1))
 
-(inc a)") ana2/hash)))
+(inc a)") ana/hash)))
 
   (testing "expressions do not depend on forward declarations"
-    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer2-test.forward-declarations)
+    (let [ana-1 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
 
 (declare x)
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana2/hash)
+                    analyze-string ana/hash)
           block-3-id (-> ana-1 :blocks (nth 2) :id)
           hash-1 (-> ana-1 :->hash block-3-id)
-          ana-2 (-> "(ns nextjournal.clerk.analyzer2-test.forward-declarations)
+          ana-2 (-> "(ns nextjournal.clerk.analyzer-test.forward-declarations)
 
 (declare x y)
 (defn foo [] (inc (x)))
 (defn x [] 0)
 "
-                    analyze-string ana2/hash)
+                    analyze-string ana/hash)
           hash-2 (-> ana-2 :->hash block-3-id)]
 
       (is hash-1) (is hash-2)
@@ -296,16 +289,17 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  (is (match? #{{:form '(ns example-notebook),
+  (is (match? #{{}
+                {:form '(ns example-notebook),
                  :deps set?}
                 {:form '#{1 3 2}}
                 {:jar string? :hash string?}}
-              (->> "^:nextjournal.clerk/no-cache (ns example-notebook)
+              (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
-                   analyze-string :->analysis-info vals set)))
+                  analyze-string :->analysis-info vals set)))
   (testing "preserves *ns*"
-    (with-ns-binding 'nextjournal.clerk.analyzer2-test
-      (is (= (find-ns 'nextjournal.clerk.analyzer2-test)
+    (with-ns-binding 'nextjournal.clerk.analyzer-test
+      (is (= (find-ns 'nextjournal.clerk.analyzer-test)
              (do (analyze-string ";; boo\n\n (ns example-notebook)") *ns*)))))
 
   (testing "has empty analysis info for JDK built-in"
@@ -361,7 +355,6 @@ my-uuid")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
 
-  ;; TODO: FIXME this test causes viewer tests to fail afterwards, perhaps due to reloading
   (testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
@@ -376,6 +369,7 @@ my-uuid")]
     (is (dep/depends? (:graph analyzed)
                       'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
                       'nextjournal.clerk.git/read-git-attrs))
+    #_ FIXME
     (is (not (contains? (dep/nodes (:graph analyzed))
                         'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))
 

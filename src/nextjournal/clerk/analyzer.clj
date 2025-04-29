@@ -6,12 +6,9 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.analyzer :as ana]
-            [clojure.tools.analyzer.ast :as ana-ast]
-            [clojure.tools.analyzer.jvm :as ana-jvm]
-            [clojure.tools.analyzer.utils :as ana-utils]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
+            [nextjournal.clerk.analyzer.impl :as ana :refer [analyze*]]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
@@ -63,13 +60,13 @@
                    (comp (keep :class)
                          (filter class?)
                          (map ensure-symbol))
-                   (ana-ast/nodes analyzed))
+                   (ana/nodes analyzed))
              (into #{}
                    (comp (filter (comp #{:const} :op))
                          (filter (comp #{:class} :type))
                          (keep :form)
                          (map ensure-symbol))
-                   (ana-ast/nodes analyzed))))
+                   (ana/nodes analyzed))))
 
 #_(map type (:deps (analyze '(+ 1 2))))
 
@@ -83,17 +80,6 @@
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
 
-(defn unresolvable-symbol-handler [ns sym ast-node]
-  ast-node)
-
-(defn wrong-tag-handler [tag ast-node]
-  ast-node)
-
-(def analyzer-passes-opts
-  (assoc ana-jvm/default-passes-opts
-         :validate/wrong-tag-handler wrong-tag-handler
-         :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
-
 (defn form->ex-data
   "Returns ex-data map with the form and its location info from metadata."
   [form]
@@ -105,13 +91,8 @@
   ([bindings form]
    (binding [config/*in-clerk* true]
      (try
-       (let [old-deftype-hack ana-jvm/-deftype]
-         ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
-         (with-redefs [ana-jvm/-deftype (fn [name class-name args interfaces]
-                                          (when-not (resolve class-name)
-                                            (old-deftype-hack name class-name args interfaces)))]
-           (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
-                                                      :passes-opts analyzer-passes-opts})))
+       (analyze* (assoc (ana/to-env bindings)
+                        :ns (ns-name *ns*)) form)
        (catch java.lang.AssertionError e
          (throw (ex-info "Failed to analyze form"
                          (form->ex-data form)
@@ -138,16 +119,35 @@
 
 (defn analyze [form]
   (let [!deps      (atom #{})
-        !forms     (atom [])
-        mexpander (fn [form env]
-                    (swap! !forms conj form)
-                    (let [f (if (seq? form) (first form) form)
-                          v (ana-utils/resolve-sym f env)]
-                      (when (and (not (-> env :locals (get f))) (var? v))
-                        (swap! !deps conj v)))
-                    (ana-jvm/macroexpand-1 form env))
-        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
-        nodes (ana-ast/nodes analyzed)
+        analyzed (binding [ana/*deps* !deps]
+                   (-> (analyze-form (rewrite-defcached form))
+                       (ana/resolve-syms-pass)
+                       (ana/macroexpand-pass)))
+        _ (ana/prewalk (ana/only-nodes
+                        #{:var :binding :symbol}
+                        (fn [var-node]
+                          (case (:op var-node)
+                            :var (let [var (:var var-node)]
+                                   (swap! !deps conj var))
+                            :binding (when-let [t (:tag (meta (:form var-node)))]
+                                       (when-let [clazz (try (resolve t)
+                                                             (catch Exception _ nil))]
+                                         (when (class? clazz)
+                                           (swap! !deps conj (.getName ^Class clazz)))))
+                            :symbol (when-not (:local? var-node)
+                                      (let [form (:form var-node)]
+                                        (if (qualified-symbol? form)
+                                          (let [clazz-sym (symbol (namespace form))]
+                                            (when-let [clazz (try (resolve clazz-sym)
+                                                                  (catch Exception _ nil))]
+                                              (when (class? clazz)
+                                                (swap! !deps conj (.getName ^Class clazz)))))
+                                          (when-let [clazz (try (resolve form)
+                                                                (catch Exception _ nil))]
+                                            (when (class? clazz)
+                                              (swap! !deps conj (.getName ^Class clazz))))))))
+                          var-node)) analyzed)
+        nodes (ana/nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))
@@ -168,6 +168,7 @@
                         deref-deps
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
+        ;; _ (def d deps)
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
     (cond-> {#_#_:analyzed analyzed
              :form form
@@ -184,13 +185,19 @@
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
 
-#_(analyze '(assoc {} :a :b))
+#_(analyze '(assoc {} (dissoc {} :a) 2))
 #_(analyze '[[assoc]])
-#_(analyze nil)
-#_(analyze '(let [inc assoc]))
-#_(analyze '(Class/forName "dude"))
-#_(:deps (analyze '(fn [^String x] (.length x))))
-#_(:deps (analyze '(ns foo (:import [java.lang String]))))
+#_(analyze '(let [inc assoc]
+              )) ;; let + assoc, no inc since it's a binding
+#_(analyze '(fn [^String x] (.length x)))
+#_(analyze '(.length "foo"))
+#_(analyze '(quote [inc clojure.core/inc])) ;; no deps
+#_(analyze 'String)
+#_(analyze '(defprotocol Dude))
+#_(binding [*deps* (atom #{})]
+    (-> (analyze-form '(fn [^String x] (.length x)))
+        (resolve-syms-pass)
+        (macroexpand-pass)))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
 #_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
@@ -552,7 +559,7 @@
             analyze-doc-deps
             set-no-cache-on-redefs
             make-deps-inherit-no-cache
-            (dissoc :analyzed-file-set :counter))))))
+            (dissoc :analyzed-file-set :counter)))))) 
 
 (comment
   (reset! !file->analysis-cache {})
