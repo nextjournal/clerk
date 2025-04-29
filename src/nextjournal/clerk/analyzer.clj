@@ -86,8 +86,8 @@
   (merge (select-keys (meta form) [:line :col :clojure.core/eval-file])
          {:form form}))
 
-(defn- analyze-form
-  ([form] (analyze-form {} form))
+(defn- analyze-form*
+  ([form] (analyze-form* {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
      (try
@@ -97,6 +97,13 @@
          (throw (ex-info "Failed to analyze form"
                          (form->ex-data form)
                          e)))))))
+
+(defn analyze-form [form]
+  (with-bindings {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
+    (-> (binding [ana/*deps* (or ana/*deps* (atom #{}))]
+          (analyze-form* (rewrite-defcached form)))
+        (ana/resolve-syms-pass)
+        (ana/macroexpand-pass))))
 
 (defn ^:private var->protocol [v]
   (or (:protocol (meta v))
@@ -119,11 +126,8 @@
 
 (defn analyze [form]
   (let [!deps      (atom #{})
-        analyzed (with-bindings {#'ana/*deps* !deps
-                                 clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
-                   (-> (analyze-form (rewrite-defcached form))
-                       (ana/resolve-syms-pass)
-                       (ana/macroexpand-pass)))
+        analyzed (binding [ana/*deps* !deps]
+                   (analyze-form form))
         _ (ana/prewalk (ana/only-nodes
                         #{:var :binding :symbol}
                         (fn [var-node]
