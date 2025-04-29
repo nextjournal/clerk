@@ -76,7 +76,6 @@
                   (intern *ns* 'bar :bar)
                   (:deps (ana/analyze '{:k-1 foo :k-2 #{bar}}))))))
 
-  #_
   (testing "deps should all be symbols"
     (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler)))))
     (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
