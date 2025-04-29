@@ -99,6 +99,10 @@
   (when-not (resolve name)
     (apply #'clojure.core/deftype &form &env name fields opts+specs)))
 
+(defmethod macroexpand-hook 'clojure.core/definterface [_ &form &env [name & sigs]]
+  (when-not (resolve name)
+    (apply #'clojure.core/definterface &form &env name sigs)))
+
 (defmethod macroexpand-hook :default [the-var &form &env args]
   (if (cljs? &env)
     (if (:cljs.analyzer/numeric (meta the-var))
