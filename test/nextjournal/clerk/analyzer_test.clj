@@ -359,9 +359,6 @@ my-uuid")]
     (let [{:keys [->analysis-info]} (analyze-string "(ns foo (:require [weavejester.dependency :as dep])) (dep/graph)")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
-
-  ;; TODO: FIXME this test causes viewer tests to fail afterwards, perhaps due to reloading
-  #_
   (testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
@@ -385,7 +382,6 @@ my-uuid")]
                       ana/hash)
                   (deref !missing-hash-store))))))
 
-#_
 (deftest missing-hashes
   (testing "should not have missing hashes on any form deps"
     (is (empty?
@@ -443,3 +439,9 @@ my-uuid")]
           runtime-hash (get-in runtime-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])]
       (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
       (is (not= static-hash runtime-hash)))))
+
+;;;; scratch
+(comment
+  (ana/analyze '(deftype Dude []))
+  (ana/analyze '(definterface Dude))
+  )

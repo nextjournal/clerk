@@ -95,11 +95,11 @@
 
 (defmulti macroexpand-hook (fn [the-var _&form _&env _args] (var-sym the-var)))
 
-(defmethod macroexpand-hook 'clojure.core/deftype [_ &form &env [name fields & opts+specs]]
+#_(defmethod macroexpand-hook 'clojure.core/deftype [_ &form &env [name fields & opts+specs]]
   (when-not (resolve name)
     (apply #'clojure.core/deftype &form &env name fields opts+specs)))
 
-(defmethod macroexpand-hook 'clojure.core/definterface [_ &form &env [name & sigs]]
+#_(defmethod macroexpand-hook 'clojure.core/definterface [_ &form &env [name & sigs]]
   (when-not (resolve name)
     (apply #'clojure.core/definterface &form &env name sigs)))
 
