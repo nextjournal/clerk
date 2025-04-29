@@ -1,10 +1,10 @@
 (ns nextjournal.clerk.analyzer-test
-  (:require #_:clj-kondo/ignore
-            [babashka.fs :as fs]
+  (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
+            #_:clj-kondo/ignore
             [nextjournal.clerk :as clerk :refer [defcached]]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.config :as config]

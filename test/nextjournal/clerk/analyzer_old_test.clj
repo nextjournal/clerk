@@ -1,4 +1,4 @@
-(ns nextjournal.clerk.analyzer-test
+(ns nextjournal.clerk.analyzer-old-test
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
