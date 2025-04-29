@@ -1,11 +1,10 @@
 (ns nextjournal.clerk.analyzer.impl
+  "This code is largely borrowed from https://github.com/hyperfiddle/rcf"
   (:require [clojure.string :as str])
     (:refer-clojure :exclude [macroexpand-1 macroexpand update-vals])
     (:import (clojure.lang IObj)))
 
 (def ^:dynamic *deps* nil)
-
-;; based off of https://github.com/hyperfiddle/rcf/blob/master/src/hyperfiddle/rcf/analyzer.clj
 
 (defn cljs? [env] (some? (:js-globals env)))
 
