@@ -100,10 +100,10 @@
 
 (defn analyze-form [form]
   (with-bindings {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
-    (-> (binding [ana/*deps* (or ana/*deps* (atom #{}))]
-          (analyze-form* (rewrite-defcached form)))
-        (ana/resolve-syms-pass)
-        (ana/macroexpand-pass))))
+    (binding [ana/*deps* (or ana/*deps* (atom #{}))]
+      (-> (analyze-form* (rewrite-defcached form))
+          (ana/resolve-syms-pass)
+          (ana/macroexpand-pass)))))
 
 (defn ^:private var->protocol [v]
   (or (:protocol (meta v))
