@@ -688,7 +688,6 @@
       (and (symbol? f) (not= '. f) (str/starts-with? (name f) "."))
       (do
         (when-let [ns (namespace f)]
-          (def ns* ns)
           (when-let [clazz (resolve (symbol ns))]
             (when (class? clazz)
               (swap! *deps* conj (symbol (.getName ^Class clazz))))))
