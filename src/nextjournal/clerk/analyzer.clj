@@ -173,7 +173,6 @@
                         deref-deps
                         (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
-        ;; _ (def d deps)
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
     (cond-> {#_#_:analyzed analyzed
              :form form
@@ -189,20 +188,6 @@
       (seq vars-) (assoc :vars- vars-)
       (seq declared) (assoc :declared declared)
       var (assoc :var var))))
-
-#_(analyze '(assoc {} (dissoc {} :a) 2))
-#_(analyze '[[assoc]])
-#_(analyze '(let [inc assoc]
-              )) ;; let + assoc, no inc since it's a binding
-#_(analyze '(fn [^String x] (.length x)))
-#_(analyze '(.length "foo"))
-#_(analyze '(quote [inc clojure.core/inc])) ;; no deps
-#_(analyze 'String)
-#_(analyze '(defprotocol Dude))
-#_(binding [*deps* (atom #{})]
-    (-> (analyze-form '(fn [^String x] (.length x)))
-        (resolve-syms-pass)
-        (macroexpand-pass)))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
 #_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
