@@ -6,6 +6,36 @@ Changes can be:
 * 🐞🐜 friendly or nasty bugs
 * 🛠 dev improvements
 
+## unreleased
+
+* 🕵🏻 New depedency analyzer implementation
+
+   Based on the analyzer from [hyperfiddle/rfc](https://github.com/hyperfiddle/rcf). This replaces `tools.analyzer` and drops the depedency.
+   
+     * Adds compatibility with Clojure 1.12 qualified method syntax, fixes [#734](https://github.com/nextjournal/clerk/issues/734)
+     * Adds compatibility with `core.cache`, fixes [#724](https://github.com/nextjournal/clerk/issues/724)
+     
+* 🧶 Untangle parser from analyzer
+
+   Make the parser step independent of the analyzer. Skip analysis when caching is disabled for the whole namespace.
+   
+* 🧮 Expose `clojure.math` as `cljs.math`, `cljs.pprint`
+   
+* 🔭 Rename `viewer-fn` to `render-fn` and `viewer-eval` to `render-eval` and simplify implementation
+
+   In addition to the rename, this drops the custom `ViewerEval` type and implements the functionality on top of a single `RenderFn` instead. We extend the reading and writing of `RenderFn` so it can carry an opts map and use that to transmit an `:eval` boolean flag. Also drop the cherry readers in favor of an an `:render-evaluator` option.
+   
+   Delay the evaluation of a `RenderFn` to when it's invoked so we no longer are evaluating on read.
+
+   Also switch transmission of unreadable symbols and keywords to a `#clerk/unreadble-edn` reader tag.
+
+* 🐞 Fix rendering of number whose magnitude is greater than 2^53 @krzsztf
+
+* 🐜 Canonicalize form to fix caching for splicing reader macro forms, fixes [#735](https://github.com/nextjournal/clerk/issues/735)
+
+* ⚡️ Improve performance of clerk sync for large values
+
+
 ## 0.17.1102 (2024-10-17)
 
 * 🌿 Switch underlying markdown implementation to a parser based on commonmark-java
