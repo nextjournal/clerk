@@ -2,6 +2,7 @@
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [edamame.core :as e]
             [matcher-combinators.matchers :as m]
             [matcher-combinators.test :refer [match?]]
             #_:clj-kondo/ignore
@@ -77,7 +78,6 @@
 
   (testing "deps should all be symbols"
     (is (every? symbol? (:deps (ana/analyze '(.hashCode clojure.lang.Compiler)))))
-
     (is (every? symbol? (:deps (ana/analyze '(defprotocol MyProtocol
                                                (-check [_])))))))
 
@@ -136,12 +136,17 @@
                :deps       #{'clojure.core/inc}}
               (ana/analyze '(def my-inc inc))))
 
-  (ana/analyze '(do (def my-inc inc) (def my-dec dec)))
+  (is (match? {:form '(do (def my-inc inc) (def my-dec dec)),
+               :deps '#{clojure.core/inc clojure.core/dec},
+               :vars
+               '#{nextjournal.clerk.analyzer-test/my-inc
+                  nextjournal.clerk.analyzer-test/my-dec},}
+              (with-ns-binding 'nextjournal.clerk.analyzer-test
+                (ana/analyze '(do (def my-inc inc) (def my-dec dec))))))
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
-               :deps       #{'clojure.lang.Var
-                             'clojure.core/atom
+               :deps       #{'clojure.core/atom
                              'clojure.core/let
                              'clojure.core/when-not
                              'clojure.core/defonce}}
@@ -289,15 +294,13 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  (is (match? #{{}
-                {:form '(ns example-notebook),
+  (is (match? #{{:form '(ns example-notebook),
                  :deps set?}
                 {:form '#{1 3 2}}
                 {:jar string? :hash string?}}
               (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
-                  analyze-string :->analysis-info vals set)))
-
+                   analyze-string :->analysis-info vals set)))
   (testing "preserves *ns*"
     (with-ns-binding 'nextjournal.clerk.analyzer-test
       (is (= (find-ns 'nextjournal.clerk.analyzer-test)
@@ -352,11 +355,9 @@ my-uuid")]
     (is (empty? (-> "(ns foo (:require [clojure.set :as set])) (set/union #{1} #{2})" analyze-string :->analysis-info ana/unhashed-deps))))
 
   (testing "should have analysis info and no unhashed deps for `dep/graph`"
-    (prn :find-location (ana/find-location 'weavejester.dependency/graph))
     (let [{:keys [->analysis-info]} (analyze-string "(ns foo (:require [weavejester.dependency :as dep])) (dep/graph)")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
-
   (testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
@@ -371,7 +372,6 @@ my-uuid")]
     (is (dep/depends? (:graph analyzed)
                       'nextjournal.clerk.analyzer-test.graph-nodes/some-dependent-var
                       'nextjournal.clerk.git/read-git-attrs))
-    #_ FIXME
     (is (not (contains? (dep/nodes (:graph analyzed))
                         'nextjournal.clerk.fixtures.dep-a/some-function-with-defs-inside)))
 
@@ -438,3 +438,30 @@ my-uuid")]
           runtime-hash (get-in runtime-doc [:->hash 'nextjournal.clerk.test.deref-dep/foo+2])]
       (is (match? {:deref-deps #{`(deref nextjournal.clerk.test.deref-dep/!state)}} block-with-deref-dep))
       (is (not= static-hash runtime-hash)))))
+
+(deftest clojure-1.12-test
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze '(String/.length "foo"))))
+  (is (match? '{:deps #{java.lang.String clojure.core/map}}
+              (ana/analyze '(map String/.length ["f" "fo" "foo"]))))
+  (is (match? '{:deps #{java.lang.String clojure.core/map}}
+              (ana/analyze '(map String/.length ["f" "fo" "foo"]))))
+  (is (match? '{:deps #{java.lang.Integer}}
+              (ana/analyze 'Integer/parseInt)))
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze 'String/CASE_INSENSITIVE_ORDER)))
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze '(String/new "dude"))))
+  (is (match? '{:deps #{java.lang.Integer clojure.core/map}}
+              (ana/analyze '(map Integer/parseInt ["1" "2" "3"]))))
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze (e/parse-string "String/1"))))
+  (is (match? '{:deps #{java.lang.String}}
+              (ana/analyze (e/parse-string "^[String] String/new"))))
+  (is (match? '{:deps #{java.lang.String clojure.core/map}}
+              (ana/analyze (e/parse-string "(map ^[String] String/new [\"dude\"])")))))
+
+;;;; scratch
+
+(comment
+  )

@@ -6,15 +6,12 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [clojure.tools.analyzer :as ana]
-            [clojure.tools.analyzer.ast :as ana-ast]
-            [clojure.tools.analyzer.jvm :as ana-jvm]
-            [clojure.tools.analyzer.utils :as ana-utils]
             [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
-            [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.analyzer.impl :as ana :refer [analyze*]]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
+            [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as walk]
             [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
@@ -63,13 +60,13 @@
                    (comp (keep :class)
                          (filter class?)
                          (map ensure-symbol))
-                   (ana-ast/nodes analyzed))
+                   (ana/nodes analyzed))
              (into #{}
                    (comp (filter (comp #{:const} :op))
                          (filter (comp #{:class} :type))
                          (keep :form)
                          (map ensure-symbol))
-                   (ana-ast/nodes analyzed))))
+                   (ana/nodes analyzed))))
 
 #_(map type (:deps (analyze '(+ 1 2))))
 
@@ -83,39 +80,30 @@
 
 #_(rewrite-defcached '(nextjournal.clerk/defcached foo :bar))
 
-(defn unresolvable-symbol-handler [ns sym ast-node]
-  ast-node)
-
-(defn wrong-tag-handler [tag ast-node]
-  ast-node)
-
-(def analyzer-passes-opts
-  (assoc ana-jvm/default-passes-opts
-         :validate/wrong-tag-handler wrong-tag-handler
-         :validate/unresolvable-symbol-handler unresolvable-symbol-handler))
-
 (defn form->ex-data
   "Returns ex-data map with the form and its location info from metadata."
   [form]
   (merge (select-keys (meta form) [:line :col :clojure.core/eval-file])
          {:form form}))
 
-(defn- analyze-form
-  ([form] (analyze-form {} form))
+(defn- analyze-form*
+  ([form] (analyze-form* {} form))
   ([bindings form]
    (binding [config/*in-clerk* true]
      (try
-       (let [old-deftype-hack ana-jvm/-deftype]
-         ;; NOTE: workaround for tools.analyzer `-deftype` + `eval` HACK, which redefines classes which doesn't work well with instance? checks
-         (with-redefs [ana-jvm/-deftype (fn [name class-name args interfaces]
-                                          (when-not (resolve class-name)
-                                            (old-deftype-hack name class-name args interfaces)))]
-           (ana-jvm/analyze form (ana-jvm/empty-env) {:bindings bindings
-                                                      :passes-opts analyzer-passes-opts})))
+       (analyze* (assoc (ana/to-env bindings)
+                        :ns (ns-name *ns*)) form)
        (catch java.lang.AssertionError e
          (throw (ex-info "Failed to analyze form"
                          (form->ex-data form)
                          e)))))))
+
+(defn analyze-form [form]
+  (with-bindings {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
+    (binding [ana/*deps* (or ana/*deps* (atom #{}))]
+      (-> (analyze-form* (rewrite-defcached form))
+          (ana/resolve-syms-pass)
+          (ana/macroexpand-pass)))))
 
 (defn ^:private var->protocol [v]
   (or (:protocol (meta v))
@@ -138,14 +126,33 @@
 
 (defn analyze [form]
   (let [!deps      (atom #{})
-        mexpander (fn [form env]
-                    (let [f (if (seq? form) (first form) form)
-                          v (ana-utils/resolve-sym f env)]
-                      (when (and (not (-> env :locals (get f))) (var? v))
-                        (swap! !deps conj v)))
-                    (ana-jvm/macroexpand-1 form env))
-        analyzed (analyze-form {#'ana/macroexpand-1 mexpander} (rewrite-defcached form))
-        nodes (ana-ast/nodes analyzed)
+        analyzed (binding [ana/*deps* !deps]
+                   (analyze-form form))
+        _ (ana/prewalk (ana/only-nodes
+                        #{:var :binding :symbol}
+                        (fn [var-node]
+                          (case (:op var-node)
+                            :var (let [var (:var var-node)]
+                                   (swap! !deps conj var))
+                            :binding (when-let [t (:tag (meta (:form var-node)))]
+                                       (when-let [clazz (try (resolve t)
+                                                             (catch Exception _ nil))]
+                                         (when (class? clazz)
+                                           (swap! !deps conj (.getName ^Class clazz)))))
+                            :symbol (when-not (:local? var-node)
+                                      (let [form (:form var-node)]
+                                        (if (qualified-symbol? form)
+                                          (let [clazz-sym (symbol (namespace form))]
+                                            (when-let [clazz (try (resolve clazz-sym)
+                                                                  (catch Exception _ nil))]
+                                              (when (class? clazz)
+                                                (swap! !deps conj (.getName ^Class clazz)))))
+                                          (when-let [clazz (try (resolve form)
+                                                                (catch Exception _ nil))]
+                                            (when (class? clazz)
+                                              (swap! !deps conj (.getName ^Class clazz))))))))
+                          var-node)) analyzed)
+        nodes (ana/nodes analyzed)
         {:keys [vars declared]} (get-vars+forward-declarations nodes)
         vars- (set/difference vars declared)
         var (when (and (= 1 (count vars))

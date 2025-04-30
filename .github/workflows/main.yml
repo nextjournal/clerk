@@ -69,7 +69,9 @@ jobs:
           - { os: macos-latest, shell: bash }
           - { os: ubuntu-latest, shell: bash }
           - { os: windows-latest, shell: powershell }
-
+        clojure:
+          - 1.10.3
+          - 1.12.0
     defaults:
       run:
         shell: ${{matrix.sys.shell}}
@@ -96,9 +98,11 @@ jobs:
             ~/.gitlibs
             ~/.deps.clj
           key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}
-
       - name: 🧪 Run tests
-        run: bb test:clj :kaocha/reporter '[kaocha.report/documentation]'
+        shell: bash
+        run: |
+          bb test:clj :kaocha/reporter '[kaocha.report/documentation]' \
+          :clojure '"${{ matrix.clojure }}"'
 
   static-build:
     runs-on: ubuntu-latest
