@@ -38,9 +38,10 @@
   "Resolves the ns mapped by the given sym in the global env"
   [ns-sym {:keys [ns]}]
   (when ns-sym
-    (let [namespaces (:namespaces (global-env))]
-      (or (get-in namespaces [ns :aliases ns-sym])
-          (:ns (namespaces ns-sym))))))
+    (binding [*ns* ns]
+      (or (get (ns-aliases ns) ns-sym)
+          (when (find-ns ns-sym)
+            ns-sym)))))
 
 (defn var?' [maybe-var] (or (var? maybe-var) (= ::var (type maybe-var))))
 
@@ -80,7 +81,8 @@
             full-ns (resolve-ns sym-ns env)]
         (when (or (not sym-ns) full-ns)
           (let [name (if sym-ns (-> sym name symbol) sym)]
-            (-> (global-env) :namespaces (get (or full-ns ns)) :mappings (get name))))))))
+            (binding [*ns* (or full-ns ns)]
+              (resolve name))))))))
 
 (defn resolve-sym-node [{:keys [env] :as ast}]
   (assert (= :symbol (:op ast)))
@@ -495,7 +497,7 @@
   "Creates a Var for sym and returns it.
    The Var gets interned in the env namespace."
   [sym {:keys [ns] :as env}]
-  (let [v (get-in (global-env) [:namespaces ns :mappings (symbol (name sym))])]
+  (let [v (resolve sym)]
     (if (some? v)
       (cond
         (class? v) v
