@@ -464,5 +464,5 @@ my-uuid")]
 ;;;; scratch
 
 (comment
-  (require '[nextjournal.clerk] :reload-all)
+  #_(require '[nextjournal.clerk] :reload-all)
   )

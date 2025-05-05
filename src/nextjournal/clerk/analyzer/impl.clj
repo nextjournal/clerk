@@ -236,8 +236,7 @@
         (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
         (do
           (swap! *deps* conj var) ;; collect macro var
-          (let [_ (def f* form)
-                mform (macroexpand-hook var form env args)
+          (let [mform (macroexpand-hook var form env args)
                 var'  (when (seq? mform) (resolve-sym (first mform) env))]
             (cond
               (= form mform)   (reduced ast)
