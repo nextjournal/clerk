@@ -82,6 +82,16 @@
           (let [name (if sym-ns (-> sym name symbol) sym)]
             (-> (global-env) :namespaces (get (or full-ns ns)) :mappings (get name))))))))
 
+(defn resolve-sym-node [{:keys [env] :as ast}]
+  (assert (= :symbol (:op ast)))
+  (if (:local? ast)
+    ast
+    (if-let [v (resolve-sym (:form ast) env)]
+      (if (var?' v)
+        (assoc ast :op :var, :var v)
+        ast)
+      ast)))
+
 (def specials "Set of special forms common to every clojure variant" ;; TODO replace with cc/special-symbol?
   '#{do if new quote set! try var catch throw finally def . let* letfn* loop* recur fn*})
 
@@ -205,19 +215,56 @@
     :form     form
     :children [:items]}))
 
+(defn- tag-with-form [ast parent form] (assoc ast :raw-forms (conj (:raw-forms parent ()) (list 'quote form))))
+
+(defn macroexpand-node [{:keys [env] :as ast}]
+  (if-let [fn-node (let [fn-node (:fn ast)]
+                     (when (= :symbol (:op fn-node))
+                       fn-node))]
+    (let [
+          fn-node (resolve-sym-node fn-node)
+          {:keys [op var]} fn-node
+          [f & args :as form] (:form ast)]
+      (cond
+        (and (symbol? f) (not= '. f) (str/starts-with? (name f) "."))
+        (do
+          (when-let [ns (namespace f)]
+            (when-let [clazz (resolve (symbol ns))]
+              (when (class? clazz)
+                (swap! *deps* conj (symbol (.getName ^Class clazz))))))
+          (analyze* env (list* '. (symbol (subs (name f) 1)) args)))
+        (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
+        (do
+          (swap! *deps* conj var) ;; collect macro var
+          (let [_ (def f* form)
+                mform (macroexpand-hook var form env args)
+                var'  (when (seq? mform) (resolve-sym (first mform) env))]
+            (cond
+              (= form mform)   (reduced ast)
+              (reduced? mform) (reduced (tag-with-form (parse env (unreduced mform)) ast form))
+              (= var var')     (let [[f & args] mform
+                                     f (if (contains? (methods macroexpand-hook) f)
+                                         (vary-meta f assoc ::prevent-macroexpand true)
+                                         f)]
+                                 (tag-with-form (analyze* env (cons f args)) ast form))
+              :else            (tag-with-form (analyze* env mform) ast form))))
+        :else ast))
+    ast))
+
 (defmethod -analyze :seq [env form]
   (if (not (seq form))
     (analyze-const env form)
     (parse env form)))
 
 (defmethod -analyze :symbol [env sym]
-  (let [local? (some? (resolve-local env sym))]
-    {:op :symbol
-     :local? local?
-     :env  env
-     :form sym
-     :ns   (namespace sym)
-     :name (name sym)}))
+  (let [local? (some? (resolve-local env sym))
+        node {:op :symbol
+              :local? local?
+              :env  env
+              :form sym
+              :ns   (namespace sym)
+              :name (name sym)}]
+    node))
 
 (defmethod -analyze :var [env form]
   {:op :the-var
@@ -413,13 +460,19 @@
 
 (defmethod -parse :default [env form]
   (if (seq? form)
-    (let [[f & args] form]
-      {:op       :invoke
-       :form     form
-       :env      env
-       :fn       (analyze* env f)
-       :args     (mapv (analyze* env) args)
-       :children [:fn :args]})
+    (let [[f & args] form
+          maybe-macro (resolve-sym f env)]
+      (if (and (var? maybe-macro)
+               (:macro (meta maybe-macro)))
+        (do
+          (swap! *deps* conj maybe-macro)
+          (analyze* env (macroexpand-hook maybe-macro form env (rest form))))
+        {:op       :invoke
+         :form     form
+         :env      env
+         :fn       (analyze* env f)
+         :args     (mapv (analyze* env) args)
+         :children [:fn :args]}))
     (analyze* env form)))
 
 (defn ns-sym [ns] (cond (symbol? ns) ns
@@ -666,46 +719,7 @@
 
 ;; Passes
 
-(defn resolve-sym-node [{:keys [env] :as ast}]
-  (assert (= :symbol (:op ast)))
-  (if (:local? ast)
-    ast
-    (if-let [v (resolve-sym (:form ast) env)]
-      (if (var?' v)
-        (assoc ast :op :var, :var v)
-        ast)
-      ast)))
-
 (defn resolve-syms-pass [ast] (prewalk (only-nodes #{:symbol} resolve-sym-node) ast))
-
-(defn- tag-with-form [ast parent form] (assoc ast :raw-forms (conj (:raw-forms parent ()) (list 'quote form))))
-
-(defn macroexpand-node [{:keys [env] :as ast}]
-  (let [{:keys [op var]} (:fn ast)
-        [f & args :as form] (:form ast)]
-    (cond
-      (and (symbol? f) (not= '. f) (str/starts-with? (name f) "."))
-      (do
-        (when-let [ns (namespace f)]
-          (when-let [clazz (resolve (symbol ns))]
-            (when (class? clazz)
-              (swap! *deps* conj (symbol (.getName ^Class clazz))))))
-        (analyze* env (list* '. (symbol (subs (name f) 1)) args)))
-      (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
-      (do
-        (swap! *deps* conj var) ;; collect macro var
-        (let [mform (macroexpand-hook var form env args)
-              var'  (when (seq? mform) (resolve-sym (first mform) env))]
-            (cond
-              (= form mform)   (reduced ast)
-              (reduced? mform) (reduced (tag-with-form (parse env (unreduced mform)) ast form))
-              (= var var')     (let [[f & args] mform
-                                     f (if (contains? (methods macroexpand-hook) f)
-                                         (vary-meta f assoc ::prevent-macroexpand true)
-                                         f)]
-                                 (tag-with-form (analyze* env (cons f args)) ast form))
-              :else            (tag-with-form (analyze* env mform) ast form))))
-      :else ast)))
 
 (defn macroexpand-pass
   ([ast] (macroexpand-pass ##Inf ast))
@@ -769,3 +783,12 @@
   [ast]
   (lazy-seq
    (cons ast (mapcat nodes (children ast)))))
+
+;;;; Scratch
+
+(comment
+  (require '[nextjournal.clerk.analyzer :as ana])
+  (require '[nextjournal.clerk.analyzer.impl :as impl])
+  (ana/analyze-form '(-> 1 (cond-> pos? inc)))
+  (ana/analyze-form '(-> [dec 1] (let* (inc dec))))
+  )
