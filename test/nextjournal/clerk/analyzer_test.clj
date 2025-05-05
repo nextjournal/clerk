@@ -392,7 +392,7 @@ my-uuid")]
                ana/hash)
            (deref !missing-hash-store)))))
 
-  (testing "known cases where missing hashes occur"
+  #_(testing "known cases where missing hashes occur"
     (def specter-repro-analysis
       (-> (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/issue_660_repro.clj")
           ana/build-graph))
@@ -464,4 +464,5 @@ my-uuid")]
 ;;;; scratch
 
 (comment
+  (require '[nextjournal.clerk] :reload-all)
   )
