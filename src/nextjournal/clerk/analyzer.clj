@@ -49,12 +49,6 @@
 
 #_(sha1-base58 "hello")
 
-(defn ^:private ensure-symbol [class-or-sym]
-  (cond
-    (symbol? class-or-sym) class-or-sym
-    (class? class-or-sym) (symbol (pr-str class-or-sym))
-    :else (throw (ex-info "not a symbol or a class" {:class-or-sym class-or-sym} (IllegalArgumentException.)))))
-
 #_(map type (:deps (analyze '(+ 1 2))))
 
 (defn rewrite-defcached [form]
