@@ -31,29 +31,6 @@
 
 (defn var?' [maybe-var] (or (var? maybe-var) (= ::var (type maybe-var))))
 
-(defn to-var [{:keys [macro meta ns name]}]
-  (with-meta {:ns ns, :name name} (assoc meta :type ::var)))
-
-(defmacro no-warn
-  "Localy disable a set of cljs compiler warning.
-  Usage: `(no-warn #{:undeclared-ns} (cljs/resolve env sym))`"
-  [disabled-warnings & body]
-  ;; Cannot use `cc/binding` as it relies on var which does a read-time resolve,
-  ;; while we want a runtime var resolve.
-  `(do (push-thread-bindings {(resolve 'cljs.analyzer/*cljs-warnings*)
-                              (reduce (fn [r# k#] (assoc r# k# false))
-                                      (deref (resolve 'cljs.analyzer/*cljs-warnings*))
-                                      ~disabled-warnings)})
-       (try ~@body
-            (finally (pop-thread-bindings)))))
-
-(defn cljs-resolve [env sym]
-  (require '[cljs.analyzer.api])
-  (require '[cljs.analyzer])
-  ;; RCF should try to resolve like the repl does, but is not in charge of
-  ;; handling invalid userland forms.
-  (no-warn #{:undeclared-ns} ((resolve 'cljs.analyzer.api/resolve) env sym)))
-
 (defn resolve-sym
   "Resolves the value mapped by the given sym in the global env"
   [sym {:keys [ns] :as env}]
@@ -88,17 +65,15 @@
 (defmulti macroexpand-hook (fn [the-var _&form _&env _args] (var-sym the-var)))
 
 #_(defmethod macroexpand-hook 'clojure.core/deftype [_ &form &env [name fields & opts+specs]]
-  (when-not (resolve name)
+  (when-not (resolve-sym name &env)
     (apply #'clojure.core/deftype &form &env name fields opts+specs)))
 
 #_(defmethod macroexpand-hook 'clojure.core/definterface [_ &form &env [name & sigs]]
-  (when-not (resolve name)
+  (when-not (resolve-sym name &env)
     (apply #'clojure.core/definterface &form &env name sigs)))
 
 (defmethod macroexpand-hook :default [the-var &form &env args]
   (apply the-var &form (:locals &env) args))
-
-(defn has-meta? [o] (instance? clojure.lang.IMeta o))
 
 (defmulti -parse (fn [_env form] (and (seq? form) (first form))))
 
@@ -436,7 +411,7 @@
   "Creates a Var for sym and returns it.
    The Var gets interned in the env namespace."
   [sym {:keys [ns] :as env}]
-  (let [v (resolve sym)]
+  (let [v (resolve-sym sym env)]
     (if (some? v)
       (cond
         (class? v) v
@@ -464,7 +439,7 @@
         args (apply pfn expr)
         env (if (some? (namespace sym))
               env ;; Can't intern namespace-qualified symbol, ignore
-              (let [var (or (resolve env sym)
+              (let [var (or (resolve-sym sym env)
                             (create-var sym env))] ;; side effect, FIXME should be a pass
                 (assoc-in env [:namespaces ns :mappings sym] var)))
         args (when-let [[_ init] (find args :init)]
