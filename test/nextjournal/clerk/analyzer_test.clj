@@ -11,6 +11,7 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.fixtures.dep-a]
             [nextjournal.clerk.fixtures.dep-b]
+            [nextjournal.clerk.fixtures.issue-660-repro]
             [nextjournal.clerk.parser :as parser]
             [weavejester.dependency :as dep])
   (:import (clojure.lang ExceptionInfo)))
@@ -182,7 +183,11 @@
              (dissoc (ana/analyze '(nextjournal.clerk/defcached answer (do (Thread/sleep 4200) (inc 41)))) :form)))))
 
   (testing "tools.analyzer AssertionError is rethrown as ExceptionInfo (#307)"
-    (is (thrown? ExceptionInfo (ana/analyze '(def foo [] :bar))))))
+    (is (thrown? ExceptionInfo (ana/analyze '(def foo [] :bar)))))
+
+  (testing "macro-expansion defining var occurs in deps"
+    (with-ns-binding 'nextjournal.clerk.fixtures.issue-660-repro
+      (= 2 (count (:deps (ana/analyze '(nextjournal.clerk.fixtures.macros/emit-nonsense))))))))
 
 (deftest symbol->jar
   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
@@ -403,7 +408,6 @@ my-uuid")]
       (-> specter-repro-analysis
           (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
           ana/hash)
-      
       (def missing-hash-report (first (deref !missing-hash-store)))
 
       (is (= 'nextjournal.clerk.fixtures.issue-660-repro/nonsense

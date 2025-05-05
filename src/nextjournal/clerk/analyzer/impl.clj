@@ -465,7 +465,8 @@
                (:macro (meta maybe-macro)))
         (do
           (swap! *deps* conj maybe-macro)
-          (analyze* env (macroexpand-hook maybe-macro form env (rest form))))
+          (let [expanded (macroexpand-hook maybe-macro form env (rest form))]
+            (analyze* env expanded)))
         {:op       :invoke
          :form     form
          :env      env
