@@ -191,9 +191,11 @@
     :form     form
     :children [:items]}))
 
-(defn- tag-with-form [ast parent form] (assoc ast :raw-forms (conj (:raw-forms parent ()) (list 'quote form))))
+;; TODO: check why tests pass although we don't use this anymore!
 
-(defn macroexpand-node [{:keys [env] :as ast}]
+#_(defn- tag-with-form [ast parent form] (assoc ast :raw-forms (conj (:raw-forms parent ()) (list 'quote form))))
+
+#_(defn macroexpand-node [{:keys [env] :as ast}]
   (if-let [fn-node (let [fn-node (:fn ast)]
                      (when (= :symbol (:op fn-node))
                        fn-node))]
