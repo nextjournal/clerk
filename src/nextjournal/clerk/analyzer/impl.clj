@@ -35,22 +35,24 @@
   "Resolves the value mapped by the given sym in the global env"
   [sym {:keys [ns] :as env}]
   (when (symbol? sym)
-    (let [sym-ns  (when-let [ns (namespace sym)] (symbol ns))
-          full-ns (resolve-ns sym-ns env)]
-      (when (or (not sym-ns) full-ns)
-        (let [name (if sym-ns (-> sym name symbol) sym)]
-          (binding [*ns* (or full-ns ns)]
-            (resolve name)))))))
+    (let [local? (and (simple-symbol? sym)
+                      (contains? (:locals env) sym))]
+      (when-not local?
+        (when (symbol? sym)
+          (let [sym-ns  (when-let [ns (namespace sym)] (symbol ns))
+                full-ns (resolve-ns sym-ns env)]
+            (when (or (not sym-ns) full-ns)
+              (let [name (if sym-ns (-> sym name symbol) sym)]
+                (binding [*ns* (or full-ns ns)]
+                  (resolve name))))))))))
 
 (defn resolve-sym-node [{:keys [env] :as ast}]
   (assert (= :symbol (:op ast)))
-  (if (:local? ast)
-    ast
-    (if-let [v (resolve-sym (:form ast) env)]
-      (if (var?' v)
-        (assoc ast :op :var, :var v)
-        ast)
-      ast)))
+  (if-let [v (resolve-sym (:form ast) env)]
+    (if (var?' v)
+      (assoc ast :op :var, :var v)
+      ast)
+    ast))
 
 (def specials "Set of special forms common to every clojure variant"
   '#{do if new quote set! try var catch throw finally def . let* letfn* loop* recur fn*})
