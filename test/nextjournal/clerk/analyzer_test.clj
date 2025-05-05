@@ -186,8 +186,7 @@
     (is (thrown? ExceptionInfo (ana/analyze '(def foo [] :bar)))))
 
   (testing "macro-expansion defining var occurs in deps"
-    (with-ns-binding 'nextjournal.clerk.fixtures.issue-660-repro
-      (= 2 (count (:deps (ana/analyze '(nextjournal.clerk.fixtures.macros/emit-nonsense))))))))
+    (is (= 2 (count (:deps (ana/analyze '(nextjournal.clerk.fixtures.macros/emit-nonsense))))))))
 
 (deftest symbol->jar
   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
