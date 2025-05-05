@@ -393,21 +393,22 @@ my-uuid")]
            (deref !missing-hash-store)))))
 
   (testing "known cases where missing hashes occur"
-    (def specter-repro-analysis
-      (-> (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/issue_660_repro.clj")
-          ana/build-graph))
+    (do
+      (def specter-repro-analysis
+        (-> (parser/parse-file {:doc? true} "test/nextjournal/clerk/fixtures/issue_660_repro.clj")
+            ana/build-graph))
+      (def topo-sorted (dep/topo-sort (:graph specter-repro-analysis)))
+      (def !missing-hash-store (atom []))
+      (reset! ana/!file->analysis-cache {})
+      (-> specter-repro-analysis
+          (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+          ana/hash)
+      
+      (def missing-hash-report (first (deref !missing-hash-store)))
 
-    (def !missing-hash-store (atom []))
-    (reset! ana/!file->analysis-cache {})
-    (-> specter-repro-analysis
-        (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
-        ana/hash)
-
-    (def missing-hash-report (first (deref !missing-hash-store)))
-
-    (is (= 'nextjournal.clerk.fixtures.issue-660-repro/nonsense
-           (:id missing-hash-report)))
-    (is (:dep-with-missing-hash missing-hash-report))))
+      (is (= 'nextjournal.clerk.fixtures.issue-660-repro/nonsense
+             (:id missing-hash-report)))
+      (is (:dep-with-missing-hash missing-hash-report)))))
 
 (deftest ->hash
   (testing "notices change in depedency namespace"
