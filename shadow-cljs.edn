@@ -1,6 +1,6 @@
 {:deps {:aliases [:sci]}
  :dev-http {7778 {:roots ["public" "classpath:public"]}}
- :nrepl false
+ :nrepl {}
  :builds {:viewer {:target :esm
                    :runtime :browser ;; `:custom` needed when developing ssr, will see WebSocket errors without it
                    :output-dir "public/js"

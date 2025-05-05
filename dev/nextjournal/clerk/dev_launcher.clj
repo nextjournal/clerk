@@ -7,7 +7,7 @@
            (java.util Locale)))
 
 (defn start [serve-opts]
-  (future (nrepl/dispatch-commands {:middleware '[cider.nrepl/cider-middleware]}))
+  #_(future (nrepl/dispatch-commands {:middleware '[cider.nrepl/cider-middleware]}))
   (require 'shadow.cljs.silence-default-loggers)
   ((requiring-resolve 'shadow.cljs.devtools.server/start!))
   ((requiring-resolve 'shadow.cljs.devtools.api/watch) :viewer)
