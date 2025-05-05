@@ -181,7 +181,8 @@
               :form sym
               :ns   (namespace sym)
               :name (name sym)}]
-    node))
+    (if local? node
+        (resolve-sym-node node))))
 
 (defmethod -analyze :var [env form]
   {:op :the-var

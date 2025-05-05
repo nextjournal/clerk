@@ -55,19 +55,6 @@
     (class? class-or-sym) (symbol (pr-str class-or-sym))
     :else (throw (ex-info "not a symbol or a class" {:class-or-sym class-or-sym} (IllegalArgumentException.)))))
 
-(defn class-deps [analyzed]
-  (set/union (into #{}
-                   (comp (keep :class)
-                         (filter class?)
-                         (map ensure-symbol))
-                   (ana/nodes analyzed))
-             (into #{}
-                   (comp (filter (comp #{:const} :op))
-                         (filter (comp #{:class} :type))
-                         (keep :form)
-                         (map ensure-symbol))
-                   (ana/nodes analyzed))))
-
 #_(map type (:deps (analyze '(+ 1 2))))
 
 (defn rewrite-defcached [form]
@@ -101,8 +88,7 @@
 (defn analyze-form [form]
   (with-bindings {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
     (binding [ana/*deps* (or ana/*deps* (atom #{}))]
-      (-> (analyze-form* (rewrite-defcached form))
-          (ana/resolve-syms-pass)))))
+      (analyze-form* (rewrite-defcached form)))))
 
 (defn ^:private var->protocol [v]
   (or (:protocol (meta v))
@@ -164,13 +150,12 @@
                                (keep #(-> % :args first))
                                (filter :var)
                                (keep (fn [{:keys [op var]}]
-                                       (when-not (= op :the-var)
+                                       (when-not (= :the-var op)
                                          (list `deref (symbol var))))))
                          nodes)
         ;; TODO: check case '(def a (inc a)) deps are empty for this which is wrong
         deps (set/union (set/difference (into #{} (map (comp symbol var->protocol)) @!deps) vars)
                         deref-deps
-                        (class-deps analyzed)
                         (when (var? form) #{(symbol form)}))
         hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
     (cond-> {#_#_:analyzed analyzed
