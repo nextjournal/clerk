@@ -60,7 +60,9 @@
   (is (ana/exceeds-bounded-count-limit? {:a-range (range)}))
   (is (not (ana/exceeds-bounded-count-limit? (range (dec config/*bounded-count-limit*))))))
 
-(deftest deps
+(defmacro my-local [] `(clojure.set/union #{1 2 3}))
+
+(deftest deps-test
   (is (match? #{'clojure.string/includes?
                 'clojure.core/fn
                 'clojure.core/defn
@@ -84,7 +86,10 @@
 
   (testing "protocol methods are resolved to protocol in deps"
     (is (= '#{nextjournal.clerk.analyzer/BoundedCountCheck}
-           (:deps (ana/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?))))))
+           (:deps (ana/analyze 'nextjournal.clerk.analyzer/-exceeds-bounded-count-limit?)))))
+  (testing "macro name used a local doesn't cause dependency"
+    (is (not (contains? (:deps (ana/analyze '(let [my-local (fn [])] (my-local))))
+                        'clojure.set/union)))))
 
 (deftest analyze
   (testing "quoted forms aren't confused with variable dependencies"

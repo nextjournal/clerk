@@ -623,5 +623,4 @@
   (require '[nextjournal.clerk.analyzer :as ana])
   (require '[nextjournal.clerk.analyzer.impl :as impl])
   (ana/analyze-form '(-> 1 (cond-> pos? inc)))
-  (ana/analyze-form '(-> [dec 1] (let* (inc dec))))
   )
