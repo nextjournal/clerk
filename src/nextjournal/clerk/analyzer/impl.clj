@@ -75,7 +75,7 @@
         ast)
       ast)))
 
-(def specials "Set of special forms common to every clojure variant" ;; TODO replace with cc/special-symbol?
+(def specials "Set of special forms common to every clojure variant"
   '#{do if new quote set! try var catch throw finally def . let* letfn* loop* recur fn*})
 
 (defn var-sym [v]
@@ -190,43 +190,6 @@
     :items    (mapv (analyze* env) form)
     :form     form
     :children [:items]}))
-
-;; TODO: check why tests pass although we don't use this anymore!
-
-#_(defn- tag-with-form [ast parent form] (assoc ast :raw-forms (conj (:raw-forms parent ()) (list 'quote form))))
-
-#_(defn macroexpand-node [{:keys [env] :as ast}]
-  (if-let [fn-node (let [fn-node (:fn ast)]
-                     (when (= :symbol (:op fn-node))
-                       fn-node))]
-    (let [
-          fn-node (resolve-sym-node fn-node)
-          {:keys [op var]} fn-node
-          [f & args :as form] (:form ast)]
-      (cond
-        (and (symbol? f) (not= '. f) (str/starts-with? (name f) "."))
-        (do
-          (when-let [ns (namespace f)]
-            (when-let [clazz (resolve (symbol ns))]
-              (when (class? clazz)
-                (swap! *deps* conj (symbol (.getName ^Class clazz))))))
-          (analyze* env (list* '. (symbol (subs (name f) 1)) args)))
-        (and (= :var op) (:macro (meta var)) (not (::prevent-macroexpand (meta f))))
-        (do
-          (swap! *deps* conj var) ;; collect macro var
-          (let [mform (macroexpand-hook var form env args)
-                var'  (when (seq? mform) (resolve-sym (first mform) env))]
-            (cond
-              (= form mform)   (reduced ast)
-              (reduced? mform) (reduced (tag-with-form (parse env (unreduced mform)) ast form))
-              (= var var')     (let [[f & args] mform
-                                     f (if (contains? (methods macroexpand-hook) f)
-                                         (vary-meta f assoc ::prevent-macroexpand true)
-                                         f)]
-                                 (tag-with-form (analyze* env (cons f args)) ast form))
-              :else            (tag-with-form (analyze* env mform) ast form))))
-        :else ast))
-    ast))
 
 (defmethod -analyze :seq [env form]
   (if (not (seq form))
