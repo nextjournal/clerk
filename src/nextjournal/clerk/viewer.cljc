@@ -8,7 +8,6 @@
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [clojure.tools.reader :as tools.reader]
-                      [editscript.edit]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[goog.crypt]
@@ -18,6 +17,8 @@
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
+            #?@(:bb []
+                :clj [[editscript.edit]])
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as w]
             [nextjournal.markdown :as md]
@@ -42,7 +43,8 @@
              (-invoke [_ x y] (@f x y))]))
 
 ;; Make sure `RenderFn` is changed atomically
-#?(:clj
+#?(:bb nil
+   :clj
    (extend-protocol editscript.edit/IType
      RenderFn
      (get-type [_] :val)))
