@@ -614,7 +614,8 @@
              (= :single-file package) (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
              :else (str "/_fs/" src))))
 
-#?(:clj
+#?(:bb nil
+   :clj
    (defn read-image [image-or-url]
      (ImageIO/read
       (if (string? image-or-url)
@@ -629,8 +630,9 @@
 (defn md-image->viewer [doc block-id idx {:keys [attrs]}]
   (with-viewer `html-viewer
     #?(:clj {:nextjournal/render-opts {:id (processed-block-id block-id [idx])}
-             :nextjournal/width (try (image-width (read-image (:src attrs)))
-                                     (catch Throwable _ :prose))})
+             :nextjournal/width #?(:bb :prose
+                                   :clj (try (image-width (read-image (:src attrs)))
+                                             (catch Throwable _ :prose)))})
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
@@ -975,7 +977,8 @@
                                                           mark-presented)))
                                     :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))}))
 
-#?(:clj
+#?(:bb nil
+   :clj
    (defn buffered-image->bytes [^BufferedImage image]
      (.. (PngEncoder.)
          (withBufferedImage image)
@@ -983,7 +986,8 @@
          (toBytes))))
 
 (def image-viewer
-  {#?@(:clj [:pred #(instance? BufferedImage %)
+  {#?@(:bb []
+       :clj [:pred #(instance? BufferedImage %)
              :transform-fn (fn [{image :nextjournal/value}]
                              (-> {:nextjournal/value (buffered-image->bytes image)
                                   :nextjournal/content-type "image/png"
