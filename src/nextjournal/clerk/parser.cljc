@@ -1,7 +1,10 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
   (:refer-clojure :exclude [read-string])
-  (:require #?@(:clj [[clojure.tools.reader :as tools.reader]
+  (:require #?@(:bb [[clojure.tools.reader :as tools.reader]
+                     [multiformats.base.b58 :as b58]
+                     [multiformats.hash :as hash]]
+                :clj [[clojure.tools.reader :as tools.reader]
                       [taoensso.nippy :as nippy]
                       [multiformats.base.b58 :as b58]
                       [multiformats.hash :as hash]]
@@ -366,7 +369,8 @@
                           (guess-var form))]
              var
              (let [hash-fn (fn [x]
-                             #?(:clj (-> x nippy/fast-freeze sha1-base58)
+                             #?(:bb (hash-sha1 x)
+                                :clj (-> x nippy/fast-freeze sha1-base58)
                                 :cljs (hash-sha1 x)))]
                (symbol (str *ns*)
                        (case type
