@@ -650,10 +650,11 @@
                      :sha1 sha1-base58
                      :sha512 sha2-base58)]
      (utils/if-bb (-> value digest-fn)
-       (binding [nippy/*incl-metadata?* false]
-         (-> value
-             nippy/fast-freeze
-             digest-fn))))))
+                  #_{:clj-kondo/ignore [:unresolved-namespace]}
+                  (binding [nippy/*incl-metadata?* false]
+                    (-> value
+                        nippy/fast-freeze
+                        digest-fn))))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))
