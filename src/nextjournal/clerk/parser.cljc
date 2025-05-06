@@ -369,7 +369,7 @@
                           (guess-var form))]
              var
              (let [hash-fn (fn [x]
-                             #?(:bb (hash-sha1 x)
+                             #?(:bb (sha1-base58 x)
                                 :clj (-> x nippy/fast-freeze sha1-base58)
                                 :cljs (hash-sha1 x)))]
                (symbol (str *ns*)
