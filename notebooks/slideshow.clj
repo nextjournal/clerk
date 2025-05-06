@@ -18,7 +18,6 @@
 (clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]})
 
 ;; ---
-
 ;; ## 📈 Vega Lite
 ^{::clerk/visibility {:code :hide}}
 (clerk/vl {:width 650 :height 400 :data {:url "https://vega.github.io/vega-datasets/data/us-10m.json"
@@ -26,6 +25,11 @@
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
            :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}})
+
+;; ---
+;; ## 🖼️ An Image
+^{::clerk/visibility {:code :hide}}
+(clerk/image "trees.png")
 
 ;; ---
 ;; # 👋🏻 Fin.

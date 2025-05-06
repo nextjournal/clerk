@@ -9,7 +9,7 @@
                         (apply orig-fun args)))
 
                     (advice-add 'cider-jack-in :around #'cider-jack-in-wrapper-function)
-                    
+
                     (when (not (featurep 'clerk))
                       (let ((init-file-path (expand-file-name "clerk.el" default-directory)))
                         (when (file-exists-p init-file-path)

@@ -10,7 +10,7 @@
   (future (nrepl/dispatch-commands {:middleware '[cider.nrepl/cider-middleware]}))
   (require 'shadow.cljs.silence-default-loggers)
   ((requiring-resolve 'shadow.cljs.devtools.server/start!))
-  ((requiring-resolve 'shadow.cljs.devtools.api/watch) :browser)
+  ((requiring-resolve 'shadow.cljs.devtools.api/watch) :viewer)
   ((requiring-resolve 'nextjournal.clerk/serve!) serve-opts)
   (set! *print-namespace-maps* false)
   (println "Clerk dev system ready in"

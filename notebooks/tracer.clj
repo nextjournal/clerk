@@ -1,6 +1,8 @@
 ;; # 👩🏻‍💻 Show the code
-^{:nextjournal.clerk/visibility {:code :hide}}
+
 (ns tracer
+  {:nextjournal.clerk/visibility {:code :hide}
+   :nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; ## Tracer

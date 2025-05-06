@@ -4,8 +4,7 @@
             [clojure.java.io :as io]
             [clojure.main :as main]
             [clojure.string :as str]
-            [multihash.core :as multihash]
-            [multihash.digest :as digest]
+            [multiformats.base.b58 :as b58]
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
@@ -26,19 +25,18 @@
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
-
 (defn ->cache-file [hash]
   (str config/cache-dir fs/file-separator hash))
 
 (defn wrapped-with-metadata [value hash]
   (cond-> {:nextjournal/value value}
-    hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) multihash/base58))))
+    hash (assoc :nextjournal/blob-id (cond-> hash (not (string? hash)) b58/format-btc))))
 
 #_(wrap-with-blob-id :test "foo")
 
 (defn hash+store-in-cas! [x]
   (let [^bytes ba (nippy/freeze x)
-        multihash (multihash/base58 (digest/sha2-512 ba))
+        multihash (analyzer/sha2-base58 ba)
         file (->cache-file multihash)]
     (when-not (fs/exists? file)
       (with-open [out (io/output-stream (io/file file))]
@@ -72,32 +70,39 @@
 
                            :else
                            (throw (ex-info "Unable to resolve into a variable" {:data var})))]
-    {:nextjournal.clerk/var-from-def resolved-var}))
+    {:nextjournal.clerk/var-from-def resolved-var
+     :nextjournal.clerk/var-snapshot @resolved-var}))
 
 (defn ^:private lookup-cached-result [introduced-var hash cas-hash]
-  (try
-    (let [value (let [cached-value (thaw-from-cas cas-hash)]
-                  (when introduced-var
-                    (intern (-> introduced-var symbol namespace find-ns) (-> introduced-var symbol name symbol) cached-value))
-                  cached-value)]
-      (wrapped-with-metadata (if introduced-var (var-from-def introduced-var) value) hash))
-    (catch Exception _e
-      ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
-      #_(prn :thaw-error e)
-      nil)))
+  (when-let [cached-value (try (thaw-from-cas cas-hash)
+                               (catch Exception _e
+                                 ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
+                                 #_(prn :thaw-error e)
+                                 nil))]
+    (wrapped-with-metadata (if introduced-var
+                             (var-from-def (intern (-> introduced-var namespace symbol)
+                                                   (-> introduced-var name symbol)
+                                                   cached-value))
+                             cached-value)
+                           hash)))
 
-(defn ^:private cachable-value? [value]
+
+(defn cachable? [value]
   (and (some? value)
        (try
-         (nippy/freezable? value)
+         (and (not (analyzer/exceeds-bounded-count-limit? value))
+              (some? (nippy/freezable? value)))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _
-           false))
-       (not (analyzer/exceeds-bounded-count-limit? value))))
+           false))))
 
-#_(cachable-value? (vec (range 100)))
-#_(cachable-value? (range))
+#_(cachable? (vec (range 100)))
+#_(cachable? (range))
+#_(cachable? java.lang.String)
+#_(cachable? (map inc (range)))
+#_(cachable? [{:hello (map inc (range))}])
+#_(cachable? {:foo (javax.imageio.ImageIO/read (clojure.java.io/file "trees.png"))})
 
 
 (defn ^:private cache! [digest-file var-value]
@@ -107,29 +112,49 @@
       #_(prn :freeze-error e)
       nil)))
 
+(defn ^:private record-interned-symbol [store ns sym]
+  (swap! store conj (symbol (name (ns-name (the-ns ns))) (name sym))))
+
+(def ^:private core-intern intern)
+
+(defn ^:private intern+record
+  ([store ns name] (record-interned-symbol store ns name) (core-intern ns name))
+  ([store ns name val] (record-interned-symbol store ns name) (core-intern ns name val)))
+
 (defn ^:private eval+cache! [{:keys [form var ns-effect? no-cache? freezable?] :as form-info} hash digest-file]
   (try
-    (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
-                                      (eval form)))
+    (let [!interned-vars (atom #{})
+          {:keys [result]} (time-ms (binding [config/*in-clerk* true]
+                                      (assert form "form must be set")
+                                      (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
+                                        (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
                    result)
           var-value (cond-> result (and var (var? result)) deref)
+          var-from-def? (and var (var? result) (= var (symbol result)))
           no-cache? (or ns-effect?
                         no-cache?
-                        config/cache-disabled?)]
-      (when (and (not no-cache?) (not ns-effect?) freezable? (cachable-value? var-value))
+                        (boolean (seq @!interned-vars)))]
+      (when (and (not no-cache?)
+                 (not ns-effect?)
+                 freezable?
+                 (cachable? var-value)
+                 (or (not var) var-from-def?))
         (cache! digest-file var-value))
       (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
                           (fn? var-value) nil
                           :else hash)
-            result (if var
+            result (if var-from-def?
                      (var-from-def var)
                      result)]
-        (wrapped-with-metadata result blob-id)))
+        (cond-> (wrapped-with-metadata result blob-id)
+          (seq @!interned-vars)
+          (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t
       (let [triaged (main/ex-triage (Throwable->map t))]
-        (throw (ex-info (main/ex-str triaged) triaged))))))
+        (throw (ex-info (main/ex-str triaged)
+                        (merge triaged (analyzer/form->ex-data form))))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
@@ -138,72 +163,134 @@
     viewers
     (update :nextjournal/viewers eval)))
 
-(defn read+eval-cached [{:as _doc :keys [blob->result ->analysis-info ->hash]} codeblock]
-  (let [{:keys [form vars var deref-deps]} codeblock
-        {:as form-info :keys [ns-effect? no-cache? freezable?]} (->analysis-info (if (seq vars) (first vars) form))
+(defn read+eval-cached [{:as doc :keys [blob->result ->analysis-info ->hash]} codeblock]
+  (let [{:keys [id form _vars var]} codeblock
+        _ (assert id (format "Missing id on codeblock: '%s'." (pr-str codeblock)))
+        {:as form-info :keys [ns-effect? no-cache? freezable?]} (if (:no-cache doc)
+                                                                  (assoc codeblock :no-cache? true)
+                                                                  (->analysis-info id))
         no-cache?      (or ns-effect? no-cache?)
-        hash           (when-not no-cache? (or (get ->hash (if var var form))
-                                               (analyzer/hash-codeblock ->hash codeblock)))
+        hash           (when-not no-cache? (or (get ->hash id)
+                                               (analyzer/hash-codeblock ->hash doc codeblock)))
         digest-file    (when hash (->cache-file (str "@" hash)))
         cas-hash       (when (and digest-file (fs/exists? digest-file)) (slurp digest-file))
+        cached-result-in-memory (get blob->result hash)
         cached-result? (and (not no-cache?)
-                            cas-hash
-                            (-> cas-hash ->cache-file fs/exists?))
+                            (or (some? cached-result-in-memory)
+                                (and cas-hash
+                                     (-> cas-hash ->cache-file fs/exists?))))
         opts-from-form-meta (-> (meta form)
-                                (select-keys [:nextjournal.clerk/viewer :nextjournal.clerk/viewers :nextjournal.clerk/width :nextjournal.clerk/opts])
+                                (select-keys (keys v/viewer-opts-normalization))
                                 v/normalize-viewer-opts
                                 maybe-eval-viewers)]
     #_(prn :cached? (cond no-cache? :no-cache
-                          cached-result? true
+                          cached-result? (if cached-result-in-memory
+                                           :in-memory
+                                           :in-cas)
                           cas-hash :no-cas-file
                           :else :no-digest-file)
            :hash hash :cas-hash cas-hash :form form :var var :ns-effect? ns-effect?)
     (fs/create-dirs config/cache-dir)
-    (cond-> (or (when-let [blob->result (and (not no-cache?) (get-in blob->result [hash :nextjournal/value]))]
-                  (wrapped-with-metadata blob->result hash))
+    (cond-> (or (when (and cached-result? cached-result-in-memory)
+                  (wrapped-with-metadata (:nextjournal/value cached-result-in-memory) hash))
                 (when (and cached-result? freezable?)
                   (lookup-cached-result var hash cas-hash))
                 (eval+cache! form-info hash digest-file))
       (seq opts-from-form-meta)
       (merge opts-from-form-meta))))
 
-#_(show! "notebooks/scratch_cache.clj")
+#_(nextjournal.clerk/show! "notebooks/exec_status.clj")
 
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
 
 #_(blob->result @nextjournal.clerk.webserver/!doc)
 
-(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks]}]
+
+
+(defn ->eval-status [{:as analyzed-doc :keys [blocks]} num-done {:as block-to-eval :keys [var form]}]
+  (let [total (count (filter parser/code? blocks))
+        offset 0.35]
+    {:progress (+ offset (* 0.6 (/ num-done total)))
+     :status (format "Evaluating cell %d of %d: `%s`…"
+                     (inc num-done) total (if var
+                                            (str "#'" (name var))
+                                            (let [code (pr-str form)
+                                                  max-length 50]
+                                              (if (< max-length (count code))
+                                                (str (subs code 0 max-length) ",,,")
+                                                code))))}))
+
+#_(->eval-status @webserver/!doc 0 (nth (filter parser/code? (:blocks @webserver/!doc)) 0))
+#_(->eval-status @webserver/!doc 1 (nth (filter parser/code? (:blocks @webserver/!doc)) 2))
+#_(->eval-status @webserver/!doc 2 (nth (filter parser/code? (:blocks @webserver/!doc)) 3))
+
+#_(nextjournal.clerk/show! "notebooks/exec_status.clj")
+
+(defn eval-analyzed-doc [{:as analyzed-doc :keys [->hash blocks set-status-fn]}]
   (let [deref-forms (into #{} (filter analyzer/deref?) (keys ->hash))
         {:as evaluated-doc :keys [blob-ids]}
-        (reduce (fn [{:as state :keys [blob->result]} {:as cell :keys [type]}]
-                  (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
-                        {:as result :nextjournal/keys [blob-id]} (when (= :code type)
-                                                                   (read+eval-cached state-with-deref-deps-evaluated cell))]
-                    (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
-                      blob-id (update :blob-ids conj blob-id)
-                      blob-id (assoc-in [:blob->result blob-id] result))))
+        (reduce (fn [state cell]
+                  (when (and (parser/code? cell) set-status-fn)
+                    (set-status-fn (->eval-status analyzed-doc (count (filter parser/code? (:blocks state))) cell)))
+                  (try (let [state-with-deref-deps-evaluated (analyzer/hash-deref-deps state cell)
+                             {:as result :nextjournal/keys [blob-id]} (when (parser/code? cell)
+                                                                        (read+eval-cached state-with-deref-deps-evaluated cell))]
+                         (cond-> (update state-with-deref-deps-evaluated :blocks conj (cond-> cell result (assoc :result result)))
+                           blob-id (update :blob-ids conj blob-id)
+                           blob-id (assoc-in [:blob->result blob-id] result)))
+                       (catch Throwable e
+                         (reduced (assoc state :error e)))))
                 (-> analyzed-doc
                     (assoc :blocks [] :blob-ids #{})
                     (update :->hash (fn [h] (apply dissoc h deref-forms))))
                 blocks)]
-    (-> evaluated-doc
-        (update :blob->result select-keys blob-ids)
-        (dissoc :blob-ids))))
+    (doto (-> evaluated-doc
+              (update :blob->result select-keys blob-ids)
+              (dissoc :blob-ids)) analyzer/throw-if-dep-is-missing)))
+
+(defn process-cljs [{:as doc :keys [->hash blocks set-status-fn]}]
+  (reduce (fn [state cell]
+            (update state :blocks conj (cond-> cell
+                                         (parser/code? cell)
+                                         (assoc :result (v/eval-cljs-str (:text cell))))))
+          (assoc doc :blocks [])
+          blocks))
+
+(defn cljs? [doc]
+  (boolean (and (string? (:file doc))
+                (str/ends-with? (:file doc) ".cljs"))))
 
 ;; TODO: used in builder to drop analyzer dependency, cfr. below
 (defn analyze-doc [doc] (-> doc analyzer/build-graph analyzer/hash))
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
-  [in-memory-cache parsed-doc]
-  (let [{:as analyzed-doc :keys [ns]} (analyzer/build-graph parsed-doc)]
-    (binding [*ns* ns]
-      (-> analyzed-doc
-          analyzer/hash
-          (assoc :blob->result in-memory-cache)
-          eval-analyzed-doc))))
+  [in-memory-cache {:as parsed-doc :keys [set-status-fn no-cache]}]
+  (if (cljs? parsed-doc)
+    (process-cljs parsed-doc)
+    (let [{:as analyzed-doc :keys [ns]}
+
+          (cond
+            no-cache
+            parsed-doc
+
+            config/cache-disabled?
+            (assoc parsed-doc :no-cache true)
+
+            :else
+            (do
+              (when set-status-fn
+                (set-status-fn {:progress 0.10 :status "Analyzing…"}))
+              (-> parsed-doc
+                  (assoc :blob->result in-memory-cache)        
+                  analyzer/build-graph
+                  analyzer/hash)))]
+      (when (and (not-empty (:var->block-id analyzed-doc))
+                 (not ns))
+        (throw (ex-info "namespace must be set" (select-keys analyzed-doc [:file :ns]))))
+      (binding [*ns* ns]
+        (eval-analyzed-doc analyzed-doc)))))
 
 (defn eval-doc
   "Evaluates the given `doc`."
@@ -215,7 +302,7 @@
   ([file] (eval-file {} file))
   ([in-memory-cache file]
    (->> file
-        (parser/parse-file {:doc? true})
+        parser/parse-file
         (eval-doc in-memory-cache))))
 
 #_(eval-file "notebooks/hello.clj")
@@ -226,6 +313,7 @@
   "Evaluated the given `code-string` using the optional `in-memory-cache` map."
   ([code-string] (eval-string {} code-string))
   ([in-memory-cache code-string]
-   (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
+   (eval-doc in-memory-cache (parser/parse-clojure-string code-string))))
 
 #_(eval-string "(+ 39 3)")
+#_(nextjournal.clerk/show! "notebooks/hello.md")

@@ -1,7 +1,9 @@
 {
+  "type": "module",
   "dependencies": {
     "@codemirror/autocomplete": "^6.0.2",
     "@codemirror/commands": "^6.0.0",
+    "@codemirror/lang-markdown": "6.0.0",
     "@codemirror/language": "^6.1.0",
     "@codemirror/lint": "^6.0.0",
     "@codemirror/search": "^6.0.0",
@@ -11,25 +13,29 @@
     "@lezer/generator": "^1.0.0",
     "@lezer/highlight": "^1.0.0",
     "@lezer/lr": "^1.0.0",
+    "@lezer/markdown": "^1.0.0",
+    "@nextjournal/lang-clojure": "^1.0.0",
+    "@nextjournal/lezer-clojure": "1.0.0",
     "d3-require": "^1.2.4",
     "emoji-regex": "^10.0.0",
-    "framer-motion": "^6.2.8",
+    "fraction.js": "4.2.1",
+    "framer-motion": "^10.12.16",
     "katex": "^0.12.0",
     "lezer-clojure": "1.0.0-rc.2",
     "markdown-it": "^12.2.0",
     "markdown-it-block-image": "^0.0.3",
-    "markdown-it-sidenote": "gerwitz/markdown-it-sidenote#aa5de8ce3168b7d41cb33c3aed071a5f41ce0083",
-    "markdown-it-texmath": "^0.9.1",
+    "markdown-it-footnote": "^3.0.3",
+    "markdown-it-texmath": "^1.0.0",
     "markdown-it-toc-done-right": "^4.2.0",
+    "odex": "3.0.0-rc.4",
     "punycode": "2.1.1",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "use-sync-external-store": "^1.2.0",
+    "vh-sticky-table-header": "^1.2.1",
     "w3c-keyname": "2.2.4"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.0",
-    "postcss": "^8.4.5",
-    "shadow-cljs": "^2.16.7",
-    "tailwindcss": "^3.0.9"
+    "process": "^0.11.10"
   }
 }

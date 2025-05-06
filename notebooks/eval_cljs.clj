@@ -2,6 +2,8 @@
 (ns eval-cljs
   (:require [nextjournal.clerk :as clerk]))
 
+;; > ⚠️ Please see [require_cljs.clj](/notebooks/require_cljs.clj) for a much easier way to do the same thing.
+
 ;; Let's load some .cljs code from a file!
 ;; Because we want to re-render this notebook when the .cljs code changes, we use `::clerk/no-cache`
 ;; and set `clerk/code` as the viewer so we can see the code:
@@ -13,22 +15,13 @@
 (clerk/eval-cljs-str cljs-code)
 
 ;; And now let's use those functions!
+(def motion-div-viewer
+  {:render-fn 'render-fns/motion-div
+   :transform-fn clerk/mark-presented})
 
-(clerk/with-viewer {:render-fn 'render-fns/heading}
-  "My awesome heading")
-
-(clerk/with-viewer {:render-fn 'render-fns/paragraph}
-  "My awesome paragraph :)")
-
-
-;; Now let's try to figure out a way so our slider can still be dragged:
-^{::clerk/viewers [{:pred ::clerk/var-from-def
-                    :transform-fn (comp clerk/mark-presented (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
-                                                                                 {:var-name (symbol var-from-def) :value @@var-from-def})))
-                    :render-fn '(fn [{:keys [var-name value]}]
-                                  (v/html [:input {:type :range
-                                                   :value value
-                                                   :on-change #(v/clerk-eval `(reset! ~var-name (Integer/parseInt ~(.. % -target -value))))}]))}]}
-(defonce slider-state (atom 42))
-
-@slider-state
+(clerk/with-viewer motion-div-viewer
+  {:class "w-[150px] h-[150px] bg-purple-200 border-2 border-purple-600 rounded-xl m-6"
+   :animate {:rotate 360}
+   :transition {:duration 2
+                :repeat 12345
+                :repeatType "reverse"}})

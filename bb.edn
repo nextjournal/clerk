@@ -1,57 +1,84 @@
 {:min-bb-version "0.9.159"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu
-        {:git/sha "3c4cf5e4dda3648e0d4c575a3433d19c511dd3e5"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
+        io.github.nextjournal/cas-client {:git/sha "d9f838937ebc8b645fe5764949e72a6df8e344de"}
+        mvxcvi/multiformats {:git/url "https://github.com/greglook/clj-multiformats"
+                             :git/sha "1189f1fb26db180cd8dcfd50518cdf553c0ff9e1"}}
  :tasks
  {:requires
   ([tasks :as t]
    [clojure.string :as str]
    [babashka.process :as p]
    [babashka.fs :as fs]
-   [babashka.cli :as cli])
-
-  copy-viewer-css {:doc "TODO: please complement this docstring"
-                   :task
-                   (fs/copy (t/viewer-css-path)
-                            "resources/stylesheets/viewer.css" #{:replace-existing})}
+   [babashka.cli :as cli]
+   [cheshire.core :as json])
 
   yarn-install {:doc "Installs and updates npm dependencies"
                 :task (shell "yarn install")}
 
   watch:cljs {:doc "Starts shadow-cljs & clerk"
-              :task (apply clojure "-X:test:sci:demo:dev" *command-line-args*)
+              :task (apply clojure "-X:build:test:sci:demo:dev" *command-line-args*)
               :depends [yarn-install]}
 
   build:js {:doc "Builds JS"
             :depends [yarn-install]
-            :task (clojure "-M:sci:demo:dev release browser")}
-
-  write-hash {:doc "Write viewer resource hash to resources. Intended to be used in a pre-commit hook."
-              :task viewer-resources-hashing/write-viewer-resource-hash}
+            :task (clojure "-M:sci:demo:dev release viewer")}
 
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
-                                 :task viewer-resources-hashing/build+upload-viewer-resources}
+                                 :extra-paths ["src"]
+                                 :task nextjournal.clerk.render.hashing/build+upload-viewer-resources}
 
-  release:js {:doc "Uploads the js release and updates the sha reference."
-              :task (clojure "-T:build upload-to-cas :resource viewer.js")
-              :depends [build:js]}
+  lint {:doc "Lints project using clj-kondo"
+        :task (apply shell "clj-kondo --lint src test" *command-line-args*)}
+
+  lint:copy-configs {:doc "Copies clj-kondo configs from deps"
+                     :task (println "clj-kondo --lint"
+                                    (-> (shell {:out :string} "clojure -Spath") :out str/trim)
+                                    "--dependencies --copy-configs --skip-lint")}
 
   build:static-app {:doc "Builds a static app with default notebooks"
                     :task (apply clojure "-X:demo:nextjournal/clerk" *command-line-args*)}
 
+  build:static-app-test-release
+  {:doc "Builds static app which uses output of build:js.
+         Run with additional --paths notebooks/cherry.clj to test single notebook."
+   :task (apply clojure "-M:demo:nextjournal/clerk:test-release-js" *command-line-args*)}
+
+  -check {:depends [lint test:clj]}
+
+  check {:doc "Check to run before pushing"
+         :task (run '-check {:parallel true})}
+
   test:clj {:doc "Run clojure tests"
-            :task (apply clojure "-X:test" *command-line-args*)}
+            :task
+            (let [{clojure-version :clojure} (cli/parse-opts *command-line-args*)]
+              (apply clojure (cond-> "-X:test"
+                               clojure (str ":" clojure-version))
+                     *command-line-args*))}
+
+  playwright:version {:doc "Print used playwright version from ui_tests/yarn.json"
+                      :task (print (->> (babashka.process/shell {:out :string} "grep -E 'playwright-core \"(.*)\"' ui_tests/yarn.lock")
+                                        :out
+                                        str/trim
+                                        (re-find (re-pattern "playwright-core \"(.*)\""))
+                                        second))}
+
+  playwright:install {:task (shell {:dir "ui_tests"} "yarn playwright install --with-deps chromium")}
 
   test:static-app {:doc "Run UI tests for current SHA. Provide SHA as command line arg."
                    :task (do (shell {:dir "ui_tests"} "yarn install")
-                             (shell {:dir "ui_tests"} "yarn nbb -m playwright-tests"
-                                    (or (when-let [args (not-empty (cli/parse-opts *command-line-args*))]
-                                          (cond-> args
-                                            (contains? args :file)
-                                            (assoc :url (str "file://" (fs/cwd) fs/file-separator (:file args)))))
-                                        {:sha (-> (shell {:out :string} "git rev-parse HEAD")
-                                                  :out
-                                                  str/trim)})))}
+                             (let [args (not-empty (cli/parse-opts *command-line-args*))]
+                               (if-not (:skip-install args)
+                                 (run 'playwright:install)
+                                 (println "Skipping playwright install"))
+                               (shell {:dir "ui_tests"} "yarn nbb -m playwright-tests"
+                                      (or (when args
+                                            (cond-> args
+                                              (contains? args :file)
+                                              (assoc :url (str "file://" (fs/cwd) fs/file-separator (:file args)))))
+                                          {:sha (-> (shell {:out :string} "git rev-parse HEAD")
+                                                    :out
+                                                    str/trim)}))))}
 
   update-meta {:doc "Updates meta.edn with current version (based on commit count currently)."
                :task (t/update-meta)}
@@ -60,6 +87,12 @@
   {:doc "Updates CHANGELOG.md with "
    :task
    (t/update-changelog)}
+
+  link-changelog {:doc "Turns the issue references in the changelog into links"
+                  :task (do (defn tag->issue-link [s]
+                              (clojure.string/replace s (re-pattern "(?<!\\[)#([0-9]+)") "[#$1](https://github.com/nextjournal/clerk/issues/$1)"))
+                            (let [f "CHANGELOG.md"]
+                              (spit f (tag->issue-link (slurp f)))))}
 
   jar {:doc "Build jar"
        :task (do
@@ -87,6 +120,16 @@
                        :out
                        str/trim)
 
+  test-jar {:doc "Tests current jar"
+            :task (do
+                    (println (str "Testing jar: 'clerk-" (t/version) ".jar'"))
+                    (clojure (str "-Sforce -Srepro -Sdeps '"
+                                  (pr-str {:aliases {:test-jar {:jvm-opts ["-Dclojure.main.report=stdout"]
+                                                                :deps {'io.github.nextjournal/clerk {:local/root (str "./target/clerk-" (t/version) ".jar")}}
+                                                                :exec-fn 'nextjournal.clerk/build!
+                                                                :exec-args {:paths ["notebooks/hello.clj"]}}}})
+                                  "' -T:test-jar")))}
+
   ci:publish {:doc "Publish task which will be run on CI"
               :depends [-current-tag -current-branch]
               :task (do
@@ -94,16 +137,20 @@
                       (prn :current-branch -current-branch)
                       (if (and -current-tag (= "main" -current-branch))
                         (do
+                          (println "Building jar")
+                          (clojure "-T:build jar")
+                          (run 'test-jar)
                           (println "Deploying to clojars")
                           (clojure "-T:build deploy"))
                         ;; still build jar with updated commit count for artifact upload
                         (do
                           (run 'update-meta)
-                          (run 'jar))))}
+                          (run 'jar)
+                          (run 'test-jar))))}
 
-  install-git-hooks {:doc "Install git hooks"
-                     :task (fs/copy "dev/pre-commit" ".git/hooks" {:replace-existing true})}
+  uninstall-git-hooks {:doc "Uninstall git hooks we installed previously and no longer need"
+                       :task (fs/delete-if-exists ".git/hooks/pre-commit")}
 
-  -dev {:depends [install-git-hooks watch:cljs copy-viewer-css]}
+  -dev {:depends [uninstall-git-hooks watch:cljs]}
   dev {:doc "Start app in dev mode, compiles cljs and css"
        :task (run '-dev {:parallel true})}}}

@@ -1,12 +1,15 @@
 (ns nextjournal.clerk.eval-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+  (:require [babashka.fs :as fs]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.viewer :as viewer]))
+            [nextjournal.clerk.viewer :as viewer]
+            [nextjournal.clerk.webserver :as webserver]))
 
 (deftest eval-string
   (testing "hello 42"
@@ -62,6 +65,19 @@
       (is (= result
              (eval/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
 
+  (testing "side-effecting expression returning nil gets cached in memory"
+    (let [code "(ns my-random-test-ns-2) (do (clojure.lang.Var/intern (the-ns 'my-random-test-ns-2) 'ruuid (java.util.UUID/randomUUID)) nil)"
+          {:keys [blob->result]} (eval/eval-string code)]
+      (is (= @(resolve 'my-random-test-ns-2/ruuid)
+             (do (eval/eval-string blob->result code)
+                 @(resolve 'my-random-test-ns-2/ruuid))))))
+
+  (testing "var gets cached in cas"
+    (let [code-str (format "(ns nextjournal.clerk.eval-test-%s) (def my-uuid (java.util.UUID/randomUUID))" (rand-int 100000))
+          get-uuid #(-> % :blocks peek :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
+      (is (= (get-uuid (eval/eval-string code-str))
+             (get-uuid (eval/eval-string code-str))))))
+
   (testing "random expression doesn't get cached with no-cache"
     (is (not= (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)")
               (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-random-test-ns-3) (java.util.UUID/randomUUID)"))))
@@ -99,13 +115,19 @@
   (testing "assigning viewers from form meta"
     (is (match? {:blocks [{:result {:nextjournal/viewer fn?}}]}
                 (eval/eval-string "^{:nextjournal.clerk/viewer nextjournal.clerk/table} (def markup [:h1 \"hi\"])")))
-    (is (match? {:blocks [{:result {:nextjournal/viewer :html}}]}
-                (eval/eval-string "^{:nextjournal.clerk/viewer :html} (def markup [:h1 \"hi\"])"))))
+    (is (match? {:blocks [{:result {:nextjournal/viewer `viewer/html}}]}
+                (eval/eval-string "^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/html} (def markup [:h1 \"hi\"])"))))
 
   (testing "var result that's not from a def should stay untouched"
     (is (match? {:blocks [{:result {:nextjournal/value {:nextjournal.clerk/var-from-def var?}}}
                           {:result {:nextjournal/value var?}}]}
                 (eval/eval-string "(def foo :bar) (var foo)"))))
+
+  (testing "definitions occurring in side effects from macro expansions should not end up wrapped in var-from-def maps as the cell result"
+    (is (= :my-value
+           (-> (eval/eval-string "(ns nextjournal.clerk.eval-test.def-side-effects {:nextjournal.clerk/no-cache true})
+(defmacro define [name val] `(do (def ~name ~val) ~val))
+(define my-value :my-value)") :blocks peek :result :nextjournal/value))))
 
   (testing "can handle unbounded sequences"
     (is (match? {:blocks [{:result {:nextjournal/value seq?}}]}
@@ -114,14 +136,22 @@
                 (eval/eval-string "{:a (range)}"))))
 
   (testing "can handle failing hash computation for deref-dep"
-    (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state")))
+    (eval/eval-string "(ns test-deref-hash (:require [nextjournal.clerk :as clerk])) (defonce !state (atom [(clerk/md \"_hi_\")])) @!state"))
+
+  (testing "won't eval forward declarations"
+    (is (:error
+         (eval/eval-string "(ns test-forward-declarations {:nextjournal.clerk/no-cache true})
+(declare delayed-def)
+(inc delayed-def)
+(def delayed-def 123)")))))
 
 (defn eval+extract-doc-blocks [code-str]
   (-> code-str
       eval/eval-string
       view/doc->viewer
       :nextjournal/value
-      :blocks))
+      :blocks
+      (->> (mapcat :nextjournal/value))))
 
 (deftest eval-string+doc->viewer
   (testing "assigns correct width from viewer function opts"
@@ -142,31 +172,32 @@
                  {:nextjournal/width :wide}]
                 (->> "(ns clerk-test-width {:nextjournal.clerk/visibility {:code :hide}})
 
-^{:nextjournal.clerk/viewer :table :nextjournal.clerk/width :full}
+^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/table-viewer :nextjournal.clerk/width :full}
 (def dataset
   [[1 2] [3 4]])
 
-^{:nextjournal.clerk/viewer :html :nextjournal.clerk/width :wide}
+^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/html-viewer :nextjournal.clerk/width :wide}
 [:div.bg-red-200 [:h1 \"Wide Hiccup\"]]
 "
                      eval+extract-doc-blocks
                      (mapv #(select-keys % [:nextjournal/width]))))))
 
   (testing "can handle uncounted sequences"
-    (is (match? [{:nextjournal/viewer {:name :code}
+    (is (match? [{:nextjournal/viewer {:name `viewer/code-block-viewer}
                   :nextjournal/value "(range)"}
-                 {:nextjournal/viewer {:name :clerk/result}
-                  :nextjournal/value {:nextjournal/edn string?
-                                      :nextjournal/fetch-opts {:blob-id string?}
+                 {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "(range)"))))
 
+  (testing "Skipping pagination for strings"
+    (is (= "012345678910111213141516171819202122232425262728293031323334353637383940414243444546474849"
+           (-> (eval+extract-doc-blocks "^{:nextjournal.clerk/page-size nil} (apply str (range 50))")
+               second :nextjournal/value :nextjournal/presented :nextjournal/value))))
+
   (testing "assigns folded visibility"
-    (is (match? [{:nextjournal/viewer {:name :code-folded}
-                  :nextjournal/value "^{:nextjournal.clerk/visibility :fold}{:some :map}"}
-                 {:nextjournal/viewer {:name :clerk/result}
-                  :nextjournal/value {:nextjournal/edn string?
-                                      :nextjournal/fetch-opts {:blob-id string?}
+    (is (match? [{:nextjournal/viewer {:name `viewer/folded-code-block-viewer}
+                  :nextjournal/value "{:some :map}"}
+                 {:nextjournal/value {:nextjournal/fetch-opts {:blob-id string?}
                                       :nextjournal/hash string?}}]
                 (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility :fold}{:some :map}"))))
 
@@ -180,11 +211,77 @@
            (eval+extract-doc-blocks "^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
  {:some :map}")))))
 
+(deftest eval-analyzed-doc
+  (testing "should fail when var is only present at runtime but not in file"
+    (intern (create-ns 'missing-var) 'foo :bar)
+    (is (thrown-with-msg? Exception
+                          #"is being referenced, but Clerk can't find it in the namespace's source code"
+                          (eval/eval-string "(ns missing-var) foo"))))
+
+  (testing "should not fail on var present at runtime if there's no ns form"
+    (intern (create-ns 'existing-var) 'foo :bar)
+    (is (eval/eval-string "(in-ns 'existing-var) foo"))))
+
+(deftest eval+cache!
+  (testing "edge case where some form is not evaluated"
+    (is (eval+extract-doc-blocks "(ns repro-crash-when-not-all-forms-are-evaluated
+  {:nextjournal.clerk/no-cache true})
+
+(do
+  (def b 2)
+  (declare a))
+
+(def a 1)
+
+(+ a b)
+"))))
+
+(clerk/defcached my-expansive-thing
+  (do (Thread/sleep 1 #_10000) 42))
+
 (deftest defcached
-  (clerk/defcached my-expansive-thing
-    (do #_(Thread/sleep 10000) 42))
   (is (= 42 my-expansive-thing)))
 
 (deftest with-cache
   (is (= 42 (clerk/with-cache
-              (do #_(Thread/sleep 10000) 42)))))
+              (do (Thread/sleep 1 #_10000) 42)))))
+
+(deftest cacheable-value?-test
+  (testing "finite sequence is cacheable"
+    (is (eval/cachable? (vec (range 100)))))
+  (testing "infinite sequences can't be cached"
+    (is (not (eval/cachable? (range))))
+    (is (not (eval/cachable? (map inc (range))))))
+  (testing "class is not cachable"
+    (is (not (eval/cachable? java.lang.String)))
+    (is (not (eval/cachable? {:foo java.lang.String}))))
+  (testing "image is cachable"
+    (is (eval/cachable? (javax.imageio.ImageIO/read (io/file "trees.png"))))))
+
+(deftest show!-test
+  (testing "in-memory cache is preserved when exception is thrown (#549)"
+    (let [code "{:f inc :n (rand-int 100000)}"
+          get-result #(:blob->result @webserver/!doc)]
+      (clerk/show! (java.io.StringReader. code))
+      (let [result-first-run (get-result)]
+        (try (clerk/show! (java.io.StringReader. (str code " (throw (ex-info \"boom\" {}))")))
+             (catch Exception _ nil))
+        (clerk/show! (java.io.StringReader. code))
+        (is (= result-first-run (get-result)))))))
+
+(deftest present!-test
+  (testing "presented value is returned"
+    (is (= {:path [0]
+            :nextjournal/value 42
+            :nextjournal/render-opts {:id "nextjournal.clerk.presenter/presented-result"}}
+           (select-keys (clerk/present! 42) [:path :nextjournal/render-opts :nextjournal/value]))))
+  (testing "present"
+    (is (= 42 (:nextjournal/value (clerk/present 42))))))
+
+(deftest file-var-metadata-test
+  (testing "show with file string arg"
+    (clerk/show! "test/nextjournal/clerk/fixtures/hello.clj")
+    (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer))))))
+  (testing "show with ns arg"
+    (clerk/show! 'nextjournal.clerk.fixtures.hello)
+    (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer)))))))

@@ -40,6 +40,12 @@
                     (str "{io.github.nextjournal/clerk {:mvn/version " (pr-str (shared/version)) "}}"))
        (spit "README.md")))
 
+(defn update-book []
+  (->> (str/replace (slurp "book.clj")
+                    (re-pattern "\\{io.github.nextjournal/clerk \\{:mvn/version \".+\"\\}\\}")
+                    (str "{io.github.nextjournal/clerk {:mvn/version " (pr-str (shared/version)) "}}"))
+       (spit "book.clj")))
+
 (defn tag []
   (let [tag (str "v" (shared/version))]
     (shell "git tag" tag)))
@@ -48,8 +54,8 @@
   (update-meta)
   (update-changelog)
   (update-readme)
+  (update-book)
   (shell "git add"
-         "resources/viewer-js-hash"
          "resources/META-INF"
          "README.md"
          "CHANGELOG.md")

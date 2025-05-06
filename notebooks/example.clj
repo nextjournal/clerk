@@ -14,4 +14,5 @@
   (macroexpand '(example (+ 1 2)))
   (clerk/html [:h1 "👋"])
   (range)
-  (javax.imageio.ImageIO/read (java.net.URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif")))
+  (def my-var 'should-display-its-value)
+  (clerk/image "trees.png"))

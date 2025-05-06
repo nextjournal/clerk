@@ -6,27 +6,20 @@
   {:nextjournal.clerk/visibility {:code :hide}}
   (:require [nextjournal.clerk.viewer :as v]))
 
-(defn update-child-viewers [f]
-  (fn [viewer]
-    (update viewer :transform-fn (fn [transform-fn]
-                                   (fn [wrapped-value]
-                                     (-> wrapped-value
-                                         transform-fn
-                                         (update :nextjournal/viewers f)))))))
-
-(def md-viewers
+(def custom-markdown-viewers
   [{:name :nextjournal.markdown/text
     :transform-fn (v/into-markup [:span {:style {:color "#64748b"}}])}
    {:name :nextjournal.markdown/ruler
     :transform-fn (constantly
                    (v/html [:div {:style {:width "100%" :height "80px" :background-position "center" :background-size "cover"
-                                          :background-image "url(https://www.maxpixel.net/static/photo/1x/Ornamental-Separator-Decorative-Line-Art-Divider-4715969.png)"}}]))}])
+                                          :background-image "url(https://cdn.pixabay.com/photo/2019/12/24/04/49/divider-4715969_960_720.png)"}}]))}
+   {:name :nextjournal.markdown/table
+    :transform-fn (v/into-markup [:table.monospace])}])
 
-(def viewers-with-pretty-markdown
-  (v/update-viewers (v/get-default-viewers) {(comp #{:markdown} :name)
-                                             (update-child-viewers #(v/add-viewers % md-viewers))}))
+(def pretty-markdown-viewer
+  (update v/markdown-viewer :add-viewers v/add-viewers custom-markdown-viewers))
 
-(v/reset-viewers! viewers-with-pretty-markdown)
+(v/add-viewers! [pretty-markdown-viewer])
 
 ;; ## Sections
 ;;

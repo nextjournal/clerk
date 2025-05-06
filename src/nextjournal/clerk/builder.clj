@@ -1,41 +1,63 @@
 (ns nextjournal.clerk.builder
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
+            [babashka.process :refer [sh]]
             [clojure.java.browse :as browse]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [nextjournal.clerk.builder-ui :as builder-ui]
+            [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
+            [nextjournal.clerk.git :as git]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
+         "README.md"
          "notebooks/markdown.md"
+         "notebooks/markdown_fences.md"
          "notebooks/onwards.md"]
         (map #(str "notebooks/" % ".clj"))
         ["cards"
-         "docs"
+         "cherry"
+         "controlling_width"
+         "document_linking"
+         "editor"
          "hello"
          "how_clerk_works"
+         "exec_status"
          "eval_cljs"
          "example"
+         "fragments"
+         "hiding_clerk_metadata"
+         "js_import"
+         "meta_toc"
+         "multiviewer"
          "pagination"
          "paren_soup"
-         "readme"
          "rule_30"
          "slideshow"
          "visibility"
          "viewer_api"
          "viewer_api_meta"
+         "viewer_classes"
          "viewer_d3_require"
          "viewers_nested"
          "viewer_normalization"
+         "viewers/by_val_meta"
+         "viewers/caption"
+         "viewers/code"
+         "viewers/context"
+         "viewers/control_lab"
          "viewers/custom_markdown"
          "viewers/grid"
          "viewers/html"
          "viewers/image"
-         "viewers/image_layouts"
+         #_"viewers/image_layouts" ;; commented out until https://etc.usf.edu is back online
          "viewers/in_text_eval"
          "viewers/instants"
          "viewers/last_result"
@@ -76,21 +98,26 @@
                                  (str "Errored in " duration ". ❌\n")
                                  (str "Done in " duration ". ✅\n"))
       :building (str "🔨 Building \"" (:file doc) "\"… ")
-      :downloading-cache (str "⏬ Downloading distributed cache… ")
-      :uploading-cache (str "⏫ Uploading distributed cache… ")
+      :compiling-css "🎨 Compiling CSS… "
+      :ssr "🧱 Server Side Rendering… "
+      :downloading-cache "⏬ Downloading distributed cache… "
+      :uploading-cache "⏫ Uploading distributed cache… "
       :finished (str "📦 Static app bundle created in " duration ". Total build time was " (-> event :total-duration format-duration) ".\n"))))
+
+(defn ^:private print+flush [x]
+  (print x)
+  (flush))
 
 (defn stdout-reporter [build-event]
   (doto (describe-event build-event)
-    (print)
-    (do (flush))))
+    print+flush))
 
 (defn build-ui-reporter [{:as build-event :keys [stage]}]
   (when (= stage :init)
     (builder-ui/reset-build-state!)
-    ((resolve 'nextjournal.clerk/show!) (clojure.java.io/resource "nextjournal/clerk/builder_ui.clj"))
-    (when-let [{:keys [port]} (and (get-in build-event [:build-opts :browse]) @webserver/!server)]
-      (browse/browse-url (str "http://localhost:" port))))
+    ((resolve 'nextjournal.clerk/show!) (find-ns 'nextjournal.clerk.builder-ui))
+    (when (get-in build-event [:build-opts :browse])
+      (webserver/browse!)))
   (stdout-reporter build-event)
   (builder-ui/add-build-event! build-event)
   (binding [*out* (java.io.StringWriter.)]
@@ -99,121 +126,208 @@
 (def default-out-path
   (str "public" fs/file-separator "build"))
 
-(defn process-build-opts [{:as opts :keys [paths index]}]
+(def builtin-index
+  (io/resource "nextjournal/clerk/index.clj"))
+
+(defn process-build-opts [{:as opts :keys [package index expand-paths?]}]
   (merge {:out-path default-out-path
-          :bundle? false
+          :package :directory
+          :render-router :fetch-edn
           :browse? false
           :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
-         (cond-> opts
-           index (assoc :index (str index)))))
+         (git/read-git-attrs)
+         (let [opts+index (cond-> opts
+                            index (assoc :index (str index)))
+               {:as opts' :keys [expanded-paths]} (cond-> opts+index
+                                                    expand-paths? (merge (paths/expand-paths opts+index)))]
+           (-> opts'
+               (update :resource->url #(merge {} %2 %1) @config/!resource->url)
+               (cond-> #_opts'
+                 (= :single-file package)
+                 (assoc :render-router :bundle)
+                 expand-paths?
+                 (dissoc :expand-paths?)
+                 (and (not index) (< 1 (count expanded-paths)) (every? (complement viewer/index-path?) expanded-paths))
+                 (as-> opts
+                     (-> opts (assoc :index builtin-index) (update :expanded-paths conj builtin-index))))))))
 
-#_(process-build-opts {:index 'book.clj})
+#_(process-build-opts {:index 'book.clj :expand-paths? true})
+#_(process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})
+#_(process-build-opts {:paths ["notebooks/rule_30.clj"
+                               "notebooks/markdown.md"] :expand-paths? true})
+
+(defn build-static-app-opts [opts docs]
+  (let [path->doc (into {} (map (juxt (comp str fs/strip-ext strip-index (partial viewer/map-index opts) :file) :viewer)) docs)]
+    (assoc opts
+           :path->doc path->doc
+           :paths (vec (keys path->doc)))))
+
+(defn- node-ssr!
+  [{:keys [viewer-js state]
+    :or {viewer-js
+         ;; for local REPL testing
+         "./public/js/viewer.js"}}]
+  (sh {:in (str "import '" viewer-js "';"
+                "globalThis.CLERK_SSR = true;"
+                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
+      "node"
+      "--abort-on-uncaught-exception"
+      "--experimental-network-imports"
+      "--input-type=module"
+      "--trace-warnings"))
+
+(comment
+  (declare so) ;; captured in REPL in ssr! function
+  (node-ssr! {:state so})
+  )
+
+(defn ssr!
+  "Shells out to node to generate server-side-rendered html."
+  [{:as static-app-opts :keys [report-fn resource->url]}]
+  (report-fn {:stage :ssr})
+  (let [doc (get (:path->doc static-app-opts) (:current-path static-app-opts))
+        static-app-opts (-> (assoc static-app-opts :doc doc)
+                            (dissoc :path->doc)
+                            (assoc :render-router :serve))
+        {duration :time-ms :keys [result]}
+        (eval/time-ms (node-ssr! {:viewer-js (resource->url "/js/viewer.js")
+                                  :state static-app-opts}))
+        {:keys [out err exit]} result]
+    (if (= 0 exit)
+      (do
+        (report-fn {:stage :done :duration duration})
+        (assoc static-app-opts :html out))
+      (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) result)))))
+
+(defn cleanup [build-opts]
+  (select-keys build-opts
+               [:package :render-router :path->doc :current-path :resource->url :exclude-js? :index :html]))
 
 (defn write-static-app!
   [opts docs]
-  (let [{:as opts :keys [bundle? out-path browse? index]} (process-build-opts opts)
-        paths (mapv :file docs)
-        path->doc (into {} (map (juxt :file :viewer)) docs)
-        map-index-fn (if index (fn [path] ({index "index.clj"} path path)) identity)
-        path->url (into {} (map (juxt identity #(cond-> (-> % map-index-fn strip-index) (not bundle?) ->html-extension))) paths)
-        static-app-opts (assoc opts :bundle? bundle? :path->doc path->doc :paths (vec (keys path->doc)) :path->url path->url)
-        index-html (str out-path fs/file-separator "index.html")]
+  (let [{:keys [package out-path browse? ssr?]} opts
+        index-html (str out-path fs/file-separator "index.html")
+        {:as static-app-opts :keys [path->doc]} (build-static-app-opts opts docs)]
+    (when-not (contains? (set (keys path->doc)) "")
+      (throw (ex-info "Index must have been processed at this point" {:static-app-opts static-app-opts})))
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
-    (if bundle?
-      (spit index-html (view/->static-app static-app-opts))
-      (do (when-not (contains? (-> path->url vals set) "") ;; no user-defined index page
-            (spit index-html (view/->static-app (dissoc static-app-opts :path->doc))))
-          (doseq [[path doc] path->doc]
-            (let [out-html (str out-path fs/file-separator (-> path map-index-fn ->html-extension))]
-              (fs/create-dirs (fs/parent out-html))
-              (spit out-html (view/->static-app (assoc static-app-opts :path->doc (hash-map path doc) :current-path path)))))))
+    (if (= :single-file package)
+      (spit index-html (view/->html (cleanup static-app-opts)))
+      (doseq [[path doc] path->doc]
+        (let [out-html (fs/file out-path path "index.html")]
+          (fs/create-dirs (fs/parent out-html))
+          (spit (fs/file out-path (str (or (not-empty path) "index") ".edn"))
+                (viewer/->edn doc))
+          (spit out-html (view/->html (-> static-app-opts
+                                          (assoc :current-path path)
+                                          (cond-> ssr? ssr!)
+                                          (dissoc :path->doc)
+                                          cleanup))))))
     (when browse?
-      (browse/browse-url (-> index-html fs/absolutize .toString path-to-url-canonicalize)))
+      (browse/browse-url (if-let [server-url (and (= out-path "public/build") (webserver/server-url))]
+                           (str server-url "/build/")
+                           (-> index-html fs/absolutize .toString path-to-url-canonicalize))))
     {:docs docs
      :index-html index-html
-     :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build" index-html)}))
+     :build-href (if (and @webserver/!server (= out-path default-out-path)) "/build/" index-html)}))
 
-(defn ^:private maybe-add-index [{:as build-opts :keys [paths paths-fn index]} resolved-paths]
-  (when (and index (or (not (string? index)) (not (fs/exists? index))))
-    (throw (ex-info "`:index` must be string and point to existing file" {:index index})))
-  (cond-> resolved-paths
-    (and index (not (contains? (set resolved-paths) index)))
-    (conj index)))
 
-#_(maybe-add-index {:index "book.clj"} nil)
+(defn compile-css!
+  "Compiles a minimal tailwind css stylesheet with only the used styles included, replaces the generated stylesheet link in html pages."
+  [{:as opts :keys [resource->url]} docs]
+  (let [tw-folder (fs/create-dirs "tw")
+        tw-input (str tw-folder "/input.css")
+        tw-config (str tw-folder "/tailwind.config.cjs")
+        tw-output (str tw-folder "/viewer.css")
+        tw-viewer (str tw-folder "/viewer.js")]
+    (spit tw-config (slurp (io/resource "stylesheets/tailwind.config.js")))
+    ;; NOTE: a .cjs extension is safer in case the current npm project is of type module (like Clerk's): in this case all .js files
+    ;; are treated as ES modules and this is not the case of our tw config.
+    (spit tw-input (slurp (io/resource "stylesheets/viewer.css")))
+    (spit tw-viewer (slurp (get resource->url "/js/viewer.js")))
+    (doseq [{:keys [file viewer]} docs]
+      (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
+              (fs/create-dirs (fs/parent path))
+              (str path))
+            (pr-str viewer)))
+    (let [{:as ret :keys [out err exit]}
+          (try (sh "tailwindcss"
+                   "--input"  tw-input
+                   "--config" tw-config
+                   ;; FIXME: pass inline
+                   ;;"--content" (str tw-viewer)
+                   ;;"--content" (str tw-folder "/**/*.edn")
+                   "--output" tw-output
+                   "--minify")
+               (catch java.io.IOException _
+                 (throw (Exception. "Clerk could not find the `tailwindcss` executable. Please install it using `npm install -D tailwindcss` and try again."))))]
+      (println err)
+      (println out)
+      (when-not (= 0 exit)
+        (throw (ex-info (str "Clerk build! failed\n" out "\n" err) ret))))
+    (let [url (viewer/store+get-cas-url! (assoc opts :ext "css") (fs/read-all-bytes tw-output))]
+      (fs/delete-tree tw-folder)
+      (update opts :resource->url assoc "/css/viewer.css" url))))
 
-(defn ^:private throw-when-empty [{:as build-opts :keys [paths paths-fn index]} expanded-paths]
-  (if (empty? expanded-paths)
-    (throw (ex-info "nothing to build" (merge {:expanded-paths expanded-paths} (select-keys build-opts [:paths :paths-fn :index]))))
-    expanded-paths))
+(defn doc-url
+  ([opts file path] (doc-url opts file path nil))
+  ([{:as opts :keys [package]} file path fragment]
+   (if (= :single-file package)
+     (cond-> (str "#/" path)
+       fragment (str ":" fragment))
+     (str (viewer/relative-root-prefix-from (viewer/map-index opts file)) path
+          (when fragment (str "#" fragment))))))
 
-(defn expand-paths [{:as build-opts :keys [paths paths-fn index]}]
-  (when (and paths paths-fn)
-    (binding [*out* *err*]
-      (println "[info] both `:paths` and `:paths-fn` are set, `:paths` will take precendence.")))
-  (when (not (or paths paths-fn index))
-    (throw (ex-info "must set either `:paths`, `:paths-fn` or `:index`." {:build-opts build-opts})))
-  (->> (cond paths (if (sequential? paths)
-                     paths
-                     (throw (ex-info "`:paths` must be sequential" {:paths paths})))
-             paths-fn (if (qualified-symbol? paths-fn)
-                        (try
-                          (if-let [resolved-var  (requiring-resolve paths-fn)]
-                            (let [resolved-paths (cond-> @resolved-var
-                                                   (fn? @resolved-var) (apply []))]
-                              (when-not (sequential? resolved-paths)
-                                (throw (ex-info (str "#'" paths-fn " must be sequential.") {:paths-fn paths-fn :resolved-paths resolved-paths})))
-                              resolved-paths)
-                            (throw (ex-info (str "#'" paths-fn " cannot be resolved.") {:paths-fn paths-fn}))))
-                        (throw (ex-info "`:path-fn` must be a qualified symbol pointing at an existing var." {:paths-fn paths-fn}))))
-       (maybe-add-index build-opts)
-       (mapcat (partial fs/glob "."))
-       (filter (complement fs/directory?))
-       (mapv (comp str fs/file))
-       (throw-when-empty build-opts)))
+(def valid-package-opts
+  #{:single-file :directory})
 
-#_(expand-paths {:paths ["notebooks/di*.clj"]})
-#_(expand-paths {:paths ['notebooks/rule_30.clj]})
-#_(expand-paths {:paths-fn `clerk-docs})
-#_(expand-paths {:paths-fn `clerk-docs-2})
-#_(do (defn my-paths [] ["notebooks/h*.clj"])
-      (expand-paths {:paths-fn `my-paths}))
-#_(expand-paths {:paths ["notebooks/viewers**"]})
+(defn validate-build-opts! [{:as opts :keys [package]}]
+  (when (and (contains? opts :package)
+             (not (contains? valid-package-opts package)))
+    (throw (ex-info (str "Invalid :package option: " package) {:package package :valid-options valid-package-opts}))))
 
 (defn build-static-app! [opts]
-  (let [{:as opts :keys [paths download-cache-fn upload-cache-fn bundle? report-fn]} (process-build-opts opts)
-        {:keys [expanded-paths error]} (try {:expanded-paths (expand-paths opts)}
-                                            (catch Exception e
-                                              {:error e}))
+  (let [{:as opts :keys [download-cache-fn upload-cache-fn report-fn compile-css? expanded-paths error]}
+        (doto (process-build-opts (assoc opts :expand-paths? true))
+          validate-build-opts!)
         start (System/nanoTime)
         state (mapv #(hash-map :file %) expanded-paths)
         _ (report-fn {:stage :init :state state :build-opts opts})
         _ (when error
-            (do (report-fn {:stage :parsed :error error :build-opts opts})
-                (throw error)))
+            (report-fn {:stage :parsed :error error :build-opts opts})
+            (throw (if-not (string? error) error (ex-info error (dissoc opts :report-fn)))))
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
                                                                   (try (conj state (eval/analyze-doc doc))
                                                                        (catch Exception e
-                                                                         (reduced {:error e}))))
+                                                                         (reduced {:error e :file (:file doc)}))))
                                                                 []
                                                                 state))
         _ (if-let [error (:error state)]
             (do (report-fn {:stage :analyzed :error error :duration duration})
-                (throw error))
+                (throw (ex-info (format "Clerk analysis failed on '%s'" (:file state))
+                                {:file (:file state)}
+                                error)))
             (report-fn {:stage :analyzed :state state :duration duration}))
         _ (when download-cache-fn
             (report-fn {:stage :downloading-cache})
             (let [{duration :time-ms} (eval/time-ms (download-cache-fn state))]
               (report-fn {:stage :done :duration duration})))
-        state (mapv (fn [doc idx]
+        single-file? (= :single-file (:package opts))
+        dedupe-cljs (when single-file? (atom #{}))
+        state (mapv (fn [{:as doc :keys [file]} idx]
                       (report-fn {:stage :building :doc doc :idx idx})
                       (let [{result :result duration :time-ms} (eval/time-ms
                                                                 (try
-                                                                  (let [doc (eval/eval-analyzed-doc doc)]
-                                                                    (assoc doc :viewer (view/doc->viewer (assoc opts :inline-results? true) doc)))
+                                                                  (binding [*ns* *ns*
+                                                                            paths/*build-opts* opts
+                                                                            viewer/doc-url (partial doc-url opts file)]
+                                                                    (let [doc (eval/eval-analyzed-doc doc)]
+                                                                      (assoc doc :viewer (view/doc->viewer (assoc opts
+                                                                                                                  :file-path (str file)
+                                                                                                                  :dedupe-cljs dedupe-cljs) doc))))
                                                                   (catch Exception e
                                                                     {:error e})))]
                         (report-fn (merge {:stage :built :duration duration :idx idx}
@@ -221,6 +335,13 @@
                         result)) state (range))
         _ (when-let [first-error (some :error state)]
             (throw first-error))
+        opts (if compile-css?
+               (do
+                 (report-fn {:stage :compiling-css})
+                 (let [{duration :time-ms opts :result} (eval/time-ms (compile-css! opts state))]
+                   (report-fn {:stage :done :duration duration})
+                   opts))
+               opts)
         {state :result duration :time-ms} (eval/time-ms (write-static-app! opts state))]
     (when upload-cache-fn
       (report-fn {:stage :uploading-cache})
@@ -228,8 +349,53 @@
         (report-fn {:stage :done :duration duration})))
     (report-fn {:stage :finished :state state :duration duration :total-duration (eval/elapsed-ms start)})))
 
-#_(build-static-app! {:paths (take 15 clerk-docs)})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/viewer_api.md"] :bundle? true})
-#_(build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :bundle? false :browse? false})
-#_(build-static-app! {:paths ["notebooks/viewers/**"]})
-#_(build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
+(comment
+  (build-static-app! {:paths clerk-docs :package :single-file})
+  (build-static-app! {:paths ["notebooks/editor.clj"] :browse? true})
+  (build-static-app! {:paths ["CHANGELOG.md" "notebooks/editor.clj"] :browse? true})
+  (build-static-app! {:paths ["index.clj" "notebooks/links.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :browse? true})
+  (build-static-app! {:paths ["notebooks/links.md" "notebooks/rule_30.clj" "notebooks/markdown.md"] :package :single-file})
+  (build-static-app! {:paths ["index.clj" "notebooks/rule_30.clj" "notebooks/markdown.md"] :browse? true})
+  (build-static-app! {:paths ["notebooks/viewers/**"]})
+  (build-static-app! {:index "notebooks/rule_30.clj" :git/sha "bd85a3de12d34a0622eb5b94d82c9e73b95412d1" :git/url "https://github.com/nextjournal/clerk"})
+  (reset! config/!resource->url @config/!asset-map)
+  (swap! config/!resource->url dissoc "/css/viewer.css")
+
+  (build-static-app! {:browse true
+                      :index "notebooks/rule_30.clj"})
+
+  (build-static-app! {:index "notebooks/document_linking.clj"
+                      :paths ["notebooks/viewers/html.clj" "notebooks/rule_30.clj"]})
+
+  (build-static-app! {:ssr? true
+                      :exclude-js? true
+                      ;; test against cljs release `bb build:js`
+                      :resource->url {"/js/viewer.js" "./build/viewer.js"}
+                      :index "notebooks/rule_30.clj"})
+
+  (build-static-app! {:ssr? true
+                      :compile-css? true
+                      ;; test against cljs release `bb build:js`
+                      :resource->url {"/js/viewer.js" "./build/viewer.js"}
+                      :index "notebooks/rule_30.clj"})
+
+  (fs/delete-tree "public/build")
+  (print (:out (sh "tree public/build")))
+
+  (build-static-app! {:compile-css? true
+                      :index "notebooks/rule_30.clj"
+                      :paths ["notebooks/hello.clj"
+                              "notebooks/markdown.md"]})
+  (build-static-app! {;; test against cljs release `bb build:js`
+                      :resource->url {"/js/viewer.js" "/viewer.js"}
+                      :paths ["notebooks/cherry.clj"]
+                      :out-path "build"})
+
+  ;; test doc-url links
+  (build-static-app! {:index "notebooks/document_linking.clj"
+                      :paths ["CHANGELOG.md"
+                              "notebooks/rule_30.clj"
+                              "notebooks/how_clerk_works.clj"
+                              "notebooks/markdown.md"
+                              "notebooks/viewers/html.clj"
+                              "notebooks/viewers/image.clj"]}))

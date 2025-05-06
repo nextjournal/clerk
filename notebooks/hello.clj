@@ -2,6 +2,7 @@
 
 ;; Clerk enables a _rich_, local-first notebook experience using standard Clojure namespaces.
 (ns hello
+  {:nextjournal.clerk/no-cache true}
   (:require [nextjournal.clerk :as clerk]))
 
 ;; Here's a visualization of unemployment in the US.

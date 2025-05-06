@@ -1,7 +1,12 @@
-;; # 📓 Book of Clerk
+;; # 📖 Book of Clerk
 ^{:nextjournal.clerk/visibility {:code :hide}}
 (ns nextjournal.clerk.book
-  {:nextjournal.clerk/toc true}
+  {:nextjournal.clerk/toc true
+   :nextjournal.clerk/open-graph
+   {:url "https://book.clerk.vision"
+    :title "The Book of Clerk"
+    :description "Clerk’s official documentation."
+    :image "https://cdn.nextjournal.com/data/QmbHy6nYRgveyxTvKDJvyy2VF9teeXYkAXXDbgbKZK6YRC?filename=book-of-clerk-og-image.png&content-type=image/png"}}
   (:require [clojure.string :as str]
             [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
@@ -9,14 +14,15 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.analyzer :as ana]
             [nextjournal.clerk.viewer :as v]
-            [sicmutils.env :as sicm]
+            [emmy.env :as emmy]
+            [emmy.expression]
             [weavejester.dependency :as dep])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
 
 ;; ## ⚖️ Rationale
 
-;; Computational notebooks allow arguing from evidence by mixing prose with executable code. For a good overview of problems users encounter in traditional notebooks like Jupyter, see [I don't like notebooks](https://www.youtube.com/watch?v=7jiPeIFXb6U) and [What’s Wrong with Computational Notebooks? Pain Points, Needs, and Design Opportunities](https://web.eecs.utk.edu/\~azh/pubs/Chattopadhyay2020CHI_NotebookPainpoints.pdf).
+;; Computational notebooks allow arguing from evidence by mixing prose with executable code. For a good overview of problems users encounter in traditional notebooks like Jupyter, see [I don't like notebooks](https://www.youtube.com/watch?v=7jiPeIFXb6U) and [What’s Wrong with Computational Notebooks? Pain Points, Needs, and Design Opportunities](https://www.microsoft.com/en-us/research/uploads/prod/2020/03/chi20c-sub8173-cam-i16.pdf).
 
 ;; Specifically Clerk wants to address the following problems:
 
@@ -28,11 +34,13 @@
 ;; Clerk is a notebook library for Clojure that aims to address these problems by doing less, namely:
 
 ;; * no editing environment, folks can keep using the editors they know and love
-;; * no new format: Clerk notebooks are regular Clojure namespaces (interspersed with markdown comments). This also means Clerk notebooks are meant to be stored in source control.
+;; * no new format: Clerk notebooks are either regular Clojure namespaces (interspersed with markdown comments) or regular markdown files (interspersed with Clojure code fences). This also means Clerk notebooks are meant to be stored in source control.
 ;; * no out-of-order execution: Clerk notebooks always evaluate from top to bottom. Clerk builds a dependency graph of Clojure vars and only recomputes the needed changes to keep the feedback loop fast.
 ;; * no external process: Clerk runs inside your Clojure process, giving Clerk access to all code on the classpath.
 
 ;; ## 🚀 Getting Started
+
+;; Clerk requires Java 11 or newer and [`clojure`](https://clojure.org/guides/install_clojure) installed.
 
 ;; ### 🤹 Clerk Demo
 
@@ -42,7 +50,7 @@
 ;; cd clerk-demo
 ;; ```
 
-;; Then open `dev/user.clj` from the project in your favorite editor start a REPL into the project, see
+;; Then open `dev/user.clj` from the project in your favorite editor and start a REPL into the project. For editor-specific instructions see:
 ;; * [Emacs & Cider](https://docs.cider.mx/cider/basics/up_and_running.html#launch-an-nrepl-server-from-emacs)
 ;; * [Calva](https://calva.io/jack-in-guide/)
 ;; * [Cursive](https://cursive-ide.com/userguide/repl.html)
@@ -53,7 +61,7 @@
 ;; To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ;; ```edn
-;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.9.513"}}}
+;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.17.1102"}}}
 ;; ```
 
 ;; Require and start Clerk as part of your system start, e.g. in `user.clj`:
@@ -64,7 +72,7 @@
 ;; ;; start Clerk's built-in webserver on the default port 7777, opening the browser when done
 ;; (clerk/serve! {:browse? true})
 
-;; ;; either call `clerk/show!` explicitly to show a given notebook.
+;; ;; either call `clerk/show!` explicitly to show a given notebook, or use the File Watcher described below.
 ;; (clerk/show! "notebooks/rule_30.clj")
 ;; ```
 
@@ -72,12 +80,12 @@
 
 ;; ### ⏱ File Watcher
 
-;; You can load, evaluate, and present a file with the clerk/show! function, but in most cases it's easier to start a file watcher with something like:
+;; You can load, evaluate, and present a file with the `clerk/show!` function, but in most cases it's easier to start a file watcher with something like:
 
 ;; ```clojure
 ;; (clerk/serve! {:watch-paths ["notebooks" "src"]})
 ;; ```
-;; ... which will automatically reload and re-eval any clj or md files that change, displaying the most recently changed one in your browser.
+;; ... which will automatically reload and re-eval any clojure (clj) or markdown (md) files that change, displaying the most recently changed one in your browser.
 
 ;; To make this performant enough to feel good, Clerk caches the computations it performs while evaluating each file. Likewise, to make sure it doesn't send too much data to the browser at once, Clerk paginates data structures within an interactive viewer.
 
@@ -90,7 +98,7 @@
 
 ;; In Emacs, add the following to your config:
 
-;; ```elisp
+;; ```el
 ;; (defun clerk-show ()
 ;;   (interactive)
 ;;   (when-let
@@ -116,7 +124,7 @@
 
 ;; With [neovim](https://neovim.io/) + [conjure](https://github.com/Olical/conjure/) one can use the following vimscript function to save the file and show it with Clerk:
 
-;; ```
+;; ```vimscript
 ;; function! ClerkShow()
 ;; exe "w"
 ;; exe "ConjureEval (nextjournal.clerk/show! \"" . expand("%:p") . "\")"
@@ -124,8 +132,6 @@
 
 ;; nmap <silent> <localleader>cs :execute ClerkShow()<CR>
 ;; ```
-
-
 
 ;; ## 🔍 Viewers
 
@@ -163,17 +169,23 @@
 ;; You can style elements, using [Tailwind CSS](https://tailwindcss.com/docs/utility-first).
 (clerk/html [:button.bg-sky-500.hover:bg-sky-700.text-white.rounded-xl.px-2.py-1 "✨ Tailwind CSS"])
 
-;; The `html` viewer is also able to display SVG, taking either a hiccup vector or a SVG string.
+;; The `html` viewer is able to display SVG, taking either a hiccup vector or a SVG string.
 (clerk/html [:svg {:width 500 :height 100}
              [:circle {:cx  25 :cy 50 :r 25 :fill "blue"}]
              [:circle {:cx 100 :cy 75 :r 25 :fill "red"}]])
+
+;; You can also embed other viewers inside of hiccup.
+
+(clerk/html [:div.flex.justify-center.space-x-6
+             [:p "a table is next to me"]
+             (clerk/table [[1 2] [3 4]])])
 
 ;; ### 🔢 Tables
 
 ;; Clerk provides a built-in data table viewer that supports the three
 ;; most common tabular data shapes out of the box: a sequence of maps,
-;; where each map's keys are column names; a seq of seq, which is just
-;; a grid of values with an optional header; a map of seqs, in with
+;; where each map's keys are column names; a seq of seqs, which is just
+;; a grid of values with an optional header; a map of seqs, in which
 ;; keys are column names and rows are the values for that column.
 
 (clerk/table [[1 2]
@@ -196,6 +208,23 @@
 (clerk/table {:head ["odd numbers" "even numbers"]
               :rows [[1 2] [3 4]]}) ;; map with `:rows` and optional `:head` keys
 
+;; To customize the number of rows in the table viewer, set
+;; `::clerk/page-size`. Use a value of `nil` to show all rows.
+(clerk/table {::clerk/page-size 7} (map (comp vector (partial str "Row #")) (range 1 31)))
+
+;; The built-in table viewer adds a number of child-viewers on its
+;; `:add-viewers` key. Those sub-viewers control the markup for the
+;; table and the display of strings (to turn off quoting inside table
+;; cells).
+(:add-viewers v/table-viewer)
+
+;; Modifying the `:add-viewers` key allows us to create a custom table
+;; viewer that shows missing values differently.
+(def table-viewer-custom-missing-values
+  (update v/table-viewer :add-viewers v/add-viewers [(assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
+
+^{::clerk/viewer table-viewer-custom-missing-values}
+{:A [1 2 3] :B [1 3] :C [1 2]}
 
 
 ;; ### 🧮 TeX
@@ -218,7 +247,9 @@
 ;; Clerk also has built-in support for Plotly's low-ceremony plotting.
 ;; See [Plotly's JavaScript docs](https://plotly.com/javascript/) for more examples and [options](https://plotly.com/javascript/configuration-options/).
 (clerk/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]
-               :layout {:margin {:l 20 :r 0 :b 20 :t 20}}
+               :layout {:margin {:l 20 :r 0 :b 20 :t 20}
+                        :paper_bgcolor "transparent"
+                        :plot_bgcolor "transparent"}
                :config {:displayModeBar false
                         :displayLogo false}})
 
@@ -230,13 +261,18 @@
            :transform [{:lookup "id" :from {:data {:url "https://vega.github.io/vega-datasets/data/unemployment.tsv"}
                                             :key "id" :fields ["rate"]}}]
            :projection {:type "albersUsa"} :mark "geoshape" :encoding {:color {:field "rate" :type "quantitative"}}
+           :background "transparent"
            :embed/opts {:actions false}})
 
 ;; You can provide a map of [embed options](https://github.com/vega/vega-embed#embed) to the vega viewer via the `:embed/opts` key.
+;;
+;; Clerk handles conversion from EDN to JSON for you.
+;; The official Vega-Lite examples are in JSON, but a Clojure/EDN version is available:
+;; [Carsten Behring's Vega gallery in EDN](https://vlgalleryedn.happytree-bf95e0f8.westeurope.azurecontainerapps.io/).
 
 ;; ### 🎼 Code
 
-;; The code viewer uses
+;; By default the code viewer uses
 ;; [clojure-mode](https://nextjournal.github.io/clojure-mode/) for
 ;; syntax highlighting.
 (clerk/code (macroexpand '(when test
@@ -247,22 +283,35 @@
 
 (clerk/code "(defn my-fn\n  \"This is a Doc String\"\n  [args]\n  42)")
 
+;; You can specify the language for syntax highlighting via `::clerk/opts`.
+(clerk/code {::clerk/opts {:language "python"}} "
+class Foo(object):
+    def __init__(self):
+        pass
+    def do_this(self):
+        return 1")
+
+;; Or use a code fence with a language in a markdown.
+
+(clerk/md "```c++
+#include <iostream>
+int main() {
+    std::cout << \" Hello, world! \" << std::endl
+    return 0
+}
+```")
+
 ;; ### 🏞 Images
 
-;; Clerk now has built-in support for the
-;; `java.awt.image.BufferedImage` class, which is the native image
-;; format of the JVM.
-;;
-;; When combined with `javax.imageio.ImageIO/read`, one can easily
-;; load images in a variety of formats from a `java.io.File`, an
-;; `java.io.InputStream`, or any resource that a `java.net.URL` can
-;; address.
+;; Clerk offers the `clerk/image` viewer to create a buffered image
+;; from a string or anything `javax.imageio.ImageIO/read` can take
+;; (URL, File or InputStream).
 ;;
 ;; For example, we can fetch a photo of De zaaier, Vincent van Gogh's
 ;; famous painting of a farmer sowing a field from Wiki Commons like
 ;; this:
 
-(ImageIO/read (URL. "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/The_Sower.jpg/1510px-The_Sower.jpg"))
+(clerk/image "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/The_Sower.jpg/1510px-The_Sower.jpg")
 
 ;; We've put some effort into making the default image rendering
 ;; pleasing. The viewer uses the dimensions and aspect ratio of each
@@ -270,11 +319,31 @@
 ;; fashion. For example, an image larger than 900px wide with an
 ;; aspect ratio larger then two will be displayed full width:
 
-(ImageIO/read (URL. "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"))
+(clerk/image "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8")
 
 ;; On the other hand, smaller images are centered and shown using their intrinsic dimensions:
 
-(ImageIO/read (URL. "https://etc.usf.edu/clipart/36600/36667/thermos_36667_sm.gif"))
+(clerk/image "https://nextjournal.com/data/QmSJ6eu6kUFeWrqXyYaiWRgJxAVQt2ivaoNWc1dtTEADCf?filename=thermo.png&content-type=image/png")
+
+;; You can use `clerk/image` together with `clerk/caption` which will render a simple caption under the image:
+
+(clerk/caption
+ "Implements of the Paper Printing Industry"
+ (clerk/image "https://nextjournal.com/data/QmX99isUndwqBz7nj8fdG7UoDakNDSH1TZcvY2Y6NUTe6o?filename=image.gif&content-type=image/gif"))
+
+;; Captions aren't limited to images and work together with any arbitrary content that you provide, e.g. a table:
+
+^{::clerk/visibility {:code :fold}}
+(clerk/caption
+ "Modern Symmetrical Unary(7) in [Solresol](https://wiki.xxiivv.com/site/solresol.html)"
+ (clerk/table {:head ["Solfège" "French IPA" "English IPA" "Meaning"]
+               :rows [["Do"	"/do/" "/doʊ/" "no"]
+                      ["Re" "/ʁɛ/" "/ɹeɪ/" "and, also"]
+                      ["Mi" "/mi/" "/miː/" "or"]
+                      ["Fa" "/fa/" "/fɑː/" "at, to"]
+                      ["Sol" "/sɔl/" "/soʊl/" "but, if"]
+                      ["La" "/la/" "/lɑː/" "the, then"]
+                      ["Si" "/si/" "/siː/" "yes"]]}))
 
 ;; ### 📒 Markdown
 
@@ -282,22 +351,26 @@
 ;; available programmatically:
 (clerk/md (clojure.string/join "\n" (map #(str "* Item " (inc %)) (range 3))))
 
+;; For a more advanced example of ingesting markdown files and transforming the
+;; content to HTML using Hiccup, see [notebooks/markdown.md](https://github.com/nextjournal/clerk-demo/blob/47e95fdc38dd5321632f73bb50a049da4055e041/notebooks/markdown.md)
+;; in the clerk-demo repo.
+
 ;; ### 🔠 Grid Layouts
 
-;; Layouts can be composed via `row`s and `col`s
+;; Layouts can be composed via `row`s and `col`s.
 ;;
 ;; Passing `:width`, `:height` or any other style attributes to
 ;; `::clerk/opts` will assign them on the row or col that contains
 ;; your items. You can use this to size your containers accordingly.
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-1 (ImageIO/read (URL. "https://etc.usf.edu/clipart/62300/62370/62370_letter-a_lg.gif")))
+(def image-1 (ImageIO/read (URL. "https://nextjournal.com/data/QmU9dbBd89MUK631CoCtTwBi5fX4Hgx2tTPpiL4VStg8J7?filename=a.gif&content-type=image/gif")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-2 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72783/72783_floral_b_lg.gif")))
+(def image-2 (ImageIO/read (URL. "https://nextjournal.com/data/QmfKZzHCBQKU7KKXQqcje5cgR6zLge3CcxeuZe8moUkJxf?filename=b.gif&content-type=image/gif")))
 
 ^{::clerk/visibility {:code :hide :result :hide}}
-(def image-3 (ImageIO/read (URL. "https://etc.usf.edu/clipart/72700/72787/72787_floral_c_lg.gif")))
+(def image-3 (ImageIO/read (URL. "https://nextjournal.com/data/QmXALbNeDD6NSudgVfHE5SvY1Xjzbj7TSWnARqcZrvXsss?filename=c.gif&content-type=image/gif")))
 
 
 (clerk/row image-1 image-2 image-3)
@@ -309,12 +382,14 @@
 ;; nice captions:
 
 (defn caption [text]
-  (clerk/html [:span.text-slate-500.text-xs.text-center.font-sans text]))
+  (clerk/html [:figcaption.text-center.mt-1 text]))
 
 (clerk/row
  (clerk/col image-1 (caption "Figure 1: Decorative A"))
  (clerk/col image-2 (caption "Figure 2: Decorative B"))
  (clerk/col image-3 (caption "Figure 3: Decorative C")))
+
+;; Note: the caption example is _exactly_ how `clerk/caption` is implemented in Clerk.
 
 ;; **Alternative notations**
 ;;
@@ -326,41 +401,66 @@
 
 ;; ### 🍱 Composing Viewers
 
-;; Viewers compose, so you can for example use the plotly viewer inside the grid viewers.
+;; Viewers compose, so, for example, you can lay out multiple independent Vega charts using Clerk’s grid viewers:
 
 ^{::clerk/visibility {:code :fold}}
 (do
-  (def donut-chart
-    (clerk/plotly {:data [{:values [27 11 25 8 1 3 25]
-                           :labels ["US" "China" "European Union" "Russian Federation" "Brazil" "India" "Rest of World"]
-                           :text "CO2"
-                           :textposition "inside"
-                           :domain {:column 1}
-                           :hoverinfo "label+percent+name"
-                           :hole 0.4
-                           :type "pie"}]
-                   :layout {:showlegend false
-                            :width 200
-                            :height 200
-                            :annotations [{:font {:size 20} :showarrow false :x 0.5 :y 0.5 :text "CO2"}]}
-                   :config {:responsive true}}))
+  (def stock-colors
+    {"AAPL" "#4c78a8" "AMZN" "#f58518" "GOOG" "#e45756" "IBM" "#72b7b2" "MSFT" "#54a24b"})
+  (def combined-stocks-chart
+    (clerk/vl {:width 600
+               :height 200
+               :data {:url "https://vega.github.io/vega-lite/examples/data/stocks.csv"}
+               :mark "area"
+               :encoding {:x {:timeUnit "yearmonth" :field "date" :axis {:format "%Y"}}
+                          :y {:aggregate "sum" :field "price"}
+                          :color {:field "symbol"
+                                  :scale {:domain (keys stock-colors) :range (vals stock-colors)}}}
+               :embed/opts {:actions false}}))
+  (defn stock-chart [symbol]
+    (clerk/vl {:title symbol
+               :width 100
+               :height 40
+               :mark "area"
+               :data {:url "https://vega.github.io/vega-lite/examples/data/stocks.csv"}
+               :transform [{:filter (str "datum.symbol == '" symbol "'")}]
+               :encoding {:x {:field "date" :type "temporal" :title nil :axis {:grid false}}
+                          :y {:field "price" :type "quantitative" :title nil :axis {:grid false} :scale {:domain [0 700]}}
+                          :color {:field "symbol" :type "nominal" :legend nil :scale {:domain [symbol]
+                                                                                      :range [(get stock-colors symbol)]}}}
+               :embed/opts {:actions false}})))
 
-  (def contour-plot
-    (clerk/plotly {:data [{:z [[10 10.625 12.5 15.625 20]
-                               [5.625 6.25 8.125 11.25 15.625]
-                               [2.5 3.125 5.0 8.125 12.5]
-                               [0.625 1.25 3.125 6.25 10.625]
-                               [0 0.625 2.5 5.625 10]]
-                           :type "contour"}]})))
+(clerk/col
+ (clerk/row (stock-chart "AAPL")
+            (stock-chart "AMZN")
+            (stock-chart "GOOG")
+            (stock-chart "IBM")
+            (stock-chart "MSFT"))
+ combined-stocks-chart)
 
-(clerk/col (clerk/row donut-chart donut-chart donut-chart)
-           contour-plot)
+;; Viewers can also be embedded in Hiccup. The following example shows
+;; how this is used to provide a custom callout for a `clerk/image`.
+
+(clerk/html
+ [:div.relative
+  (clerk/image "https://images.unsplash.com/photo-1608993659399-6508f918dfde?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80")
+  [:div.absolute
+   {:class "left-[25%] top-[21%]"}
+   [:div.border-4.border-emerald-400.rounded-full.shadow
+    {:class "w-8 h-8"}]
+   [:div.border-t-4.border-emerald-400.absolute
+    {:class "w-[80px] rotate-[30deg] left-4 translate-x-[10px] translate-y-[10px]"}]
+   [:div.border-4.border-emerald-400.absolute.text-white.font-sans.p-3.rounded-md
+    {:class "bg-black bg-opacity-60 text-[13px] w-[280px] top-[66px]"}
+    "Cat's paws are adapted to climbing and jumping, walking and running, and have protractible claws for self-defense and hunting."]]])
+
+#_(clerk/html [:div.flex.justify-around donut-chart donut-chart donut-chart])
 
 ;; ### 🤹🏻 Applying Viewers
 
 ;; **Metadata Notation**
 
-;; In the examples above, we've used convience helper functions like
+;; In the examples above, we've used convenience helper functions like
 ;; `clerk/html` or `clerk/plotly` to wrap values in a viewer. If you
 ;; call this on the REPL, you'll notice a given value gets wrapped in
 ;; a map under the `:nextjournal/value` key with the viewer being in
@@ -375,6 +475,13 @@
    {:temperature 39.0 :date (java.time.LocalDate/parse "2022-08-01")}
    {:temperature 34.0 :date (java.time.LocalDate/parse "2022-08-01")}
    {:temperature 29.0 :date (java.time.LocalDate/parse "2022-08-01")}])
+
+;; As you can see above, the table viewer is being applied to the
+;; value of the `my-dataset` var, not the var itself. If you want your viewer to access the raw var, you can opt out of this with a truthy `:var-from-def?` key on the viewer.
+
+^{::clerk/viewer (assoc v/fallback-viewer :var-from-def? true)}
+(def raw-var :baz)
+
 
 ;; ### 👁 Writing Viewers
 
@@ -392,7 +499,7 @@ v/default-viewers
 
 (assoc (frequencies (mapcat keys v/default-viewers)) :total (count v/default-viewers))
 
-;; We have a total of 41 viewers in the defaults. Let's start with a
+;; We have a total of 43 viewers in the defaults. Let's start with a
 ;; simple example and explain the different extensions points in the
 ;; viewer api.
 
@@ -404,31 +511,23 @@ v/default-viewers
 ;; transforms it such that Clerk can send it to the browser where it
 ;; will be rendered.
 
-
-^{::clerk/visibility {:code :fold :result :hide}}
-(do
-  (set! *print-namespace-maps* false)
-  (defn show-raw-value [x]
-    (clerk/code (with-out-str (clojure.pprint/pprint x)))))
-
 ;; Let's start with one of the simplest examples. You can see that
 ;; `present` takes our value `1` and transforms it into a map, with
 ;; `1` under a `:nextjournal/value` key and the number viewer assigned
 ;; under the `:nextjournal/viewer` key.  We call this map a
 ;; `wrapped-value`.
 
+^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
+(clerk/present 1)
 
-^{::clerk/viewer show-raw-value}
-(v/present 1)
-
-;; This data structure is is sent over Clerk's websocket to the
+;; This data structure is sent over Clerk's websocket to the
 ;; browser, where it will be displayed using the `:render-fn` found in
 ;; the `:nextjournal/viewer` key.
 
 ;; Now onto something slightly more complex, `#{1 2 3}`.
 
-^{::clerk/viewer show-raw-value}
-(v/present #{1 2 3})
+^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
+(clerk/present #{1 2 3})
 
 
 ;; Here, we're giving it a set with 1, 2, 3 in it. In its generalized
@@ -453,16 +552,17 @@ v/default-viewers
 
 ;; #### ⚙️ Transform
 
-;; When writing your own viewer, the first extention point you should reach for is `:tranform-fn`. 
+;; When writing your own viewer, the first extension point you should reach for is `:transform-fn`.
 
-#_ "exercise: wrap this in `v/present` and call it at the REPL"
-(v/with-viewer {:transform-fn #(clerk/html [:pre (pr-str %)])}
+#_ "exercise: wrap this in `clerk/present` and call it at the REPL"
+(v/with-viewer {:transform-fn v/inspect-wrapped-values}
   "Exploring the viewer api")
 
 ;; As you can see the argument to the `:transform-fn` isn't just the
-;; string we're passing it, but a `wrapped-value`. We will look at
-;; what this enables in a bit. But let's look at one of the simplest
-;; examples first.
+;; string we're passing it, but a map with the original value under a
+;; `:nextjournal/value` key. We call this map a `wrapped-value`. We
+;; will look at what this enables in a bit. But let's look at one of
+;; the simplest examples first.
 
 ;; **A first simple example**
 
@@ -474,26 +574,19 @@ v/default-viewers
 (v/with-viewer greet-viewer
   "James Clerk Maxwell")
 
-;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `v/present` on such a value.
-^{::clerk/viewer show-raw-value}
-(v/present (v/with-viewer greet-viewer
-             "James Clerk Maxwell"))
+;; The `:transform-fn` runs on the JVM, which means you can explore what it does at your REPL by calling `clerk/present` on such a value.
+^{::clerk/viewer v/inspect-wrapped-values}
+(clerk/present (v/with-viewer greet-viewer
+                 "James Clerk Maxwell"))
 
 
-;; **Passing modified viewers down the tree** 
-
-#_ "TODO: move this into clerk?"
-(defn add-child-viewers [viewer viewers]
-  (update viewer :transform-fn (fn [transform-fn-orig]
-                                 (fn [wrapped-value]
-                                   (update (transform-fn-orig wrapped-value) :nextjournal/viewers clerk/add-viewers viewers)))))
+;; **Passing modified viewers down the tree**
 
 v/table-viewer
 
 (def custom-table-viewer
-  (add-child-viewers v/table-viewer
-                     [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
-                      (assoc v/table-missing-viewer :render-fn '(fn [x] (v/html [:span.red "N/A"])))]))
+  (update v/table-viewer :add-viewers v/add-viewers [(assoc v/table-head-viewer :transform-fn (v/update-val (partial map (comp (partial str "Column: ") str/capitalize name))))
+                                                     (assoc v/table-missing-viewer :render-fn '(fn [x] [:span.red "N/A"]))]))
 
 (clerk/with-viewer custom-table-viewer
   {:col/a [1 2 3 4] :col/b [1 2 3] :col/c [1 2 3]})
@@ -512,10 +605,10 @@ v/table-viewer
 ;; `clerk/mark-presented` as a `:transform-fn`. Compare the result
 ;; below in which `[1 2 3]` appears unaltered with what you see above.
 
-^{::clerk/viewer show-raw-value}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-presented
-                               :render-fn '(fn [x] (v/html [:pre (pr-str x)]))}
-             [1 2 3]))
+^{::clerk/viewer v/inspect-wrapped-values}
+(clerk/present (clerk/with-viewer {:transform-fn clerk/mark-presented
+                                   :render-fn '(fn [x] [:pre (pr-str x)])}
+                 [1 2 3]))
 
 ;; Clerk's presentation will also transform maps into sequences in
 ;; order to paginate large maps. When you're dealing with a map that
@@ -523,9 +616,9 @@ v/table-viewer
 ;; `clerk/mark-preserve-keys`. This will still transform (and
 ;; paginate) the values of the map, but leave the keys unaltered.
 
-^{::clerk/viewer show-raw-value}
-(v/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
-             {:hello 42}))
+^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
+(clerk/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
+                 {:hello 42}))
 
 
 ;; #### 🔬 Render
@@ -534,53 +627,76 @@ v/table-viewer
 ;; using `clerk/html` on the JVM. When you want to run code in the
 ;; browser where Clerk's viewers are rendered, reach for
 ;; `:render-fn`. As an example, we'll write a multiviewer for a
-;; sicmutils literal expression that will compute two alternative
+;; emmy literal expression that will compute two alternative
 ;; representations and let the user switch between them in the
 ;; browser.
 
-;; We start with a simple function that takes a such an expression and
-;; turns it into a map with two representation, one TeX and the
+;; We start with a simple function that takes such an expression and
+;; turns it into a map with two representations, one TeX and the
 ;; original form.
 
 (defn transform-literal [expr]
-  {:TeX (-> expr sicm/->TeX clerk/tex)
-   :original (clerk/code (with-out-str (sicm/print-expression (sicm/freeze expr))))})
+  {:TeX (-> expr emmy/->TeX clerk/tex)
+   :original (clerk/code (with-out-str (emmy/print-expression (emmy/freeze expr))))})
 
 ;; Our `literal-viewer` calls this `transform-literal` function and
 ;; also calls `clerk/mark-preserve-keys`. This tells Clerk to leave
 ;; the keys of the map as-is.
 
-;; In our `:render-fn`, which is called in the browser we will recieve
-;; this map. Note that this is a quoted form, not a function. Clerk
-;; will send this form to the browser for evaluation. There it will
-;; create a `reagent/atom` that holds the selection state. Lastly,
-;; `v/inspect-presented` is a component that takes a `wrapped-value`
-;; that ran through `v/present` and show it.
+;; In our `:render-fn`, which is called in the browser, we will receive this
+;; map. Note that this is a quoted form, not a function. Clerk will send this
+;; form to the browser for evaluation. There it will create a `reagent/atom`
+;; that holds the selection state. Lastly,
+;; `nextjournal.clerk.render/inspect-presented` is a component that takes a
+;; `wrapped-value` that ran through `clerk/present` and show it.
 
 (def literal-viewer
-  {:pred sicmutils.expression/literal?
+  {:pred emmy.expression/literal?
    :transform-fn (comp clerk/mark-preserve-keys
                        (clerk/update-val transform-literal))
    :render-fn '(fn [label->val]
-                 (v/html
-                  (reagent/with-let [!selected-label (reagent/atom (ffirst label->val))]
-                    [:<> (into
-                          [:div.flex.items-center.font-sans.text-xs.mb-3
-                           [:span.text-slate-500.mr-2 "View-as:"]]
-                          (map (fn [label]
-                                 [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                  {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                   :on-click #(reset! !selected-label label)}
-                                  label]))
-                          (keys label->val))
-                     [v/inspect-presented (get label->val @!selected-label)]])))})
+                 (reagent.core/with-let [!selected-label (reagent.core/atom (ffirst label->val))]
+                   [:<> (into
+                         [:div.flex.items-center.font-sans.text-xs.mb-3
+                          [:span.text-slate-500.mr-2 "View-as:"]]
+                         (map (fn [label]
+                                [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                                 {:class (if (= @!selected-label label) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                                  :on-click #(reset! !selected-label label)}
+                                 label]))
+                         (keys label->val))
+                    [nextjournal.clerk.render/inspect-presented (get label->val @!selected-label)]]))})
 
 ;; Now let's see if this works. Try switching to the original
 ;; representation!
 
 ^{::clerk/viewer literal-viewer}
-(sicm/+ (sicm/square (sicm/sin 'x))
-        (sicm/square (sicm/cos 'x)))
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
+
+;; #### 📚 Require CLJS
+
+;; Writing `:render-fn`s inline as quoted forms is fine when they're
+;; small and independent. For more complex needs, Clerk supports
+;; loading ClojureScript files from the classpath.
+
+;; To opt into this, use a fully qualified symbol as the `:render-fn`
+;; and set `:require-cljs` set to `true`. This way you tell Clerk to
+;; load this ClojureScript file (along with it's deps) into Clerk's
+;; SCI environment in the browser to make it useable there.
+
+(def literal-viewer-require-cljs
+  (assoc literal-viewer
+         :require-cljs true
+         :render-fn 'nextjournal.clerk.emmy/render-literal))
+
+;; Writing a render function in regular `.cljs` file often works
+;; better with IDE-tooling like linters, REPLs and makes reusing
+;; existing ClojureScript code easier.
+
+^{::clerk/viewer literal-viewer-require-cljs}
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
 
 ;; #### 🥇 Selection
 
@@ -600,12 +716,13 @@ v/table-viewer
 ;; the viewers per namespace. Here, we add the `literal-viewer` from
 ;; above to the whole namespace.
 
+^{::clerk/visibility {:result :hide}}
 (clerk/add-viewers! [literal-viewer])
 
 ;; As you can see we now get this viewer automatically, without
 ;; needing to explicitly select it.
-(sicm/+ (sicm/square (sicm/sin 'x))
-        (sicm/square (sicm/cos 'x)))
+(emmy/+ (emmy/square (emmy/sin 'x))
+        (emmy/square (emmy/cos 'x)))
 
 ;; #### 🔓 Elisions
 
@@ -653,10 +770,10 @@ v/table-viewer
 
 ;; #### 👷 Loading Libraries
 
-;; This is a custom viewer for
+;; Here is a custom viewer for
 ;; [Mermaid](https://mermaid-js.github.io/mermaid), a markdown-like
 ;; syntax for creating diagrams from text. Note that this library
-;; isn't bundles with Clerk but we use a component based on
+;; isn't bundled with Clerk but we use a component based on
 ;; [d3-require](https://github.com/d3/d3-require) to load it at
 ;; runtime.
 
@@ -664,12 +781,11 @@ v/table-viewer
 (def mermaid-viewer
   {:transform-fn clerk/mark-presented
    :render-fn '(fn [value]
-                 (v/html
-                  (when value
-                    [v/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
-                     (fn [mermaid]
-                       [:div {:ref (fn [el] (when el
-                                              (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])])))})
+                 (when value
+                   [nextjournal.clerk.render/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
+                    (fn [mermaid]
+                      [:div {:ref (fn [el] (when el
+                                             (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])]))})
 
 ;; We can then use  the above viewer using `with-viewer`.
 (clerk/with-viewer mermaid-viewer
@@ -682,10 +798,56 @@ v/table-viewer
     Moving --> Crash
     Crash --> [*]")
 
-;; ## 🙈 Controlling Visibility
+;; #### 🧙 Evaluator
 
-;; Visibility for code and results can be controlled document-wide and
-;; per top-level form. By default, Clerk will always show code and 
+;; By default, [SCI](https://github.com/babashka/sci) is used for evaluating `:render-fn` functions in the browser.
+
+;; What follows is an intentionally inefficient but fun way to compute
+;; the nth fibonacci number and show how long it took.
+
+(def fib-viewer
+  {:render-fn '(fn [n opts]
+                 (reagent.core/with-let
+                   [fib (fn fib [x]
+                          (if (< x 2)
+                            1
+                            (+ (fib (dec x)) (fib (dec (dec x))))))
+                    time-before (js/performance.now)
+                    nth-fib (fib n)
+                    time-after (js/performance.now)]
+                   [:div
+                    [:p
+                     (if (= :cherry (-> opts :viewer :render-evaluator))
+                       "Cherry"
+                       "SCI")
+                     " computed the " n "th fibonacci number (" nth-fib ")"
+                     " in " (js/Math.ceil (- time-after time-before) 2) "ms."]]))})
+
+(clerk/with-viewer fib-viewer 25)
+
+;; You can opt into [cherry](https://github.com/squint-cljs/cherry) as an
+;; alternative evaluator by setting `{::clerk/render-evaluator :cherry}` via the
+;; viewers opts (see [Customizations](#customizations)). The main difference between cherry and SCI
+;; for viewer functions is performance. For performance-sensitive code cherry is
+;; better suited since it compiles directly to JavaScript code.
+
+(clerk/with-viewer fib-viewer {::clerk/render-evaluator :cherry} 25)
+
+#_(clerk/halt!)
+#_(clerk/serve! {:port 7777})
+
+;; ## ⚙️ Customizations
+
+;; Clerk allows easy customization of visibility, result width and
+;; budget. All settings can be applied document-wide using `ns`
+;; metadata or a top-level settings marker and per form using
+;; metadata.
+
+;; Let's start with a concrete example to understand how this works.
+
+;; ### 🙈 Visibility
+
+;; By default, Clerk will show all code and
 ;; results for a notebook.
 
 ;; You can use a map of the following shape to set the visibility of
@@ -716,7 +878,7 @@ v/table-viewer
 ;;
 ;;    ^{::clerk/visibility {:code :hide}} (shuffle (range 25))
 ;;
-;; This will hide the code but only show the result: 
+;; This will hide the code but only show the result:
 
 ^{::clerk/visibility {:code :hide}} (shuffle (range 25))
 
@@ -737,15 +899,158 @@ v/table-viewer
 ;;
 ;;    (+ 39 3) ;; code will be hidden
 ;;    (range 25) ;; code will be hidden
-;;    
+;;
 ;;    {:nextjournal.clerk/visibility {:code :show}}
-;;    
+;;
 ;;    (range 500) ;; code will be visible
 ;;    (rand-int 42) ;; code will be visible
 ;;
 ;; This comes in quite handy for debugging too!
+;;
+;; ### 👻 Clerk Metadata
+;;
+;; By default, Clerk will hide Clerk's metadata annotations on cells
+;; to not distract from the essence. When you do want your reader
+;; learn how the metadata annotations are written – as for this book –
+;; you can opt out of this behaviour by modifying the
+;; `code-block-viewer`:
+;;
+;;    (clerk/add-viewers! [(assoc v/code-block-viewer :transform-fn (v/update-val :text))])
+;;
+^{::clerk/visibility {:code :hide :result :hide}}
+(v/reset-viewers! *ns* (v/add-viewers (v/get-viewers *ns*) [(assoc v/code-block-viewer :transform-fn (v/update-val :text))]))
 
-;; ## ⚡️ Incremental Computation
+;; ### 🍽 Table of Contents
+
+;; If you want a table of contents like the one in this document, set the `:nextjournal.clerk/toc` option.
+;;
+;;    (ns doc-with-table-of-contents
+;;      {:nextjournal.clerk/toc true})
+;;
+;; If you want it to be collapsed initially, use `:collapsed` as a value.
+
+;; ### 🔮 Result Expansion
+
+;; If you want to better see the shape of your data without needing to
+;; click and expand it first, set the
+;; `:nextjournal.clerk/auto-expand-results?` option.
+
+^{::clerk/visibility {:code :fold}}
+(def rows
+  (take 15 (repeatedly (fn []
+                         {:name (str
+                                 (rand-nth ["Oscar" "Karen" "Vlad" "Rebecca" "Conrad"]) " "
+                                 (rand-nth ["Miller" "Stasčnyk" "Ronin" "Meyer" "Black"]))
+                          :role (rand-nth [:admin :operator :manager :programmer :designer])
+                          :dice (shuffle (range 1 7))}))))
+
+
+^{::clerk/auto-expand-results? true} rows
+
+;; This option might become the default in the future.
+
+
+;; ### 🙅🏼‍♂️ Viewer Budget
+
+;; In order to not send too much data to the browser, Clerk uses a per-result budget to limit. You can see this budget in action above. Use the `:nextjournal.clerk/budget` key to change its default value of `200` or disable it completely using `nil`.
+
+^{::clerk/budget nil ::clerk/auto-expand-results? true} rows
+
+
+;; ## ⚛️ Clerk Sync
+
+;; Clerk Sync is a way to support lightweight interactivity between
+;; Clerk's render display running in the browser and the JVM. By
+;; flagging a form defining an atom with `::clerk/sync` metadata,
+;; Clerk will sync this atom to Clerk's render environment. It will
+;; also watch recompute the notebook whenever the value inside the
+;; atom changes.
+
+^{::clerk/sync true}
+(defonce !counter (atom 0))
+
+(clerk/with-viewer {:render-fn '(fn [] [:button.bg-sky-500.hover:bg-sky-700.text-white.rounded-xl.px-2.py-1
+                                        {:on-click #(swap! !counter inc)}
+                                        "Increment Counter"])}
+  {})
+
+;; ## 🚰 Tap Inspector
+
+;; Clerk comes with an inspector notebook for Clojure's tap system. Use the following form from your REPL to show it.
+
+;;```clojure
+;;(nextjournal.clerk/show! 'nextjournal.clerk.tap)
+;;```
+
+;; You can then call `tap>` from anywhere in your codebase and the Tap Inspector will show your value. This supports the full viewer api described above.
+
+;;```clojure
+;;(tap> (clerk/html [:h1 "Hello 🚰 Tap Inspector 👋"]))
+;;```
+
+;; ## 👷‍♀️ Static Building
+
+;; Clerk can make a static HTML build from a collection of notebooks.
+;; The entry point for this is the `nextjournal.clerk/build!`
+;; function.  You can pass it a set of notebooks via the `:paths`
+;; option (also supporting glob patterns).
+
+;; When Clerk is building multiple notebooks, it will automatically
+;; generate an index page that will be the first to show up when
+;; opening the build. You can override this index page via the
+;; `:index` option.
+
+;; Also notably, there is a `:compile-css` option which compiles a css
+;; file containing only the used CSS classes from the generated
+;; markup. (Otherwise, Clerk is using Tailwind's Play CDN script which
+;; can make the page flicker, initially.)
+
+;; If set, the `:ssr` option will use React's server-side-rendering to
+;; include the generated markup in the build HTML.
+
+;; For a full list of options see the docstring in
+;; `nextjournal.clerk/build!`.
+
+;; **Here are some examples:**
+
+;; ```clj
+;; ;; Building a single notebook
+;; (clerk/build! {:paths ["notebooks/rule_30.clj"]})
+;;
+;; ;; Building all notebooks in `notebook/` with a custom index page.
+;; (clerk/build! {:paths ["notebooks/*"]
+;;                :index "notebooks/welcome.clj"})
+;; ```
+
+;; ## ⚡️ Render nREPL
+
+;; For interactive development of `:render-fn`s, Clerk comes with a
+;; Render nREPL server. To enable it, pass the `:render-nrepl` option
+;; to `serve!`. You can change the default port `1339` by passing a
+;; different `:port` number.
+
+;;    (nextjournal.clerk/serve! {:render-nrepl {}})
+
+;; > nREPL server started on port 1339...
+
+;; ⚠️ **Editor Connection Tips**
+
+;; Cider
+
+;; 1. Run `M-x` `cider-connect-cljs`
+;; 2. Select `localhost`
+;; 3. Enter `1339` for the port
+;; 4. Select `nbb` repl type
+;; 5. Open a ClojureScript buffer and run `M-x` `sesman-link-with-buffer` selecting the newly connected repl.
+
+
+;; Calva
+
+;;   1. Connect to a Running REPL Server, not in the Project
+;;   2. Select `nbb` for Project Type/Connect Sequence
+;;   3. Enter `localhost:1339` (or the custom port)
+
+;; ## 🤖 How Clerk Works
 
 ;; ### 🔖 Parsing
 

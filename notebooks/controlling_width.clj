@@ -12,5 +12,5 @@
 (clerk/html {::clerk/width :full} [:div.w-100.bg-green-200.pl-2 ":full"])
 
 ;; This works with metadata as well.
-^{::clerk/width :wide ::clerk/viewer :html}
+^{::clerk/width :wide ::clerk/viewer 'nextjournal.clerk.viewer/html-viewer}
 [:div.w-100.bg-green-200.pl-2 ":wide"]

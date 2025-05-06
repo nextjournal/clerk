@@ -6,95 +6,84 @@
             [nextjournal.clerk.viewer :as v])
   (:import (java.time Instant LocalTime ZoneId)))
 
+(defn inst->local-time-str [inst] (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
+(defn record-tap [x]
+  {::val x ::tapped-at (Instant/now) ::key (str (gensym))})
+
 (def switch-view
-  {:transform-fn (comp clerk/mark-presented
-                       (clerk/update-val (fn [{::clerk/keys [var-from-def]}]
-                                           {:var-name (symbol var-from-def) :value @@var-from-def})))
-   :render-fn '(fn [{:keys [var-name value]}]
-                 (v/html
-                  (let [choices [:stream :latest]]
-                    [:div.flex.justify-between.items-center
-                     (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
-                           (map (fn [choice]
-                                  [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
-                                   {:class (if (= value choice) "bg-indigo-100 text-indigo-600" "text-slate-500")
-                                    :on-click #(v/clerk-eval `(reset! ~var-name ~choice))}
-                                   choice]) choices))
-                     [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer {:on-click #(v/clerk-eval `(reset-taps!))} "Clear"]])))})
+  (assoc v/render-eval-viewer
+         :render-fn
+         '(fn [!view]
+            (let [choices [:stream :latest]]
+              [:div.flex.justify-between.items-center
+               (into [:div.flex.items-center.font-sans.text-xs.mb-3 [:span.text-slate-500.mr-2 "View-as:"]]
+                     (map (fn [choice]
+                            [:button.px-3.py-1.font-medium.hover:bg-indigo-50.rounded-full.hover:text-indigo-600.transition
+                             {:class (if (= choice (:kind @!view)) "bg-indigo-100 text-indigo-600" "text-slate-500")
+                              :on-click #(swap! !view assoc :kind choice)}
+                             choice]) choices))
+               [:div
+                [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer.mr-1
+                 {:class (when (:auto-expand-results? @!view) "bg-indigo-100 text-indigo-600 border-indigo-200")
+                  :on-click #(swap! !view update :auto-expand-results? not)} "Auto Expand"]
+                [:button.text-xs.rounded-full.px-3.py-1.border-2.font-sans.hover:bg-slate-100.cursor-pointer
+                 {:on-click #(nextjournal.clerk.render/clerk-eval `(reset-taps!))} "Clear"]]]))))
 
-^{::clerk/viewer switch-view ::clerk/visibility {:result :show}}
-(defonce !view (atom :stream))
+^{::clerk/sync true ::clerk/viewer switch-view ::clerk/visibility {:result :show}}
+(defonce !view (atom {:kind :stream
+                      :auto-expand-results? false}))
 
-(defonce !taps (atom []))
+(defonce !taps (atom ()))
 
 (defn reset-taps! []
-  (reset! !taps [])
+  (reset! !taps ())
   (clerk/recompute!))
-
-#_(reset-taps!)
-
-(defn inst->local-time-str [inst]
-  (str (LocalTime/ofInstant inst (ZoneId/systemDefault))))
-
-#_(inst->local-time-str (Instant/now))
-
-(def tap-viewer
-  {:name :tapped-value
-   :render-fn '(fn [{:keys [val tapped-at key]} opts]
-                 (v/html (with-meta
-                           [:div.border-t.relative.py-3
-                            [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
-                             {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
-                            [:div.overflow-x-auto [v/inspect-presented val]]]
-                           {:key (:nextjournal/value key)})))
-   :transform-fn (comp clerk/mark-preserve-keys
-                       (clerk/update-val #(update % :tapped-at inst->local-time-str)))})
-
-(clerk/add-viewers! [tap-viewer])
-
-(def taps-viewer
-  {:render-fn '#(v/html (into [:div.flex.flex-col.pt-2] (v/inspect-children %2) %1))
-   :transform-fn (clerk/update-val (fn [taps]
-                                     (mapv (partial clerk/with-viewer :tapped-value) (reverse taps))))})
-
-^{::clerk/visibility {:result :show}
-  ::clerk/viewer (cond-> taps-viewer
-                   (= :latest @!view)
-                   (update :transform-fn (fn [orig] (comp orig (clerk/update-val (partial take-last 1))))))}
-@!taps
 
 (defn tapped [x]
-  (swap! !taps conj {:val x :tapped-at (java.time.Instant/now) :key (str (gensym))})
+  (swap! !taps conj (record-tap x))
   (clerk/recompute!))
 
-#_(tapped (rand-int 1000))
+(defonce tap-setup
+  (add-tap (fn [x] ((resolve `tapped) x))))
 
-#_(reset! @(find-var 'clojure.core/tapset) #{})
+(def tap-viewer
+  {:pred (v/get-safe ::val)
+   :render-fn '(fn [{::keys [val tapped-at]} opts]
+                 [:div.border-t.relative.py-3.mt-2
+                  [:span.absolute.rounded-full.px-2.bg-gray-300.font-mono.top-0
+                   {:class "left-1/2 -translate-x-1/2 -translate-y-1/2 py-[1px] text-[9px]"} (:nextjournal/value tapped-at)]
+                  [:div.overflow-x-auto [nextjournal.clerk.render/inspect-presented (select-keys opts [:!expanded-at]) val]]])
 
-(defonce setup
-  (add-tap tapped))
+   :transform-fn (fn [{:as wrapped-value :nextjournal/keys [value]}]
+                   (-> wrapped-value
+                       v/mark-preserve-keys
+                       (merge (v/->opts (v/ensure-wrapped (::val value)))) ;; preserve opts like ::clerk/width and ::clerk/css-class
+                       (assoc-in [:nextjournal/render-opts :id] (::key value)) ;; assign custom react key
+                       (cond-> (:auto-expand-results? @!view) (assoc-in [:nextjournal/render-opts :auto-expand-results?] true))
+                       (update-in [:nextjournal/value ::tapped-at] inst->local-time-str)))})
 
-#_ (remove-tap tapped)
-
+^{::clerk/visibility {:result :show}
+  ::clerk/viewers (v/add-viewers [tap-viewer])}
+(clerk/fragment (cond->> @!taps
+                  (= :latest (:kind @!view)) (take 1)))
 
 (comment
   (last @!taps)
-
-  (dotimes [i 5]
+  (dotimes [_i 5]
     (tap> (rand-int 1000)))
-
   (tap> (shuffle (range (+ 20 (rand-int 200)))))
   (tap> (clerk/md "> The purpose of visualization is **insight**, not pictures."))
-  (tap> (v/plotly {:data [{:z [[1 2 3]
-                               [3 2 1]]
-                           :type "surface"}]}))
-  (tap> (javax.imageio.ImageIO/read (java.net.URL. "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")))
-
+  (tap> (v/plotly {:data [{:z [[1 2 3] [3 2 1]] :type "surface"}]}))
+  (tap> (clerk/html  {::clerk/width :full} [:h1.w-full.border-2.border-amber-500.bg-amber-500.h-10]))
+  (tap> (clerk/table {::clerk/width :full} [[1 2] [3 4]]))
+  (tap> (clerk/plotly {::clerk/width :full} {:data [{:y [3 1 2]}]}))
+  (tap> (clerk/image "trees.png"))
   (do (require 'rule-30)
       (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/rule-30)))
-
   (tap> (clerk/with-viewers (clerk/add-viewers rule-30/viewers) rule-30/board))
-
   (tap> (clerk/html [:h1 "Fin. 👋"]))
 
-  )
+  (tap> (map (comp #(map (constantly '🌮) %) range) (range 1 100)))
+
+  (tap> (reduce (fn [acc _] (vector acc)) :fin (range 200)))
+  (reset-taps!))

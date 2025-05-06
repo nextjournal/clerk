@@ -14,7 +14,7 @@
             [aerial.hanami.templates :as hanami-templates]
             [notespace-sicmutils.hanami-extras :as hanami-extras]
             [nextjournal.clerk :as clerk]
-            [sicmutils.env :as e :refer :all]))
+            [emmy.env :as e :refer :all]))
 
 ;; ## Lagrangian
 ;;

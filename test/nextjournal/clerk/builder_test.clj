@@ -2,40 +2,117 @@
   (:require [babashka.fs :as fs]
             [clojure.java.browse :as browse]
             [clojure.string :as str]
-            [clojure.test :refer :all]
-            [nextjournal.clerk.builder :as builder])
-  (:import (java.io File)))
+            [clojure.test :refer [deftest is testing]]
+            [matcher-combinators.test]
+            [nextjournal.clerk.builder :as builder]
+            [nextjournal.clerk.viewer :as viewer])
+  (:import (clojure.lang ExceptionInfo)
+           (java.io File)))
 
 (deftest url-canonicalize
   (testing "canonicalization of file components into url components"
-    (let [dice (str/join (File/separator) ["notebooks" "dice.clj"])]
-      (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice  (File/separator) "/"))))))
+    (let [dice (str/join File/separator ["notebooks" "dice.clj"])]
+      (is (= (#'builder/path-to-url-canonicalize dice) (str/replace dice File/separator "/"))))))
 
 (deftest static-app
-  (let [url* (volatile! nil)]
+  (let [url* (volatile! nil)
+        original-*ns* *ns*]
     (with-redefs [clojure.java.browse/browse-url (fn [path]
                                                    (vreset! url* path))]
       (testing "browser receives canonical url in this system arch"
         (fs/with-temp-dir [temp {}]
-          (let [expected (-> (str/join (java.io.File/separator) [(.toString temp) "index.html"])
-                             (str/replace (java.io.File/separator) "/"))]
+          (let [expected (-> (str/join File/separator [(.toString temp) "index.html"])
+                             (str/replace File/separator "/"))]
             (builder/build-static-app! {:browse? true
                                         :paths ["notebooks/hello.clj"]
                                         :out-path temp})
-            (is (= expected @url*))))))))
+            (is (= expected @url*)))))
 
-(deftest expand-paths-test
-  (testing "expands glob patterns"
-    (let [paths (builder/expand-paths {:paths ["notebooks/*clj"]})]
-      (is (> (count paths) 25))
-      (is (every? #(str/ends-with? % ".clj") paths))))
+      (testing "*ns* isn't changed (#506)"
+        (is (= original-*ns* *ns*))))))
 
-  (testing "supports index"
-    (is (= ["book.clj"] (builder/expand-paths {:index "book.clj"}))))
+(deftest build-static-app!
+  (testing "error when paths are empty (issue #339)"
+    (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []
+                                                                                        :report-fn identity}))))
+  (testing "error when index is of the wrong type"
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0
+                                                                                    :report-fn identity})))
+    (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index "not/existing/notebook.clj"
+                                                                                    :report-fn identity}))))
 
-  (testing "invalid args"
-    (is (thrown? Exception (builder/expand-paths {})))
-    (is (thrown? Exception (builder/expand-paths {:paths-fn 'foo})))
-    (is (thrown? Exception (builder/expand-paths {:paths-fn "hi"})))
-    (is (thrown? Exception (builder/expand-paths {:index ["book.clj"]})))))
+  (testing "backlink to source"
+    (fs/with-temp-dir [temp-dir {}]
+      (builder/build-static-app! {:index "notebooks/hello.clj"
+                                  :git/url "https://github.com/some/project"
+                                  :git/sha "SHASHASHA"
+                                  :git/prefix "prefix/"
+                                  :out-path temp-dir
+                                  :report-fn identity})
 
+      (is (fs/exists? (fs/file temp-dir "index.edn")))
+      (let [backlink (-> (binding [*data-readers* viewer/data-readers]
+                           (read-string (slurp (fs/file temp-dir "index.edn"))))
+                         :nextjournal/value :header :nextjournal/value
+                         (get-in [1 3 3 2]))]
+
+        (is (= "https://github.com/some/project/blob/SHASHASHA/prefix/notebooks/hello.clj"
+               (get-in backlink [1 :href])))
+        (is (= "notebooks/hello.clj" (get backlink 2)))
+        (is (= [:<> "@" [:span.tabular-nums "SHASHAS"]] (get backlink 3))))))
+
+  (testing "image is saved to _data dir"
+    (is (fs/with-temp-dir [temp-dir {}]
+          (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
+                                      :out-path temp-dir
+                                      :report-fn identity})
+          (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png"))))))
+  (testing "SCI .cljs sources are deduplicated"
+    (fs/with-temp-dir [temp-dir {}]
+      (builder/build-static-app! {:paths ["test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_1.clj"
+                                          "test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_2.clj"]
+                                  :package :single-file
+                                  :out-path temp-dir
+                                  :report-fn identity})
+      (let [build (slurp (fs/file temp-dir "index.html"))]
+        (is (= 1 (count (re-seq #"\(prn ::identity\)" build))))))))
+
+(deftest process-build-opts
+  (testing "assigns index when only one path is given"
+    (is (= (str (fs/file "notebooks" "rule_30.clj"))
+           (:index (builder/process-build-opts {:paths ["notebooks/rule_30.clj"] :expand-paths? true})))))
+
+  (testing "coerces index symbol arg and adds it to expanded-paths"
+    (is (= ["book.clj"] (:expanded-paths (builder/process-build-opts {:index 'book.clj :expand-paths? true})))))
+
+  (testing "package option default"
+    (is (match? {:package :directory :render-router :fetch-edn}
+                (builder/process-build-opts {})))
+    (is (match? {:package :single-file :render-router :bundle}
+                (builder/process-build-opts {:package :single-file})))))
+
+(deftest doc-url
+  (testing "link to same dir unbundled"
+    ;; in the unbundled case the current URL on a given notebook is given by
+    ;;
+    ;; fs-path              |  URL
+    ;; ----------------------------------------------------
+    ;; path/to/notebook.clj |  path/to/notebok/[index.html]
+    (is (= "./../../notebooks/rule_30" ;; NOTE: could also be just "rule_30.html"
+           (builder/doc-url {} "notebooks/viewer_api.clj" "notebooks/rule_30"))))
+
+  (testing "respects the mapped index"
+    (is (= "./notebooks/rule_30"
+           (builder/doc-url {} "index.clj" "notebooks/rule_30")))
+
+    (is (= "./notebooks/rule_30"
+           (builder/doc-url { :index "notebooks/path/to/notebook.clj"}
+                            "notebooks/path/to/notebook.clj" "notebooks/rule_30")))
+
+    (is (= "./../../../../notebooks/rule_30"
+           (builder/doc-url {}
+                            "notebooks/path/to/notebook.clj" "notebooks/rule_30"))))
+
+  (testing "bundle case"
+    (is (= "#/notebooks/rule_30"
+           (builder/doc-url {:package :single-file} "index.clj" "notebooks/rule_30")))))

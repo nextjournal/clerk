@@ -1,76 +1,78 @@
 (ns nextjournal.clerk.view
-  (:require [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.viewer :as v]
-            [hiccup.page :as hiccup]
+  (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.java.io :as io]))
+            [hiccup.page :as hiccup]
+            [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.cljs-libs :as cljs-libs])
+  (:import (java.net URI)))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present))))
-
+     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
 #_(nextjournal.clerk/show! "notebooks/visibility.clj")
 
-(defn include-viewer-css []
-  (if-let [css-url (@config/!resource->url "/css/viewer.css")]
-    (hiccup/include-css css-url)
+(defn relative? [url]
+  (and (not (.isAbsolute (URI. url)))
+       (not (str/starts-with? url "/"))))
+
+#_(relative? "/hello/css")
+#_(relative? "hello/css")
+#_(relative? "https://cdn.stylesheet.css")
+
+(defn adjust-relative-path [{:as state :keys [current-path]} url]
+  (cond->> url
+    (and (not-empty current-path) (relative? url))
+    (str (v/relative-root-prefix-from (v/map-index state current-path)))))
+
+(defn include-viewer-css [state]
+  (if-let [css-url (get-in state [:resource->url "/css/viewer.css"])]
+    (hiccup/include-css (adjust-relative-path state css-url))
     (list (hiccup/include-js "https://cdn.tailwindcss.com?plugins=typography")
           [:script (-> (slurp (io/resource "stylesheets/tailwind.config.js"))
-                       (str/replace  #"^module.exports" "tailwind.config")
-                       (str/replace  #"require\(.*\)" ""))]
+                       (str/replace #"^module.exports" "tailwind.config")
+                       (str/replace #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
-(defn include-css+js []
+(defn include-css+js [state]
   (list
-   (include-viewer-css)
-   (hiccup/include-js (@config/!resource->url "/js/viewer.js"))
+   (include-viewer-css state)
+   [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
-   (hiccup/include-css "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Fira+Mono:wght@400;700&family=Fira+Sans+Condensed:ital,wght@0,700;1,700&family=Fira+Sans:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap")))
+   [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
+   (hiccup/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
 
-(defn ->html [{:keys [conn-ws?] :or {conn-ws? true}} state]
+(defn escape-closing-script-tag [s]
+  ;; we must escape closing `</script>` tags, see
+  ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
+  (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
+
+(defn ->html [{:as state :keys [conn-ws? current-path html exclude-js?]}]
   (hiccup/html5
-   {:class "overflow-hidden min-h-screen"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-    (include-css+js)]
+    (when conn-ws?
+      [:script {:type "text/javascript"}
+       "if ('serviceWorker' in navigator) {
+          navigator.serviceWorker
+            .register('/clerk_service_worker.js')
+            //.then(function() { console.log('Service Worker: Registered') })
+            .catch(function(error) { console.log('Service Worker: Error', error) })
+        }"])
+    (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
+    (if exclude-js?
+      (include-viewer-css state)
+      (include-css+js state))]
    [:body.dark:bg-gray-900
-    [:div#clerk]
-    [:script "let viewer = nextjournal.clerk.sci_viewer
-let state = " (-> state v/->edn pr-str) "
-viewer.set_state(viewer.read_string(state))
-viewer.mount(document.getElementById('clerk'))\n"
-     (when conn-ws?
-       "const ws = new WebSocket(document.location.origin.replace(/^http/, 'ws') + '/_ws')
-ws.onmessage = msg => viewer.set_state(viewer.read_string(msg.data))
-window.ws_send = msg => ws.send(msg)")]]))
-
-(defn ->static-app [{:as state :keys [current-path]}]
-  (hiccup/html5
-   {:class "overflow-hidden min-h-screen"}
-   [:head
-    [:title (or (and current-path (-> state :path->doc (get current-path) v/->value :title)) "Clerk")]
-    [:meta {:charset "UTF-8"}]
-    [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]    
-    (include-css+js)]
-   [:body
-    [:div#clerk-static-app]
-    [:script "let viewer = nextjournal.clerk.sci_viewer
-let app = nextjournal.clerk.static_app
-let opts = viewer.read_string(" (-> state v/->edn pr-str) ")
-app.init(opts)\n"]]))
-
-(defn doc->html [doc error]
-  (->html {} {:doc (doc->viewer {} doc) :error error}))
-
-(defn doc->static-html [doc]
-  (->html {:conn-ws? false} {:doc (doc->viewer {:inline-results? true} doc)}))
-
-#_(let [out "test.html"]
-    (spit out (doc->static-html (nextjournal.clerk.eval/eval-file "notebooks/pagination.clj")))
-    (clojure.java.browse/browse-url out))
+    [:div#clerk html]
+    (when-not exclude-js?
+      [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
+let state = " (-> state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
+viewer.init(viewer.read_string(state))\n"
+       (when conn-ws?
+         "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')\n")])]))
