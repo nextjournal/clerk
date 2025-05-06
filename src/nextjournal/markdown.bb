@@ -26,7 +26,10 @@
           deref :out not-empty
           (json/parse-string true)))
 
-(defn parse*
+(defn parse* [& args]
+  ::TODO)
+
+(defn parse
   [md] (some->> md tokenize
                 ;; TODO
                 ((requiring-resolve 'nextjournal.markdown.impl/parse))))

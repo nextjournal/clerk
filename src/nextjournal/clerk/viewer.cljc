@@ -24,7 +24,9 @@
             [nextjournal.markdown :as md]
             [nextjournal.markdown.transform :as md.transform]
             [nextjournal.markdown.utils :as md.utils])
-  #?(:bb (:import (java.nio.file Files StandardOpenOption)
+  #?(:bb (:import (clojure.lang IDeref IAtom)
+                  (java.nio.file Files StandardOpenOption)
+                  (java.net URI URL)
                   (java.util Base64)
                   (java.lang Throwable))
      :clj (:import (com.pngencoder PngEncoder)
@@ -1916,7 +1918,9 @@
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
    (with-viewer (:name image-viewer) viewer-opts
-     #?(:cljs image-or-url :clj (read-image image-or-url)))))
+     #?(:cljs image-or-url
+        :bb image-or-url
+        :clj (read-image image-or-url)))))
 
 (defn caption [text content]
   (col
