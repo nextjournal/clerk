@@ -12,9 +12,12 @@
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.walk :as walk]
-            [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
+
+(when-not utils/bb?
+  (require '[taoensso.nippy :as nippy]))
 
 (set! *warn-on-reflection* true)
 
@@ -646,10 +649,11 @@
    (let [digest-fn (case hash-type
                      :sha1 sha1-base58
                      :sha512 sha2-base58)]
-     (binding [nippy/*incl-metadata?* false]
-       (-> value
-           nippy/fast-freeze
-           digest-fn)))))
+     (utils/if-bb (-> value digest-fn)
+       (binding [nippy/*incl-metadata?* false]
+         (-> value
+             nippy/fast-freeze
+             digest-fn))))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))
