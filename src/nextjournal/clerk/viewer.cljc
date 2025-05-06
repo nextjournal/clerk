@@ -94,6 +94,11 @@
      (.write w (if-let [opts (not-empty (dissoc (into {} v) :f :form))]
                  (str "#clerk/render-fn+opts " [opts (:form v)])
                  (str "#clerk/render-fn " (:form v))))))
+
+#?(:bb
+   (defn ordered-map-reader-bb [coll]
+     (omap/ordered-map coll)))
+
 #?(:cljs
    (defn ordered-map-reader-cljs [coll]
      (omap/ordered-map (vec coll))))
@@ -102,7 +107,8 @@
   {'clerk/render-fn ->render-fn
    'clerk/render-fn+opts ->render-fn+opts
    'clerk/unreadable-edn eval
-   'ordered/map #?(:clj omap/ordered-map-reader-clj
+   'ordered/map #?(:bb ordered-map-reader-bb
+                   :clj omap/ordered-map-reader-clj
                    :cljs ordered-map-reader-cljs)})
 
 #_(binding [*data-readers* {'render-fn ->render-fn}]
@@ -381,6 +387,10 @@
           (try
             (= x (-> x str tools.reader/read-string))
             (catch Exception _e false))))
+
+#?(:bb (defn print-simple [o, ^java.io.Writer w]
+         #_(print-meta o w)
+         (.write w (str o))))
 
 #?(:clj
    (defmethod print-method clojure.lang.Keyword [o w]
