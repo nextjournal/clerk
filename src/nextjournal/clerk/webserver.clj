@@ -12,9 +12,14 @@
             [nextjournal.clerk.paths :as paths]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
+            [nextjournal.markdown :as md]
             [org.httpkit.server :as httpkit]
             [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
+
+(def help-doc
+{:ns *ns*
+:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))

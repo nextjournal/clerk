@@ -261,6 +261,9 @@
   (boolean (and (string? (:file doc))
                 (str/ends-with? (:file doc) ".cljs"))))
 
+;; TODO: used in builder to drop analyzer dependency, cfr. below
+(defn analyze-doc [doc] (-> doc analyzer/build-graph analyzer/hash))
+
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
   [in-memory-cache {:as parsed-doc :keys [set-status-fn no-cache]}]
@@ -313,5 +316,4 @@
    (eval-doc in-memory-cache (parser/parse-clojure-string code-string))))
 
 #_(eval-string "(+ 39 3)")
-
 #_(nextjournal.clerk/show! "notebooks/hello.md")
