@@ -8,3 +8,7 @@
 (defmacro when-bb [& body]
   (when bb?
     `(do ~@body)))
+
+(defmacro when-not-bb [& body]
+  (when (not bb?)
+    `(do ~@body)))

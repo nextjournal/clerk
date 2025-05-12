@@ -6,16 +6,20 @@
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
-            [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.git :as git]
             [nextjournal.clerk.paths :as paths]
+            [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.markdown :as md]
             [org.httpkit.server :as httpkit]
             [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
+
+(u/if-bb
+ (require '[editscript.core :as-alias editscript])
+ (require '[editscript.core :as editscript]))
 
 (def help-doc
 {:ns *ns*
@@ -158,7 +162,7 @@
     presented))
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
+  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)) (not u/bb?))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 (cond-> {:type :set-state!
                          :doc (present+reset! doc)}

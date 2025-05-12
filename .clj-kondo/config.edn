@@ -7,7 +7,8 @@
            taoensso.encore/defonce clojure.core/defonce
            taoensso.encore/defalias clojure.core/def
            promesa.core/let clojure.core/let
-           shadow.cljs.modern/defclass clojure.core/defprotocol}
+           shadow.cljs.modern/defclass clojure.core/defprotocol
+           nextjournal.clerk.utils/if-bb clojure.core/if}
  :linters {:clojure-lsp/unused-public-var {:level :off}
            :consistent-alias {:aliases {datomic.api datomic
                                         clojure.string str
