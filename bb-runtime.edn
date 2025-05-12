@@ -7,7 +7,8 @@
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
         io.github.nextjournal/markdown {:mvn/version "0.6.157"}
         io.github.nextjournal/clerk-slideshow {:git/sha "562f634494a1e1a9149ed78d5d39fd9486cc00ba"}
-        weavejester/dependency {:mvn/version "0.2.1"}}
+        weavejester/dependency {:mvn/version "0.2.1"}
+        io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}}
  :tasks
  {dev
   {:requires ([babashka.fs :as fs]
