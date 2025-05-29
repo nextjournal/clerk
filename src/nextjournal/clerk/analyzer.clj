@@ -649,7 +649,7 @@
    (let [digest-fn (case hash-type
                      :sha1 sha1-base58
                      :sha512 sha2-base58)]
-     (utils/if-bb (-> value digest-fn)
+     (utils/if-bb (-> value pr-str digest-fn)
                   #_{:clj-kondo/ignore [:unresolved-namespace]}
                   (binding [nippy/*incl-metadata?* false]
                     (-> value
@@ -679,7 +679,6 @@
                                               (assoc-in state [:->hash deref-dep] (->hash-str (eval deref-dep))))
                                             analyzed-doc
                                             (sort topo-comp deref-deps-to-eval))]
-      #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
       (hash doc-with-deref-dep-hashes (sort topo-comp (dep/transitive-dependents-set graph deref-deps-to-eval))))
     analyzed-doc))
 

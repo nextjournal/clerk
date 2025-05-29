@@ -24,10 +24,10 @@
 
 #?(:clj
    (defn auto-resolves [ns]
-     (as-> (ns-aliases ns) $
-       (assoc $ :current (ns-name *ns*))
-       (zipmap (keys $)
-               (map ns-name (vals $))))))
+     (let [aliases (ns-aliases ns)
+           aliases (assoc aliases :current (ns-name *ns*))]
+       (zipmap (keys aliases)
+               (map ns-name (vals aliases))))))
 
 #_(auto-resolves (find-ns 'nextjournal.clerk.parser))
 #_(auto-resolves (find-ns 'cards))
@@ -369,7 +369,7 @@
                           (guess-var form))]
              var
              (let [hash-fn (fn [x]
-                             #?(:bb (sha1-base58 x)
+                             #?(:bb (sha1-base58 (pr-str x))
                                 :clj (-> x nippy/fast-freeze sha1-base58)
                                 :cljs (hash-sha1 x)))]
                (symbol (str *ns*)
@@ -482,7 +482,6 @@
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
                       (assoc :ns *ns*)))
-
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
                       (assoc :add-comment-on-line? (not (n/comment? node)))
