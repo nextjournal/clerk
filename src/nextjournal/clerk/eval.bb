@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [read-string])
   (:require [clojure.string :as str]
             [edamame.core :as edamame]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]))
@@ -115,6 +116,7 @@
   (binding [*ns* *ns*]
     (reduce (fn [doc {:as b :keys [type text]}]
               (let [form (read-string text)
+                    _ (prn :read-form form)
                     ns? (= 'ns (when (list? form) (first form)))
                     var (when (and (deflike? form) (symbol? (second form))) (second form))]
                 (when ns? (eval form))
@@ -136,12 +138,31 @@
 
 (defn +eval-results
   "Evaluates the given `parsed-doc` using the `in-memory-cache` and augments it with the results."
-  [in-memory-cache parsed-doc]
-  (let [{:as doc :keys [ns]} (read-forms parsed-doc)]
-    (binding [*ns* (or ns *ns*)]
-      (-> doc
-          (assoc :blob->result in-memory-cache)
-          eval-analyzed-doc))))
+  [in-memory-cache {:as parsed-doc :keys [set-status-fn no-cache]}]
+  (if false #_(cljs? parsed-doc)
+    nil #_(process-cljs parsed-doc)
+    (let [{:as analyzed-doc :keys [ns]}
+
+          (cond
+            no-cache
+            parsed-doc
+
+            config/cache-disabled?
+            (assoc parsed-doc :no-cache true)
+
+            :else
+            (do
+              (when set-status-fn
+                (set-status-fn {:progress 0.10 :status "Analyzing…"}))
+              (-> parsed-doc
+                  (assoc :blob->result in-memory-cache)
+                  analyzer/build-graph
+                  analyzer/hash)))]
+      (when (and (not-empty (:var->block-id analyzed-doc))
+                 (not ns))
+        (throw (ex-info "namespace must be set" (select-keys analyzed-doc [:file :ns]))))
+      (binding [*ns* ns]
+        (eval-analyzed-doc analyzed-doc)))))
 
 (defn eval-doc
   "Evaluates the given `doc`."
