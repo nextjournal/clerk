@@ -12,6 +12,7 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
+            [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -63,7 +64,7 @@
                                         {:file-or-ns file-or-ns}
                                         e)))
                       (catch ^:sci/error Exception e
-                        (prn (ex-message e) (sci.core/format-stacktrace (sci.core/stacktrace e)))
+                        (u/if-bb (prn (ex-message e) (sci.core/format-stacktrace (sci.core/stacktrace e))) nil)
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
                                         {:file file-or-ns}
                                         e))))
