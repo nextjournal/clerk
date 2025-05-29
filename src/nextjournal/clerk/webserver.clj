@@ -327,7 +327,13 @@
           (try (show! (merge {:skip-history? true}
                              (select-keys opts [:expanded-paths :index :git/sha :git/url :git/prefix]))
                       file-or-ns)
-               (catch Exception _))
+               (catch ^:sci/error Exception e
+                 (u/if-bb
+                  #_:clj-kondo/ignore
+                  (binding [*out* *err*]
+                    (println
+                     (str/join "\n" (sci.core/format-stacktrace (sci.core/stacktrace e)))))
+                  nil)))
           {:status 200
            :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
            :body (view/->html {:doc (view/doc->viewer @!doc)
@@ -350,9 +356,15 @@
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
         (serve-notebook req))
+      (catch ^:sci/error Exception e
+             {:status  500
+              :body    (u/if-bb
+                        #_{:clj-kondo/ignore [:unresolved-namespace]}
+                        (pr-str (sci.core/format-stacktrace (sci.core/stacktrace e)))
+                        (with-out-str (pprint/pprint (Throwable->map e))))})
       (catch Throwable e
-        {:status  500
-         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
+             {:status  500
+              :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 #_(nextjournal.clerk/serve! {})
 
