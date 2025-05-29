@@ -166,3 +166,7 @@
    (eval-doc in-memory-cache (parser/parse-clojure-string {:doc? true} code-string))))
 
 #_(eval-string "(+ 39 3)")
+
+(defn cljs? [doc]
+  (boolean (and (string? (:file doc))
+                (str/ends-with? (:file doc) ".cljs"))))

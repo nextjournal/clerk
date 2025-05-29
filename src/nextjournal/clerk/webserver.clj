@@ -162,7 +162,7 @@
     presented))
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)) (not u/bb?))
+  (broadcast! (u/if-not-bb-and (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
                 {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
                 (cond-> {:type :set-state!
                          :doc (present+reset! doc)}
@@ -205,7 +205,9 @@
                        :sync! (if-let [var (resolve (:var-name msg))]
                                 (try
                                   (binding [*sender-ch* sender-ch]
-                                    (swap! @var editscript/patch (editscript/edits->script (:patch msg))))
+                                    (u/if-bb
+                                     (throw (ex-info "Not implemented" {}))
+                                     (swap! @var editscript/patch (editscript/edits->script (:patch msg)))))
                                   (catch Exception ex
                                     (throw (doto (ex-info (str "Clerk cannot update synced var `" (:var-name msg) "`.") msg ex)
                                              update-error!))))
