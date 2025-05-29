@@ -404,11 +404,11 @@
   (cond-> form
     (supports-meta? form)
     (vary-meta merge (cond-> loc
-                       (:file opts) (assoc :clojure.core/eval-file
-                                           (str #?(:clj (cond-> (:file opts)
-                                                          (instance? java.net.URL (:file opts))
+                       file (assoc :clojure.core/eval-file
+                                           (str #?(:clj (cond-> file
+                                                          (instance? java.net.URL file)
                                                           extract-file)
-                                                   :cljs (:file opts))))))))
+                                                   :cljs file)))))))
 
 (defn add-doc-settings [{:as doc :keys [blocks]}]
   (if-let [first-form (some :form blocks)]

@@ -39,6 +39,7 @@
 (defn ^:private eval-form [{:keys [form var no-cache?]} hash]
   (try
     (let [{:keys [result]} (time-ms (binding [config/*in-clerk* true]
+                                      (prn :form form :meta (meta form))
                                       (eval form)))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)

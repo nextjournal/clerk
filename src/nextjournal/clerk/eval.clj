@@ -283,7 +283,7 @@
               (when set-status-fn
                 (set-status-fn {:progress 0.10 :status "Analyzing…"}))
               (-> parsed-doc
-                  (assoc :blob->result in-memory-cache)        
+                  (assoc :blob->result in-memory-cache)
                   analyzer/build-graph
                   analyzer/hash)))]
       (when (and (not-empty (:var->block-id analyzed-doc))
