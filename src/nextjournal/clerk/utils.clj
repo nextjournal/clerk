@@ -8,9 +8,9 @@
 (defmacro if-not-bb-and [conds then else]
   (if bb?
     else
-    (if ~conds
-      then
-      else)))
+    `(if ~conds
+       ~then
+       ~else)))
 
 (defmacro when-bb [& body]
   (when bb?
