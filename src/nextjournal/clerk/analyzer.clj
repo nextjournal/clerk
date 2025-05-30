@@ -77,7 +77,7 @@
      (try
        (analyze* (assoc (ana/to-env bindings)
                         :ns (ns-name *ns*)) form)
-       (catch java.lang.AssertionError e
+       #_(catch java.lang.AssertionError e
          (throw (ex-info "Failed to analyze form"
                          (form->ex-data form)
                          e)))))))

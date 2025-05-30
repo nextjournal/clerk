@@ -101,7 +101,7 @@
   (and (some? value)
        (try
          (and (not (analyzer/exceeds-bounded-count-limit? value))
-              (utils/if-bb true (some? #_:clj-kondo/ignore (nippy/freezable? value))))
+              (utils/if-bb (= value (edn/read-string (pr-str value))) (some? #_:clj-kondo/ignore (nippy/freezable? value))))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _

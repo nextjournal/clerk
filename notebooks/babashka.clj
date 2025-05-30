@@ -1,5 +1,7 @@
 (ns babashka
-  (:require [babashka.fs :as fs]))
+  ; {:nextjournal.clerk/no-cache true}
+  (:require [babashka.fs :as fs]
+            [nextjournal.clerk :as clerk]))
 
 (System/getProperty "babashka.version")
 
@@ -20,3 +22,11 @@ java.io.File
 (def x 2)
 
 (prn x)
+
+clerk/with-viewer
+
+#_(clerk/with-viewer
+  {:render-fn '(fn [_]
+                 [:div {:style {:color "green"}}
+                  "Hello"])}
+  nil)

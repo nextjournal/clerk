@@ -75,7 +75,10 @@
     (apply #'clojure.core/definterface &form &env name sigs)))
 
 (defmethod macroexpand-hook :default [the-var &form &env args]
-  (apply the-var &form (:locals &env) args))
+  (prn :the-var the-var :contents @the-var :form &form :args args)
+  (let [ret (apply the-var &form (:locals &env) args)]
+    (prn :ret ret)
+    ret))
 
 (defmulti -parse (fn [_env form] (and (seq? form) (first form))))
 
@@ -385,6 +388,8 @@
         (do
           (swap! *deps* conj maybe-macro)
           (let [expanded (macroexpand-hook maybe-macro form env (rest form))]
+            (prn :form form)
+            (prn :expanded expanded)
             (analyze* env expanded)))
         {:op       :invoke
          :form     form

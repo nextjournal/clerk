@@ -80,7 +80,7 @@
          (when-let [error (and (not (::skip-throw opts))
                                (:error result))]
            (throw error)))
-       (catch Exception e
+       #_(catch Exception e
          (webserver/update-doc! (-> @webserver/!doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
          (throw e))))))
 
