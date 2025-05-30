@@ -10,10 +10,10 @@
         weavejester/dependency {:mvn/version "0.2.1"}
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}}
  :tasks
- {:init (do (require '[babashka.fs :as fs]))
-  -dev
-  {:requires (
-              [babashka.nrepl.server :as srv]
+ {:init (do (require '[babashka.fs :as fs])
+            (System/setProperty "clerk.resource_manifest" (str {"/js/viewer.js" "/js/viewer.js"})))
+  dev
+  {:requires ([babashka.nrepl.server :as srv]
               [nextjournal.clerk :as clerk]
               [babashka.cli :as cli])
    :task (do (srv/start-server! {:host "localhost" :port 1339})
@@ -24,9 +24,6 @@
                                             (nextjournal.clerk/halt!)
                                             (fs/delete ".nrepl-port")))))
              (deref (promise)))}
-  dev (do
-        (prn :bb (fs/which "bb"))
-        (babashka.process/exec "bb" "-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}" "--config" "bb-runtime.edn" "-dev"))
 
   build
   {:requires ([nextjournal.clerk :as clerk]

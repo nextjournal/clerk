@@ -83,7 +83,9 @@
                          e)))))))
 
 (defn analyze-form [form]
-  (with-bindings {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
+  (with-bindings (utils/if-bb
+                   {}
+                   {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)})
     (binding [ana/*deps* (or ana/*deps* (atom #{}))]
       (analyze-form* (rewrite-defcached form)))))
 
@@ -456,7 +458,7 @@
         (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
           (or (ns->file ns)
               (ns->jar ns))
-          (symbol->jar sym)))))
+          (utils/if-bb nil (symbol->jar sym))))))
 
 #_(find-location `inc)
 #_(find-location `*print-dup*)

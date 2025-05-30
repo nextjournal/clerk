@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.eval
   "Clerk's incremental evaluation with in-memory and disk-persisted caching layers."
   (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.main :as main]
             [clojure.string :as str]
@@ -8,20 +9,25 @@
             [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
-            [nextjournal.clerk.viewer :as v]
-            [taoensso.nippy :as nippy])
-  (:import (java.awt.image BufferedImage)
-           (javax.imageio ImageIO)))
+            [nextjournal.clerk.utils :as utils]
+            [nextjournal.clerk.viewer :as v]))
 
-(comment
+(utils/if-bb nil (do (require '[taoensso.nippy :as nippy])
+                     (import '(java.awt.image BufferedImage)
+                             '(javax.imageio ImageIO))))
+
+#_(comment
   (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
   (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
   (nippy/get-recorded-serializable-classes))
 
 ;; nippy tweaks
-(alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
-(nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
-(nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))
+(utils/if-bb nil
+             #_:clj-kondo/ignore
+             (do
+               (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
+               (nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
+               (nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))))
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
@@ -35,7 +41,8 @@
 #_(wrap-with-blob-id :test "foo")
 
 (defn hash+store-in-cas! [x]
-  (let [^bytes ba (nippy/freeze x)
+  (let [^bytes ba #_:clj-kondo/ignore (utils/if-bb (.getBytes (pr-str x))
+                                                   (nippy/freeze x))
         multihash (analyzer/sha2-base58 ba)
         file (->cache-file multihash)]
     (when-not (fs/exists? file)
@@ -45,7 +52,10 @@
 
 (defn thaw-from-cas [hash]
   ;; TODO: validate hash and retry or re-compute in case of a mismatch
-  (nippy/thaw-from-file (->cache-file hash)))
+  (let [f (->cache-file hash)]
+    (utils/if-bb
+     (-> f fs/read-all-bytes (String. "utf-8") edn/read-string)
+     #_:clj-kondo/ignore (nippy/thaw-from-file f)) ))
 
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
@@ -91,7 +101,7 @@
   (and (some? value)
        (try
          (and (not (analyzer/exceeds-bounded-count-limit? value))
-              (some? (nippy/freezable? value)))
+              (utils/if-bb true (some? #_:clj-kondo/ignore (nippy/freezable? value))))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _
@@ -152,9 +162,11 @@
           (seq @!interned-vars)
           (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t
-      (let [triaged (main/ex-triage (Throwable->map t))]
-        (throw (ex-info (main/ex-str triaged)
-                        (merge triaged (analyzer/form->ex-data form))))))))
+      (utils/if-bb
+       (throw t)
+       (let [triaged (main/ex-triage (Throwable->map t))]
+         (throw (ex-info (main/ex-str triaged)
+                         (merge triaged (analyzer/form->ex-data form)))))))))
 
 (defn maybe-eval-viewers [{:as opts :nextjournal/keys [viewer viewers]}]
   (cond-> opts
