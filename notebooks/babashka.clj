@@ -17,4 +17,6 @@
 
 java.io.File
 
-(prn :halloe)
+(def x 2)
+
+(prn x)
