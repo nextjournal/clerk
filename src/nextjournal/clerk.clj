@@ -12,6 +12,7 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
+            [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
@@ -62,7 +63,9 @@
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns}
                                         e)))
-                      (catch Exception e
+                      (catch ^:sci/error Exception e
+                        #_:clj-kondo/ignore
+                        (u/if-bb (prn (ex-message e) (sci.core/format-stacktrace (sci.core/stacktrace e))) nil)
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
                                         {:file file-or-ns}
                                         e))))
@@ -77,7 +80,7 @@
          (when-let [error (and (not (::skip-throw opts))
                                (:error result))]
            (throw error)))
-       (catch Exception e
+       #_(catch Exception e
          (webserver/update-doc! (-> @webserver/!doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
          (throw e))))))
 

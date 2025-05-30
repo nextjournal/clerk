@@ -1,7 +1,10 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
   (:refer-clojure :exclude [read-string])
-  (:require #?@(:clj [[clojure.tools.reader :as tools.reader]
+  (:require #?@(:bb [[clojure.tools.reader :as tools.reader]
+                     [multiformats.base.b58 :as b58]
+                     [multiformats.hash :as hash]]
+                :clj [[clojure.tools.reader :as tools.reader]
                       [taoensso.nippy :as nippy]
                       [multiformats.base.b58 :as b58]
                       [multiformats.hash :as hash]]
@@ -21,10 +24,10 @@
 
 #?(:clj
    (defn auto-resolves [ns]
-     (as-> (ns-aliases ns) $
-       (assoc $ :current (ns-name *ns*))
-       (zipmap (keys $)
-               (map ns-name (vals $))))))
+     (let [aliases (ns-aliases ns)
+           aliases (assoc aliases :current (ns-name *ns*))]
+       (zipmap (keys aliases)
+               (map ns-name (vals aliases))))))
 
 #_(auto-resolves (find-ns 'nextjournal.clerk.parser))
 #_(auto-resolves (find-ns 'cards))
@@ -366,7 +369,8 @@
                           (guess-var form))]
              var
              (let [hash-fn (fn [x]
-                             #?(:clj (-> x nippy/fast-freeze sha1-base58)
+                             #?(:bb (sha1-base58 (pr-str x))
+                                :clj (-> x nippy/fast-freeze sha1-base58)
                                 :cljs (hash-sha1 x)))]
                (symbol (str *ns*)
                        (case type
@@ -400,11 +404,11 @@
   (cond-> form
     (supports-meta? form)
     (vary-meta merge (cond-> loc
-                       (:file opts) (assoc :clojure.core/eval-file
-                                           (str #?(:clj (cond-> (:file opts)
-                                                          (instance? java.net.URL (:file opts))
+                       file (assoc :clojure.core/eval-file
+                                           (str #?(:clj (cond-> file
+                                                          (instance? java.net.URL file)
                                                           extract-file)
-                                                   :cljs (:file opts))))))))
+                                                   :cljs file)))))))
 
 (defn add-doc-settings [{:as doc :keys [blocks]}]
   (if-let [first-form (some :form blocks)]
@@ -478,7 +482,6 @@
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
                       (assoc :ns *ns*)))
-
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
                       (assoc :add-comment-on-line? (not (n/comment? node)))

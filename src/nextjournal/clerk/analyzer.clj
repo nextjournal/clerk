@@ -12,9 +12,12 @@
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.walk :as walk]
-            [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
+
+(when-not utils/bb?
+  (require '[taoensso.nippy :as nippy]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,13 +77,15 @@
      (try
        (analyze* (assoc (ana/to-env bindings)
                         :ns (ns-name *ns*)) form)
-       (catch java.lang.AssertionError e
+       #_(catch java.lang.AssertionError e
          (throw (ex-info "Failed to analyze form"
                          (form->ex-data form)
                          e)))))))
 
 (defn analyze-form [form]
-  (with-bindings {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
+  (with-bindings (utils/if-bb
+                   {}
+                   {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)})
     (binding [ana/*deps* (or ana/*deps* (atom #{}))]
       (analyze-form* (rewrite-defcached form)))))
 
@@ -453,7 +458,7 @@
         (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
           (or (ns->file ns)
               (ns->jar ns))
-          (symbol->jar sym)))))
+          (utils/if-bb nil (symbol->jar sym))))))
 
 #_(find-location `inc)
 #_(find-location `*print-dup*)
@@ -646,10 +651,12 @@
    (let [digest-fn (case hash-type
                      :sha1 sha1-base58
                      :sha512 sha2-base58)]
-     (binding [nippy/*incl-metadata?* false]
-       (-> value
-           nippy/fast-freeze
-           digest-fn)))))
+     (utils/if-bb (-> value pr-str digest-fn)
+                  #_{:clj-kondo/ignore [:unresolved-namespace]}
+                  (binding [nippy/*incl-metadata?* false]
+                    (-> value
+                        nippy/fast-freeze
+                        digest-fn))))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))
@@ -674,7 +681,6 @@
                                               (assoc-in state [:->hash deref-dep] (->hash-str (eval deref-dep))))
                                             analyzed-doc
                                             (sort topo-comp deref-deps-to-eval))]
-      #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
       (hash doc-with-deref-dep-hashes (sort topo-comp (dep/transitive-dependents-set graph deref-deps-to-eval))))
     analyzed-doc))
 
