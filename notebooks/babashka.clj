@@ -23,9 +23,7 @@ java.io.File
 
 (prn x)
 
-clerk/with-viewer
-
-#_(clerk/with-viewer
+(clerk/with-viewer
   {:render-fn '(fn [_]
                  [:div {:style {:color "green"}}
                   "Hello"])}
