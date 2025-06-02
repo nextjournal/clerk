@@ -37,7 +37,8 @@
   (edamame/parse-string s {:all true
                            :read-cond :allow
                            :regex #(list `re-pattern %)
-                           :features #{:clj}
+                           :features #?(:bb #{:bb :clj}
+                                        :default #{:clj})
                            :end-location false
                            :row-key :line
                            :col-key :column
@@ -450,7 +451,8 @@
        (if-let [node (first nodes)]
          (recur (cond
                   (code-tags (n/tag node))
-                  (let [form (try (read-string (n/string node))
+                  (let [nstring (n/string node)
+                        form (try (read-string nstring)
                                   (catch Exception e
                                     (throw (ex-info (str "Clerk failed reading block: "
                                                          (ex-message e)
@@ -470,7 +472,7 @@
                                              (parse-global-block-settings form))
                         code-block {:type :code
                                     :settings (merge-settings next-block-settings (parse-local-block-settings form))
-                                    :text (n/string node)
+                                    :text nstring
                                     :form (add-loc opts loc form)
                                     :loc loc}]
                     (when (ns? form)
