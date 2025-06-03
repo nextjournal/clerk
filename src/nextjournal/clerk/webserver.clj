@@ -357,13 +357,14 @@
         "favicon.ico" {:status 404}
         (serve-notebook req))
       (catch ^:sci/error Exception e
-        {:status  500
-         :body    (u/if-bb
-                   (pr-str (sci.core/format-stacktrace (sci.core/stacktrace e)))
-                   (with-out-str (pprint/pprint (Throwable->map e))))})
+             {:status  500
+              :body    (u/if-bb
+                        #_{:clj-kondo/ignore [:unresolved-namespace]}
+                        (pr-str (sci.core/format-stacktrace (sci.core/stacktrace e)))
+                        (with-out-str (pprint/pprint (Throwable->map e))))})
       (catch Throwable e
-        {:status  500
-         :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
+             {:status  500
+              :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))
 
 #_(nextjournal.clerk/serve! {})
 
