@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.webserver
+  {:clj-kondo/config '{:linters {:unresolved-namespace {:exclude [sci.core]}}}}
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
             [clojure.java.browse :as browse]
@@ -329,7 +330,6 @@
                       file-or-ns)
                (catch ^:sci/error Exception e
                  (u/if-bb
-                  #_:clj-kondo/ignore
                   (binding [*out* *err*]
                     (println
                      (str/join "\n" (sci.core/format-stacktrace (sci.core/stacktrace e)))))
@@ -359,7 +359,6 @@
       (catch ^:sci/error Exception e
              {:status  500
               :body    (u/if-bb
-                        #_{:clj-kondo/ignore [:unresolved-namespace]}
                         (pr-str (sci.core/format-stacktrace (sci.core/stacktrace e)))
                         (with-out-str (pprint/pprint (Throwable->map e))))})
       (catch Throwable e

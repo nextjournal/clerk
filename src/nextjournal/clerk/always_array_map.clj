@@ -10,6 +10,43 @@
 
 (declare ->AlwaysArrayMap)
 
+;; (defn ->LazyMapEntry
+;;   [key_ val_]
+;;   (proxy [clojure.lang.AMapEntry] []
+;;     (key [] key_)
+;;     (val [] (force val_))
+;;     (getKey [] key_)
+;;     (getValue [] (force val_))))
+
+;; (defn ->LazyMap [m]
+;;   (proxy [clojure.lang.APersistentMap clojure.lang.IMeta clojure.lang.IObj]
+;;          []
+;;     (valAt
+;;       ([k]
+;;        (auto-deref (get m k)))
+;;       ([k default-value]
+;;        (auto-deref (get m k default-value))))
+;;     (iterator []
+;;       (.iterator ^java.lang.Iterable
+;;         (eduction
+;;           (map #(->LazyMapEntry % (delay (get this %))))
+;;           (keys m))))
+
+;;     (containsKey [k] (contains? m k))
+;;     (entryAt [k] (if (contains? m k)
+;;                    (->LazyMapEntry k (delay (get this k)))))
+;;     (equiv [other] (= m other))
+;;     (empty [] (->LazyMap (empty m)))
+;;     (count [] (count m))
+;;     (assoc [k v] (->LazyMap (assoc m k v)))
+;;     (without [k] (->LazyMap (dissoc m k)))
+;;     (seq [] (some->> (keys m)
+;;               (map #(->LazyMapEntry % (delay (get this %))))))
+;;     ; a lot of map users expect meta to work
+;;     (meta [] (meta m))
+;;     (withMeta [meta] (->LazyMap (with-meta m meta)))))
+
+
 (utils/if-bb
  nil
  (deftype AlwaysArrayMap [^clojure.lang.PersistentArrayMap the-map]

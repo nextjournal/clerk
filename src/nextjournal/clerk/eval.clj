@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.eval
   "Clerk's incremental evaluation with in-memory and disk-persisted caching layers."
+  {:clj-kondo/config '{:linters {:unresolved-namespace {:exclude [nippy]}}}}
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
@@ -41,8 +42,8 @@
 #_(wrap-with-blob-id :test "foo")
 
 (defn hash+store-in-cas! [x]
-  (let [^bytes ba #_:clj-kondo/ignore (utils/if-bb (.getBytes (pr-str x))
-                                                   (nippy/freeze x))
+  (let [^bytes ba (utils/if-bb (.getBytes (pr-str x))
+                               (nippy/freeze x))
         multihash (analyzer/sha2-base58 ba)
         file (->cache-file multihash)]
     (when-not (fs/exists? file)
@@ -55,11 +56,11 @@
   (let [f (->cache-file hash)]
     (utils/if-bb
      (-> f fs/read-all-bytes (String. "utf-8") edn/read-string)
-     #_:clj-kondo/ignore (nippy/thaw-from-file f)) ))
+     (nippy/thaw-from-file f)) ))
 
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
-
+ 
 (defn elapsed-ms [from]
   (/ (double (- (. System (nanoTime)) from)) 1000000.0))
 
@@ -101,7 +102,7 @@
   (and (some? value)
        (try
          (and (not (analyzer/exceeds-bounded-count-limit? value))
-              (utils/if-bb (= value (edn/read-string (pr-str value))) (some? #_:clj-kondo/ignore (nippy/freezable? value))))
+              (utils/if-bb (= value (edn/read-string (pr-str value))) (some? (nippy/freezable? value))))
          ;; can error on e.g. lazy-cat fib
          ;; TODO: propagate error information here
          (catch Exception _
