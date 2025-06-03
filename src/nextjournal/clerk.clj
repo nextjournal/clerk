@@ -12,7 +12,6 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
-            [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]))
 
