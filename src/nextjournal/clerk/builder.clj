@@ -5,6 +5,7 @@
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [nextjournal.clerk.analyzer :as analyzer]
             [nextjournal.clerk.builder-ui :as builder-ui]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
@@ -300,7 +301,7 @@
         {state :result duration :time-ms} (eval/time-ms (mapv (comp (partial parser/parse-file {:doc? true}) :file) state))
         _ (report-fn {:stage :parsed :state state :duration duration})
         {state :result duration :time-ms} (eval/time-ms (reduce (fn [state doc]
-                                                                  (try (conj state (eval/analyze-doc doc))
+                                                                  (try (conj state (-> doc analyzer/build-graph analyzer/hash))
                                                                        (catch Exception e
                                                                          (reduced {:error e :file (:file doc)}))))
                                                                 []

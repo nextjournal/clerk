@@ -63,9 +63,7 @@
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
                                         {:file-or-ns file-or-ns}
                                         e)))
-                      (catch ^:sci/error Exception e
-                        #_:clj-kondo/ignore
-                        (u/if-bb (prn (ex-message e) (sci.core/format-stacktrace (sci.core/stacktrace e))) nil)
+                      (catch Exception e
                         (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
                                         {:file file-or-ns}
                                         e))))
