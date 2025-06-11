@@ -1,9 +1,9 @@
 (ns nextjournal.clerk.viewer
   (:refer-clojure :exclude [var?])
-  (:require [clojure.string :as str]
+  (:require [clojure.datafy :as datafy]
             [clojure.pprint :as pprint]
-            [clojure.datafy :as datafy]
             [clojure.set :as set]
+            [clojure.string :as str]
             [flatland.ordered.map :as omap :refer [ordered-map]]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
@@ -21,8 +21,7 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as w]
             [nextjournal.markdown :as md]
-            [nextjournal.markdown.utils :as md.utils]
-            [nextjournal.markdown.transform :as md.transform])
+            [nextjournal.markdown.utils :as md.utils])
   #?(:clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref IAtom)
                    (java.lang Throwable)
@@ -788,7 +787,7 @@
                                  [:div.code-viewer.code-listing
                                   (with-viewer `code-viewer
                                     {:nextjournal/render-opts {:language (:language % "clojure")}}
-                                    (str/trim-newline (md.transform/->text %)))]))}
+                                    (str/trim-newline (md/node->text %)))]))}
 
    ;; marks
    {:name :nextjournal.markdown/em :transform-fn (into-markup [:em])}
@@ -824,9 +823,9 @@
    {:name :nextjournal.markdown/table-body :transform-fn (into-markup [:tbody])}
    {:name :nextjournal.markdown/table-row :transform-fn (into-markup [:tr])}
    {:name :nextjournal.markdown/table-header
-    :transform-fn (into-markup #(vector :th {:style (md.transform/table-alignment (:attrs %))}))}
+    :transform-fn (into-markup #(vector :th {:style (md/table-alignment %)}))}
    {:name :nextjournal.markdown/table-data
-    :transform-fn (into-markup #(vector :td {:style (md.transform/table-alignment (:attrs %))}))}
+    :transform-fn (into-markup #(vector :td {:style (md/table-alignment %)}))}
 
    ;; ToC via [[TOC]] placeholder ignored
    {:name :nextjournal.markdown/toc :transform-fn (into-markup [:div.toc])}
@@ -1243,7 +1242,7 @@
 
 (defn md-toc->navbar-items [{:keys [children]}]
   (mapv (fn [{:as node :keys [emoji attrs]}]
-          {:title (str/replace (md.transform/->text node) (re-pattern (str "^" emoji "[ ]?")) "")
+          {:title (str/replace (md/node->text node) (re-pattern (str "^" emoji "[ ]?")) "")
            :emoji emoji
            :path (str "#" (:id attrs))
            :items (md-toc->navbar-items node)}) children))
