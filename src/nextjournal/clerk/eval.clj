@@ -139,6 +139,7 @@
           {:keys [result]} (time-ms (binding [config/*in-clerk* true]
                                       (assert form "form must be set")
                                       (with-redefs [clojure.core/intern (partial intern+record !interned-vars)]
+                                        (prn :form form)
                                         (eval form))))
           result (if (and (nil? result) var (= 'defonce (first form)))
                    (find-var var)
@@ -164,6 +165,7 @@
           (seq @!interned-vars)
           (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t
+      (prn :t t)
       (utils/if-bb
        (throw t)
        (let [triaged (main/ex-triage (Throwable->map t))]
