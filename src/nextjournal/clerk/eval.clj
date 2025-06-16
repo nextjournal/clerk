@@ -32,7 +32,9 @@
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
 (defn ->cache-file [hash]
-  (str config/cache-dir fs/file-separator hash))
+  (utils/if-bb
+   (str (fs/file config/cache-dir (str "bb_" hash)))
+   (str (fs/file config/cache-dir hash))))
 
 (defn wrapped-with-metadata [value hash]
   (cond-> {:nextjournal/value value}
