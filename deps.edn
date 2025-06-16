@@ -6,16 +6,14 @@
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.2"}
         org.flatland/ordered {:mvn/version "1.15.12"}
-        io.github.nextjournal/markdown {:mvn/version "0.6.157"
-                                        ;; only used in cljs
-                                        :exclusions [applied-science/js-interop]}
+        io.github.nextjournal/markdown {:mvn/version "0.7.186"}
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
 
         com.taoensso/nippy {:mvn/version "3.4.2"}
 
-        mvxcvi/multiformats {:mvn/version "0.3.107"}
+        mvxcvi/multiformats {:mvn/version "1.0.125"}
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
         http-kit/http-kit {:mvn/version "2.8.0"}

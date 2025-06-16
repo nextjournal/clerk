@@ -56,6 +56,14 @@
                                clojure (str ":" clojure-version))
                      *command-line-args*))}
 
+  test:bb {:doc "Run babashka tests"
+           :extra-paths ["test"]
+           :extra-deps {io.github.nextjournal/clerk {:local/root "."}
+                        nubank/matcher-combinators {:mvn/version "3.5.1"}
+                        org.clojure/test.check {:mvn/version "1.1.1"}
+                        io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+           :task cognitect.test-runner/-main}
+
   playwright:version {:doc "Print used playwright version from ui_tests/yarn.json"
                       :task (print (->> (babashka.process/shell {:out :string} "grep -E 'playwright-core \"(.*)\"' ui_tests/yarn.lock")
                                         :out

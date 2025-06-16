@@ -1,14 +1,7 @@
-{:min-bb-version "1.12.200"
+{:min-bb-version "1.12.202"
  :paths ["src" "notebooks" "resources"]
- :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
-        io.github.nextjournal/cas-client {:git/sha "d9f838937ebc8b645fe5764949e72a6df8e344de"}
-        mvxcvi/multiformats {:git/url "https://github.com/greglook/clj-multiformats"
-                             :git/sha "1189f1fb26db180cd8dcfd50518cdf553c0ff9e1"}
-        hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
-        io.github.nextjournal/markdown {:mvn/version "0.6.157"}
-        io.github.nextjournal/clerk-slideshow {:git/sha "562f634494a1e1a9149ed78d5d39fd9486cc00ba"}
-        weavejester/dependency {:mvn/version "0.2.1"}
-        io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}}
+ :deps {
+        }
  :tasks
  {:init (do (require '[babashka.fs :as fs])
             (System/setProperty "clerk.resource_manifest" (str {"/js/viewer.js" "/js/viewer.js"})))

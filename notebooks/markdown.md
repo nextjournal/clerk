@@ -6,8 +6,7 @@ This notebook demoes feeding Clerk with markdown files. We currently make no ass
 ^:nextjournal.clerk/no-cache
 (ns markdown-example
   (:require [nextjournal.clerk :as clerk]
-            [nextjournal.markdown :as md]
-            [nextjournal.markdown.transform :as md.transform]))
+            [nextjournal.markdown :as md]))
 ```
 
 Nextjournal Markdown library is able to ingest a markdown string
@@ -932,12 +931,12 @@ and render back to hiccup with customisable elements.
 
 ```clojure
 (def renderers
-  (assoc md.transform/default-hiccup-renderers
-        :doc (partial md.transform/into-markup [:div.markdown-viewer])
+  (assoc md/default-hiccup-renderers
+        :doc (partial md/into-hiccup [:div.markdown-viewer])
         :ruler (constantly [:hr.mt-1.mb-10.border-0.w-full.h-5.bg-fuchsia-900.rounded-full])))
 
 (def hiccup
-  (md.transform/->hiccup renderers sliced))
+  (md/->hiccup renderers sliced))
 ```
 
 and finally render via Clerk's `html` helper.

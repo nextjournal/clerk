@@ -15,7 +15,6 @@
             [clojure.zip]
             [edamame.core :as edamame]
             [nextjournal.markdown :as markdown]
-            [nextjournal.markdown.transform :as markdown.transform]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
             [rewrite-clj.zip :as z]))
@@ -166,7 +165,7 @@
                             (comp (keep :doc)
                                   (mapcat :content)
                                   (filter (comp #{:paragraph} :type))
-                                  (map markdown.transform/->text))
+                                  (map markdown/node->text))
                             blocks))]
            (cond-> {:type "article:clerk"}
              title (assoc :title title)
@@ -510,7 +509,7 @@
   (parse-clojure-string ";; # Hello\n;; ## 👋 Section\n(do 123)\n;; ## 🤚🏽 Section"))
 
 (defn parse-markdown-cell [state opts]
-  (assoc (parse-clojure-string opts state (markdown.transform/->text (first (:nodes state))))
+  (assoc (parse-clojure-string opts state (markdown/node->text (first (:nodes state))))
          :nodes (rest (:nodes state))
          ::md-slice []))
 
