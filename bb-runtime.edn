@@ -1,7 +1,7 @@
 {:min-bb-version "1.12.202"
- :paths ["src" "notebooks" "resources"]
- :deps {
-        }
+ :paths ["notebooks" "resources" "test"]
+ :deps {io.github.nextjournal/clerk {:local/root "."}
+        mvxcvi/multiformats {:mvn/version "1.0.125"}}
  :tasks
  {:init (do (require '[babashka.fs :as fs])
             (System/setProperty "clerk.resource_manifest" (str {"/js/viewer.js" "/js/viewer.js"})))

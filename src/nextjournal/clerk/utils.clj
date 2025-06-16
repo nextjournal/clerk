@@ -1,4 +1,5 @@
-(ns nextjournal.clerk.utils)
+(ns nextjournal.clerk.utils
+  (:require [alphabase.base58 :as base58]))
 
 (def bb? (System/getProperty "babashka.version"))
 
@@ -19,3 +20,6 @@
 (defmacro when-not-bb [& body]
   (when (not bb?)
     `(do ~@body)))
+
+(defn ->base58 [x]
+  (base58/encode x))

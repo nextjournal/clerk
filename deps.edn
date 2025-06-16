@@ -1,5 +1,5 @@
 {:paths ["src" "resources" "bb"]
- :deps {org.clojure/clojure {:mvn/version "1.10.3"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         babashka/fs {:mvn/version "0.5.22"}
         borkdude/edamame {:mvn/version "1.4.28"}
@@ -14,6 +14,7 @@
         com.taoensso/nippy {:mvn/version "3.4.2"}
 
         mvxcvi/multiformats {:mvn/version "1.0.125"}
+        mvxcvi/alphabase {:mvn/version "3.0.185"}
         com.pngencoder/pngencoder {:mvn/version "0.13.1"}
 
         http-kit/http-kit {:mvn/version "2.8.0"}

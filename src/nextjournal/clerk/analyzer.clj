@@ -6,7 +6,6 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.analyzer.impl :as ana :refer [analyze*]]
             [nextjournal.clerk.classpath :as cp]
@@ -45,10 +44,10 @@
 #_(no-cache? '^{:nextjournal.clerk/no-cache false} (def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
 
 (defn sha1-base58 [s]
-  (->> s hash/sha1 hash/encode b58/format-btc))
+  (->> s hash/sha1 hash/encode (utils/->base58)))
 
 (defn sha2-base58 [s]
-  (->> s hash/sha2-512 hash/encode b58/format-btc))
+  (->> s hash/sha2-512 hash/encode (utils/->base58)))
 
 #_(sha1-base58 "hello")
 

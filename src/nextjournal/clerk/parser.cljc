@@ -2,11 +2,9 @@
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
   (:refer-clojure :exclude [read-string])
   (:require #?@(:bb [[clojure.tools.reader :as tools.reader]
-                     [multiformats.base.b58 :as b58]
                      [multiformats.hash :as hash]]
                 :clj [[clojure.tools.reader :as tools.reader]
                       [taoensso.nippy :as nippy]
-                      [multiformats.base.b58 :as b58]
                       [multiformats.hash :as hash]]
                 :cljs [[goog.crypt]
                        [goog.crypt.Sha1]])
@@ -14,6 +12,7 @@
             [clojure.string :as str]
             [clojure.zip]
             [edamame.core :as edamame]
+            #?(:clj [nextjournal.clerk.utils :refer [->base58]])
             [nextjournal.markdown :as markdown]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
@@ -336,7 +335,7 @@
 
 #?(:clj
    (defn sha1-base58 [s]
-     (->> s hash/sha1 hash/encode b58/format-btc)))
+     (->> s hash/sha1 hash/encode ->base58)))
 
 #?(:cljs
    (defn hash-sha1 [x]
