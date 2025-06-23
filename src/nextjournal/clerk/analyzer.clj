@@ -387,13 +387,14 @@
   ([separator ns] (str/replace (namespace-munge ns) "." separator)))
 
 (defn ns->file [ns]
-  (some (fn [dir]
-          (some (fn [ext]
-                  (let [path (str dir fs/file-separator (ns->path ns) ext)]
-                    (when (fs/exists? path)
-                      path)))
-                [".clj" ".cljc"]))
-        (cp/classpath-directories)))
+  (let [ns-path (ns->path ns)]
+    (some (fn [dir]
+            (some (fn [ext]
+                    (let [path (str dir fs/file-separator ns-path ext)]
+                      (when (fs/exists? path)
+                        path)))
+                  [".clj" ".cljc"]))
+          (cp/classpath-directories))))
 
 (defn var->file [var]
   (when-let [file-from-var (-> var meta :file)]

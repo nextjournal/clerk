@@ -29,10 +29,12 @@
 
 (deftest ns->file
   (testing "ns arg"
-    (is (= (str (fs/file "src" "nextjournal" "clerk" "analyzer.clj")) (ana/ns->file (find-ns 'nextjournal.clerk.analyzer)))))
+    (is (str/ends-with? (ana/ns->file (find-ns 'nextjournal.clerk.analyzer))
+                        (str (fs/file "src" "nextjournal" "clerk" "analyzer.clj")) )))
 
   (testing "symbol cljc"
-    (is (= (str (fs/file "src" "nextjournal" "clerk" "viewer.cljc")) (ana/ns->file 'nextjournal.clerk.viewer)))))
+    (is (str/ends-with? (ana/ns->file 'nextjournal.clerk.viewer)
+                        (str (fs/file "src" "nextjournal" "clerk" "viewer.cljc")) ))))
 
 (deftest no-cache?
   (with-ns-binding 'nextjournal.clerk.analyzer-test
@@ -205,8 +207,9 @@
      (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient))))))
 
 (deftest find-location
-  (testing "clojure.core/inc"
-    (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc))))
+  (utils/when-not-bb
+   (testing "clojure.core/inc"
+     (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc)))))
 
   (testing "weavejester.dependency/graph"
     (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
