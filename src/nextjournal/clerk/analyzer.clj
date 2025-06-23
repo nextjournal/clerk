@@ -89,7 +89,8 @@
       (analyze-form* (rewrite-defcached form)))))
 
 (defn ^:private var->protocol [v]
-  (or (:protocol (meta v))
+  (or (let [p (:protocol (meta v))]
+        (when (var? p) p))
       v))
 
 (defn get-vars+forward-declarations [nodes]
