@@ -372,19 +372,21 @@
     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
       (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file} test-doc) #"data:image/png;base64")))))
 
-  (testing "Local images are content addressed for default static builds"
-    (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:package :directory :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png")))))
+  (utils/when-not-bb
+   (testing "Local images are content addressed for default static builds"
+     (let [test-doc (eval/eval-string ";; Some inline image ![alt](trees.png) here.")]
+       (is (not-empty (tree-re-find (view/doc->viewer {:package :directory :out-path (str (fs/temp-dir))} test-doc) #"_data/.+\.png"))))))
 
-  (testing "Doc options are propagated to blob processing"
-    (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
-      (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file
-                                                      :out-path builder/default-out-path} test-doc)
-                                   #"data:image/png;base64")))
+  (utils/when-not-bb
+   (testing "Doc options are propagated to blob processing"
+     (let [test-doc (eval/eval-string "(java.awt.image.BufferedImage. 20 20 1)")]
+       (is (not-empty (tree-re-find (view/doc->viewer {:package :single-file
+                                                       :out-path builder/default-out-path} test-doc)
+                                    #"data:image/png;base64")))
 
-      (is (not-empty (tree-re-find (view/doc->viewer {:package :directory
-                                                      :out-path builder/default-out-path} test-doc)
-                                   #"_data/.+\.png")))))
+       (is (not-empty (tree-re-find (view/doc->viewer {:package :directory
+                                                       :out-path builder/default-out-path} test-doc)
+                                    #"_data/.+\.png"))))))
 
   (testing "presentations are pure, result hashes are stable"
     (let [test-doc (eval/eval-string "(range 100)")]
@@ -518,6 +520,7 @@
            (pr-str (symbol "~")))))
 
   (utils/when-not-bb
+   ;; TODO?
    (testing "symbols and keywords with two slashes readable by `read-string` but not `tools.reader/read-string` print as #clerk/unreadable-edn"
      (is (= "#clerk/unreadable-edn (symbol \"foo\" \"bar/baz\")"
             (pr-str (read-string "foo/bar/baz"))))
