@@ -389,10 +389,6 @@
             (= x (-> x str tools.reader/read-string))
             (catch Exception _e false))))
 
-#?(:bb (defn print-simple [o, ^java.io.Writer w]
-         #_(print-meta o w)
-         (.write w (str o))))
-
 #?(:clj
    (defmethod print-method clojure.lang.Keyword [o w]
      (if (roundtrippable? o)
