@@ -1,13 +1,17 @@
 (ns nextjournal.clerk.builder-test
-  (:require [babashka.fs :as fs]
-            [clojure.java.browse :as browse]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]
-            [matcher-combinators.test]
-            [nextjournal.clerk.builder :as builder]
-            [nextjournal.clerk.viewer :as viewer])
-  (:import (clojure.lang ExceptionInfo)
-           (java.io File)))
+  (:require
+   [babashka.fs :as fs]
+   [clojure.java.browse :as browse]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]
+   [matcher-combinators.test]
+   [nextjournal.clerk.builder :as builder]
+   [nextjournal.clerk.test-utils]
+   [nextjournal.clerk.utils :as utils]
+   [nextjournal.clerk.viewer :as viewer])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.io File)))
 
 (deftest url-canonicalize
   (testing "canonicalization of file components into url components"
@@ -61,12 +65,13 @@
         (is (= "notebooks/hello.clj" (get backlink 2)))
         (is (= [:<> "@" [:span.tabular-nums "SHASHAS"]] (get backlink 3))))))
 
-  (testing "image is saved to _data dir"
-    (is (fs/with-temp-dir [temp-dir {}]
-          (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
-                                      :out-path temp-dir
-                                      :report-fn identity})
-          (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png"))))))
+  (utils/when-not-bb
+   (testing "image is saved to _data dir"
+     (is (fs/with-temp-dir [temp-dir {}]
+           (builder/build-static-app! {:index "notebooks/viewers/single_image.clj"
+                                       :out-path temp-dir
+                                       :report-fn identity})
+           (first (map fs/file-name (fs/list-dir (fs/file temp-dir "_data") "**.png")))))))
   (testing "SCI .cljs sources are deduplicated"
     (fs/with-temp-dir [temp-dir {}]
       (builder/build-static-app! {:paths ["test/nextjournal/clerk/fixtures/require_cljs_bundle_dedupe_1.clj"
