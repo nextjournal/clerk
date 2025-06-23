@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [matcher-combinators.test :refer [match?]]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.view :as view]))
 
 (defmacro with-ns-binding [ns-sym & body]
@@ -190,13 +191,22 @@ par two"))))
 
 (deftest add-block-ids
   (testing "assigns block ids"
-    (is (= '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
-             foo/bar
-             foo/bar#2
-             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
-             foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2]
-           (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
-                parser/parse-clojure-string :blocks (mapv :id))))))
+    (let [ids (->> "(ns foo {:nextjournal.clerk/visibility {:code :fold}}) (def bar :baz) (def bar :baz) (rand-int 42) (rand-int 42)"
+                   parser/parse-clojure-string :blocks (mapv :id))]
+      (is (every? symbol ids))
+      (is (match?
+           (utils/if-bb
+            '[foo/anon-expr-5duGkCsyuG2a1BWUegjnh4f6pNNqgk
+              foo/bar
+              foo/bar#2
+              foo/anon-expr-5dssY1D9kQSNgSWwDLCN2B3YEwrqWQ
+              foo/anon-expr-5dssY1D9kQSNgSWwDLCN2B3YEwrqWQ#2]
+            '[foo/anon-expr-5drCkCGrPisMxHpJVeyoWwviSU3pfm
+              foo/bar
+              foo/bar#2
+              foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G
+              foo/anon-expr-5dsbEK7B7yDZqzyteqsY2ndKVE9p3G#2])
+           ids)))))
 
 (deftest parse-file-test
   (testing "parsing a Clojure file"
