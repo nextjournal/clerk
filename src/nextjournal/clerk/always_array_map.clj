@@ -8,6 +8,8 @@
 (defn- assoc-after [aam k v]
   (apply array-map (concat (interleave (keys aam) (vals aam)) [k v])))
 
+(declare ->AlwaysArrayMap)
+
 (utils/if-bb
  (defn ->AlwaysArrayMap [m]
    (proxy [clojure.lang.APersistentMap clojure.lang.IMeta clojure.lang.IObj]
