@@ -8,6 +8,7 @@
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.eval-test :as eval-test]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]))
 
@@ -83,31 +84,34 @@
   (testing "elision inside html"
     (let [value (v/html [:div [:ul [:li {:nextjournal/value (range 30)}]]])]
       (is (= (v/->value value) (v/->value (v/desc->values (resolve-elision (v/present value))))))))
-
-  (testing "resolving elided blobs"
-    (let [{:nextjournal/keys [presented blob-id]}
-          (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.elision-and-images
+  (utils/when-not-bb
+   (testing "resolving elided blobs"
+     (let [{:nextjournal/keys [presented blob-id]}
+           (-> (eval/eval-string "(ns nextjournal.clerk.viewer-test.elision-and-images
                              (:require [nextjournal.clerk :as clerk]))
                            (clerk/image \"trees.png\")")
-                     view/doc->viewer
-                     :nextjournal/value
-                     :blocks second :nextjournal/value second
-                     :nextjournal/value)]
+               view/doc->viewer
+               :nextjournal/value
+               :blocks second :nextjournal/value second
+               :nextjournal/value)]
 
-      ;; n.c.viewer/process-blobs replaces bytes with an elision containing path and blob-id
-      (is (= {:blob-id blob-id :path [1]} (:nextjournal/value presented)))
-      (is (= "image/png" (:nextjournal/content-type presented)))
+       ;; n.c.viewer/process-blobs replaces bytes with an elision containing path and blob-id
+       (is (= {:blob-id blob-id :path [1]} (:nextjournal/value presented)))
+       (is (= "image/png" (:nextjournal/content-type presented)))
 
-      ;; this is the mechanism that let image contents be resolved via n.c.webserver/serve-blob
-      ;; see also n.c.render/url-for
-      (is (bytes? (:nextjournal/value
-                   ((:present-elision-fn (meta presented))
-                    (select-keys (:nextjournal/value presented) [:path]))))))))
+       ;; this is the mechanism that let image contents be resolved via n.c.webserver/serve-blob
+       ;; see also n.c.render/url-for
+       (is (bytes? (:nextjournal/value
+                    ((:present-elision-fn (meta presented))
+                     (select-keys (:nextjournal/value presented) [:path])))))))))
 
 (deftest default-viewers
   (testing "viewers have names matching vars"
     (doseq [[viewer-name viewer] (into {}
-                                       (map (juxt :name (comp deref resolve :name)))
+                                       (map (juxt :name (fn [v]
+                                                          (or (some-> v :name resolve deref)
+                                                              (prn :v v (:name v)))
+                                                          )))
                                        v/default-viewers)]
       (is (= viewer-name (:name viewer))))))
 
@@ -513,18 +517,19 @@
     (is (= "#clerk/unreadable-edn (symbol \"~\")"
            (pr-str (symbol "~")))))
 
-  (testing "symbols and keywords with two slashes readable by `read-string` but not `tools.reader/read-string` print as #clerk/unreadable-edn"
-    (is (= "#clerk/unreadable-edn (symbol \"foo\" \"bar/baz\")"
-           (pr-str (read-string "foo/bar/baz"))))
-    (is (= "#clerk/unreadable-edn (keyword \"foo\" \"bar/baz\")"
-           (pr-str (read-string ":foo/bar/baz")))))
+  (utils/when-not-bb
+   (testing "symbols and keywords with two slashes readable by `read-string` but not `tools.reader/read-string` print as #clerk/unreadable-edn"
+     (is (= "#clerk/unreadable-edn (symbol \"foo\" \"bar/baz\")"
+            (pr-str (read-string "foo/bar/baz"))))
+     (is (= "#clerk/unreadable-edn (keyword \"foo\" \"bar/baz\")"
+            (pr-str (read-string ":foo/bar/baz")))))
 
-  (testing "splicing reader conditional prints normally (issue #338)"
-    (is (= "?@" (pr-str (symbol "?@")))))
+   (testing "splicing reader conditional prints normally (issue #338)"
+     (is (= "?@" (pr-str (symbol "?@")))))
 
-  (testing "custom print-method for symbol preserves metadata"
-    (is (-> (binding [*print-meta* true]
-              (pr-str '[^:foo bar])) read-string first meta :foo))))
+   (testing "custom print-method for symbol preserves metadata"
+     (is (-> (binding [*print-meta* true]
+               (pr-str '[^:foo bar])) read-string first meta :foo)))))
 
 (deftest removed-metadata
   (is (= "(do 'this)"

@@ -1000,18 +1000,16 @@
                                                  :cljs blob-or-url)}]])})
 
 (def ideref-viewer
-  #?(:bb {}
-     :default
-     {:name `ideref-viewer
-      :pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
-      :transform-fn (update-val (fn [ideref]
-                                  (with-viewer `tagged-value-viewer
-                                    {:tag "object"
-                                     :value (vector (symbol (pr-str (type ideref)))
-                                                    #?(:clj (with-viewer `number-hex-viewer (System/identityHashCode ideref)))
-                                                    (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
-                                                      (deref-as-map ideref)
-                                                      (deref ideref)))})))}))
+  {:name `ideref-viewer
+   :pred #(#?(:clj instance? :cljs satisfies?) IDeref %)
+   :transform-fn (update-val (fn [ideref]
+                               (with-viewer `tagged-value-viewer
+                                 {:tag "object"
+                                  :value (vector (symbol (pr-str (type ideref)))
+                                                 #?(:clj (with-viewer `number-hex-viewer (System/identityHashCode ideref)))
+                                                 (if-let [deref-as-map (resolve 'clojure.core/deref-as-map)]
+                                                   (deref-as-map ideref)
+                                                   (deref ideref)))})))})
 
 (def regex-viewer
   {:name `regex-viewer
