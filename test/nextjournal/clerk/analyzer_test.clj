@@ -93,7 +93,7 @@
     (is (not (contains? (:deps (ana/analyze '(let [my-local (fn [])] (my-local))))
                         'clojure.set/union)))))
 
-(deftest analyze
+(deftest analyze-test
   (testing "quoted forms aren't confused with variable dependencies"
     (is (match? {:deps #{`inc}}
                 (ana/analyze '(do inc))))
@@ -102,13 +102,15 @@
   (testing "locals that shadow existing vars shouldn't show up in the deps"
     (is (= #{'clojure.core/let} (:deps (ana/analyze '(let [+ 2] +))))))
 
-  (testing "symbol referring to a java class"
-    (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
-                (ana/analyze 'io.methvin.watcher.PathUtils))))
+  (utils/when-not-bb
+   (testing "symbol referring to a java class"
+     (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
+                 (ana/analyze 'io.methvin.watcher.PathUtils)))))
 
-  (testing "namespaced symbol referring to a java thing"
-    (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
-                (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
+  (utils/when-not-bb
+   (testing "namespaced symbol referring to a java thing"
+     (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
+                 (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)))))
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer/foo}
@@ -154,10 +156,10 @@
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
-               :deps       #{'clojure.core/atom
-                             'clojure.core/let
-                             'clojure.core/when-not
-                             'clojure.core/defonce}}
+               :deps       (m/embeds #{'clojure.core/atom
+                                       'clojure.core/let
+                                       'clojure.core/when-not
+                                       'clojure.core/defonce})}
               (with-ns-binding 'nextjournal.clerk.analyzer-test
                 (ana/analyze '(defonce !state (atom {}))))))
 
@@ -195,11 +197,12 @@
   (testing "macro-expansion defining var occurs in deps"
     (is (= 2 (count (:deps (ana/analyze '(nextjournal.clerk.fixtures.macros/emit-nonsense))))))))
 
-(deftest symbol->jar
-  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
-  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils/cast))
-  (testing "does not resolve jdk builtins"
-    (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
+(utils/when-not-bb
+ (deftest symbol->jar
+   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
+   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils/cast))
+   (testing "does not resolve jdk builtins"
+     (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient))))))
 
 (deftest find-location
   (testing "clojure.core/inc"

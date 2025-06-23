@@ -422,17 +422,18 @@
   (when (f x) x))
 
 (defn symbol->jar [sym]
-  (some-> (if (qualified-symbol? sym)
-            (-> sym namespace symbol)
-            sym)
-          ^Class resolve
-          .getProtectionDomain
-          .getCodeSource
-          .getLocation
-          ^java.net.URL (guard #(= "file" (.getProtocol ^java.net.URL %)))
-          .getFile
-          (guard #(str/ends-with? % ".jar"))
-          normalize-filename))
+  (utils/when-not-bb
+   (some-> (if (qualified-symbol? sym)
+             (-> sym namespace symbol)
+             sym)
+           ^Class resolve
+           .getProtectionDomain
+           .getCodeSource
+           .getLocation
+           ^java.net.URL (guard #(= "file" (.getProtocol ^java.net.URL %)))
+           .getFile
+           (guard #(str/ends-with? % ".jar"))
+           normalize-filename)))
 
 #_(symbol->jar 'io.methvin.watcher.PathUtils)
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
