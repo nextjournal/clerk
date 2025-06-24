@@ -109,9 +109,7 @@
   (testing "viewers have names matching vars"
     (doseq [[viewer-name viewer] (into {}
                                        (map (juxt :name (fn [v]
-                                                          (or (some-> v :name resolve deref)
-                                                              (prn :v v (:name v)))
-                                                          )))
+                                                          (some-> v :name resolve deref))))
                                        v/default-viewers)]
       (is (= viewer-name (:name viewer))))))
 

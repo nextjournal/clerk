@@ -90,8 +90,7 @@
 (defn always-array-map [& kvs]
   (->AlwaysArrayMap (apply array-map kvs)))
 
-(utils/if-bb
- nil
+(utils/when-not-bb
  (defmethod print-method AlwaysArrayMap
    [v ^java.io.Writer writer]
    (.write writer "{")

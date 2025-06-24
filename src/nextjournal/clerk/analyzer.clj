@@ -422,8 +422,8 @@
 (defn guard [x f]
   (when (f x) x))
 
-(defn symbol->jar [sym]
-  (utils/when-not-bb
+(utils/when-not-bb
+ (defn symbol->jar [sym]
    (some-> (if (qualified-symbol? sym)
              (-> sym namespace symbol)
              sym)
@@ -460,7 +460,7 @@
         (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
           (or (ns->file ns)
               (ns->jar ns))
-          (utils/if-bb nil (symbol->jar sym))))))
+          (utils/when-not-bb (symbol->jar sym))))))
 
 #_(find-location `inc)
 #_(find-location `*print-dup*)

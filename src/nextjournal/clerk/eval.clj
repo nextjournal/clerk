@@ -12,22 +12,23 @@
             [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.viewer :as v]))
 
-(utils/if-bb nil (do (require '[taoensso.nippy :as nippy])
-                     (import '(java.awt.image BufferedImage)
-                             '(javax.imageio ImageIO))))
+(utils/when-not-bb
+ (do (require '[taoensso.nippy :as nippy])
+     (import '(java.awt.image BufferedImage)
+             '(javax.imageio ImageIO))))
 
 #_(comment
-  (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
-  (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
-  (nippy/get-recorded-serializable-classes))
+    (alter-var-root #'nippy/*freeze-serializable-allowlist* (fn [_] "allow-and-record"))
+    (alter-var-root   #'nippy/*thaw-serializable-allowlist* (fn [_] "allow-and-record"))
+    (nippy/get-recorded-serializable-classes))
 
 ;; nippy tweaks
-(utils/if-bb nil
-             #_:clj-kondo/ignore
-             (do
-               (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
-               (nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
-               (nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))))
+(utils/when-not-bb
+ #_:clj-kondo/ignore
+ (do
+   (alter-var-root #'nippy/*thaw-serializable-allowlist* (fn [_] (conj nippy/default-thaw-serializable-allowlist "java.io.File" "clojure.lang.Var" "clojure.lang.Namespace")))
+   (nippy/extend-freeze BufferedImage :java.awt.image.BufferedImage [x out] (ImageIO/write x "png" (ImageIO/createImageOutputStream out)))
+   (nippy/extend-thaw :java.awt.image.BufferedImage [in] (ImageIO/read in))))
 
 #_(-> [(clojure.java.io/file "notebooks") (find-ns 'user)] nippy/freeze nippy/thaw)
 
@@ -61,7 +62,7 @@
 
 #_(thaw-from-cas (hash+store-in-cas! (range 42)))
 #_(thaw-from-cas "8Vv6q6La171HEs28ZuTdsn9Ukg6YcZwF5WRFZA1tGk2BP5utzRXNKYq9Jf9HsjFa6Y4L1qAAHzMjpZ28TCj1RTyAdx")
- 
+
 (defn elapsed-ms [from]
   (/ (double (- (. System (nanoTime)) from)) 1000000.0))
 
