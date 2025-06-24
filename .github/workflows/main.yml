@@ -143,7 +143,6 @@ jobs:
       - name: 🔧 Install bb from dev build (until next release)
         shell: bash
         run: |
-          uname -s
           curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install
           chmod +x ./install
           ./install --dev-build --dir /tmp
