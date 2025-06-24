@@ -13,7 +13,6 @@
             [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.markdown :as md]
             [org.httpkit.server :as httpkit]
             [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
