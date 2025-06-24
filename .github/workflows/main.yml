@@ -140,13 +140,7 @@ jobs:
             ~/.gitlibs
             ~/.deps.clj
           key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}-${{ hashFiles('bb.edn') }}
-      - name: 🔧 Install bb from dev build (until next release)
-        shell: bash
-        run: |
-          curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install
-          chmod +x ./install
-          ./install --dev-build --dir /tmp
-          cp /tmp/bb "$(which bb)"
+
       - name: 🧪 Run tests
         shell: bash
         run: |
