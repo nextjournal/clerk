@@ -8,7 +8,6 @@
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [clojure.tools.reader :as tools.reader]
-                      [editscript.edit]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[goog.crypt]
@@ -18,11 +17,18 @@
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
+            #?@(:bb []
+                :clj [[editscript.edit]])
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as w]
             [nextjournal.markdown :as md]
             [nextjournal.markdown.utils :as md.utils])
-  #?(:clj (:import (com.pngencoder PngEncoder)
+  #?(:bb (:import (clojure.lang IDeref IAtom)
+                  (java.nio.file Files StandardOpenOption)
+                  (java.net URI URL)
+                  (java.util Base64)
+                  (java.lang Throwable))
+     :clj (:import (com.pngencoder PngEncoder)
                    (clojure.lang IDeref IAtom)
                    (java.lang Throwable)
                    (java.awt.image BufferedImage)
@@ -38,7 +44,8 @@
              (-invoke [_ x y] (@f x y))]))
 
 ;; Make sure `RenderFn` is changed atomically
-#?(:clj
+#?(:bb nil
+   :clj
    (extend-protocol editscript.edit/IType
      RenderFn
      (get-type [_] :val)))
@@ -88,6 +95,11 @@
      (.write w (if-let [opts (not-empty (dissoc (into {} v) :f :form))]
                  (str "#clerk/render-fn+opts " [opts (:form v)])
                  (str "#clerk/render-fn " (:form v))))))
+
+#?(:bb
+   (defn ordered-map-reader-bb [coll]
+     (omap/ordered-map coll)))
+
 #?(:cljs
    (defn ordered-map-reader-cljs [coll]
      (omap/ordered-map (vec coll))))
@@ -96,7 +108,8 @@
   {'clerk/render-fn ->render-fn
    'clerk/render-fn+opts ->render-fn+opts
    'clerk/unreadable-edn eval
-   'ordered/map #?(:clj omap/ordered-map-reader-clj
+   'ordered/map #?(:bb ordered-map-reader-bb
+                   :clj omap/ordered-map-reader-clj
                    :cljs ordered-map-reader-cljs)})
 
 #_(binding [*data-readers* {'render-fn ->render-fn}]
@@ -598,7 +611,8 @@
              (= :single-file package) (data-uri-base64-encode (fs/read-all-bytes src) (Files/probeContentType (fs/path src)))
              :else (str "/_fs/" src))))
 
-#?(:clj
+#?(:bb nil
+   :clj
    (defn read-image [image-or-url]
      (ImageIO/read
       (if (string? image-or-url)
@@ -613,8 +627,9 @@
 (defn md-image->viewer [doc block-id idx {:keys [attrs]}]
   (with-viewer `html-viewer
     #?(:clj {:nextjournal/render-opts {:id (processed-block-id block-id [idx])}
-             :nextjournal/width (try (image-width (read-image (:src attrs)))
-                                     (catch Throwable _ :prose))})
+             :nextjournal/width #?(:bb :prose
+                                   :clj (try (image-width (read-image (:src attrs)))
+                                             (catch Throwable _ :prose)))})
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
@@ -943,7 +958,24 @@
                                                         (partial present-ex-data wrapped-value)
                                                         datafy/datafy))))})
 
-#?(:clj
+(def buffered-image-viewer #?(:bb {}
+                              :cljs nil
+                              :clj {:pred #(instance? BufferedImage %)
+                                    :transform-fn (fn [{image :nextjournal/value}]
+                                                    (let [w (.getWidth image)
+                                                          h (.getHeight image)
+                                                          r (float (/ w h))]
+                                                      (-> {:nextjournal/value (.. (PngEncoder.)
+                                                                                  (withBufferedImage image)
+                                                                                  (withCompressionLevel 1)
+                                                                                  (toBytes))
+                                                           :nextjournal/content-type "image/png"
+                                                           :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
+                                                          mark-presented)))
+                                    :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))}))
+
+#?(:bb nil
+   :clj
    (defn buffered-image->bytes [^BufferedImage image]
      (.. (PngEncoder.)
          (withBufferedImage image)
@@ -951,7 +983,8 @@
          (toBytes))))
 
 (def image-viewer
-  {#?@(:clj [:pred #(instance? BufferedImage %)
+  {#?@(:bb []
+       :clj [:pred #(instance? BufferedImage %)
              :transform-fn (fn [{image :nextjournal/value}]
                              (-> {:nextjournal/value (buffered-image->bytes image)
                                   :nextjournal/content-type "image/png"
@@ -1878,7 +1911,9 @@
   ([image-or-url] (image {} image-or-url))
   ([viewer-opts image-or-url]
    (with-viewer (:name image-viewer) viewer-opts
-     #?(:cljs image-or-url :clj (read-image image-or-url)))))
+     #?(:cljs image-or-url
+        :bb image-or-url
+        :clj (read-image image-or-url)))))
 
 (defn caption [text content]
   (col

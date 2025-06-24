@@ -1,9 +1,10 @@
 (ns nextjournal.clerk.parser
   "Clerk's Parser turns Clojure & Markdown files and strings into Clerk documents."
   (:refer-clojure :exclude [read-string])
-  (:require #?@(:clj [[clojure.tools.reader :as tools.reader]
+  (:require #?@(:bb [[clojure.tools.reader :as tools.reader]
+                     [multiformats.hash :as hash]]
+                :clj [[clojure.tools.reader :as tools.reader]
                       [taoensso.nippy :as nippy]
-                      [multiformats.base.b58 :as b58]
                       [multiformats.hash :as hash]]
                 :cljs [[goog.crypt]
                        [goog.crypt.Sha1]])
@@ -11,6 +12,7 @@
             [clojure.string :as str]
             [clojure.zip]
             [edamame.core :as edamame]
+            #?(:clj [nextjournal.clerk.utils :refer [->base58]])
             [nextjournal.markdown :as markdown]
             [rewrite-clj.node :as n]
             [rewrite-clj.parser :as p]
@@ -20,10 +22,10 @@
 
 #?(:clj
    (defn auto-resolves [ns]
-     (as-> (ns-aliases ns) $
-       (assoc $ :current (ns-name *ns*))
-       (zipmap (keys $)
-               (map ns-name (vals $))))))
+     (let [aliases (ns-aliases ns)
+           aliases (assoc aliases :current (ns-name *ns*))]
+       (zipmap (keys aliases)
+               (map ns-name (vals aliases))))))
 
 #_(auto-resolves (find-ns 'nextjournal.clerk.parser))
 #_(auto-resolves (find-ns 'cards))
@@ -33,7 +35,8 @@
   (edamame/parse-string s {:all true
                            :read-cond :allow
                            :regex #(list `re-pattern %)
-                           :features #{:clj}
+                           :features #?(:bb #{:bb :clj}
+                                        :default #{:clj})
                            :end-location false
                            :row-key :line
                            :col-key :column
@@ -332,7 +335,7 @@
 
 #?(:clj
    (defn sha1-base58 [s]
-     (->> s hash/sha1 hash/encode b58/format-btc)))
+     (->> s hash/sha1 hash/encode ->base58)))
 
 #?(:cljs
    (defn hash-sha1 [x]
@@ -365,7 +368,8 @@
                           (guess-var form))]
              var
              (let [hash-fn (fn [x]
-                             #?(:clj (-> x nippy/fast-freeze sha1-base58)
+                             #?(:bb (sha1-base58 (pr-str x))
+                                :clj (-> x nippy/fast-freeze sha1-base58)
                                 :cljs (hash-sha1 x)))]
                (symbol (str *ns*)
                        (case type
@@ -399,11 +403,11 @@
   (cond-> form
     (supports-meta? form)
     (vary-meta merge (cond-> loc
-                       (:file opts) (assoc :clojure.core/eval-file
-                                           (str #?(:clj (cond-> (:file opts)
-                                                          (instance? java.net.URL (:file opts))
+                       file (assoc :clojure.core/eval-file
+                                           (str #?(:clj (cond-> file
+                                                          (instance? java.net.URL file)
                                                           extract-file)
-                                                   :cljs (:file opts))))))))
+                                                   :cljs file)))))))
 
 (defn add-doc-settings [{:as doc :keys [blocks]}]
   (if-let [first-form (some :form blocks)]
@@ -445,7 +449,8 @@
        (if-let [node (first nodes)]
          (recur (cond
                   (code-tags (n/tag node))
-                  (let [form (try (read-string (n/string node))
+                  (let [nstring (n/string node)
+                        form (try (read-string nstring)
                                   (catch Exception e
                                     (throw (ex-info (str "Clerk failed reading block: "
                                                          (ex-message e)
@@ -465,7 +470,7 @@
                                              (parse-global-block-settings form))
                         code-block {:type :code
                                     :settings (merge-settings next-block-settings (parse-local-block-settings form))
-                                    :text (n/string node)
+                                    :text nstring
                                     :form (add-loc opts loc form)
                                     :loc loc}]
                     (when (ns? form)
@@ -477,7 +482,6 @@
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
                       (assoc :ns *ns*)))
-
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
                       (assoc :add-comment-on-line? (not (n/comment? node)))

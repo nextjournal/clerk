@@ -1,4 +1,5 @@
 (ns nextjournal.clerk.webserver
+  {:clj-kondo/config '{:linters {:unresolved-namespace {:exclude [sci.core]}}}}
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
             [clojure.java.browse :as browse]
@@ -6,15 +7,19 @@
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
-            [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.git :as git]
             [nextjournal.clerk.paths :as paths]
+            [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [org.httpkit.server :as httpkit]
             [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
+
+(u/if-bb
+ (require '[editscript.core :as-alias editscript])
+ (require '[editscript.core :as editscript]))
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
@@ -153,15 +158,13 @@
     presented))
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                (cond-> {:type :set-state!
-                         :doc (present+reset! doc)}
-                  (and nav-path (not skip-history?))
+  (broadcast! (u/if-not-bb-and (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
+                               {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+                               (cond-> {:type :set-state!
+                                        :doc (present+reset! doc)}
+                                 (and nav-path (not skip-history?))
                   (assoc :effects [(v/->render-eval (list 'nextjournal.clerk.render/history-push-state
                                                           (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
-
-#_(update-doc! (help-doc))
 
 (defn update-error! [ex]
   (update-doc! (assoc @!doc :error ex)))
@@ -196,7 +199,9 @@
                        :sync! (if-let [var (resolve (:var-name msg))]
                                 (try
                                   (binding [*sender-ch* sender-ch]
-                                    (swap! @var editscript/patch (editscript/edits->script (:patch msg))))
+                                    (u/if-bb
+                                     (throw (ex-info "Not implemented" {}))
+                                     (swap! @var editscript/patch (editscript/edits->script (:patch msg)))))
                                   (catch Exception ex
                                     (throw (doto (ex-info (str "Clerk cannot update synced var `" (:var-name msg) "`.") msg ex)
                                              update-error!))))
@@ -316,7 +321,12 @@
           (try (show! (merge {:skip-history? true}
                              (select-keys opts [:expanded-paths :index :git/sha :git/url :git/prefix]))
                       file-or-ns)
-               (catch Exception _))
+               (catch ^:sci/error Exception e
+                 (u/if-bb
+                  (binding [*out* *err*]
+                    (println
+                     (str/join "\n" (sci.core/format-stacktrace (sci.core/stacktrace e)))))
+                  nil)))
           {:status 200
            :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
            :body (view/->html {:doc (view/doc->viewer @!doc)
@@ -339,6 +349,11 @@
         "_ws" {:status 200 :body "upgrading..."}
         "favicon.ico" {:status 404}
         (serve-notebook req))
+      (catch ^:sci/error Exception e
+        {:status  500
+         :body    (u/if-bb
+                   (pr-str (sci.core/format-stacktrace (sci.core/stacktrace e)))
+                   (with-out-str (pprint/pprint (Throwable->map e))))})
       (catch Throwable e
         {:status  500
          :body    (with-out-str (pprint/pprint (Throwable->map e)))}))))

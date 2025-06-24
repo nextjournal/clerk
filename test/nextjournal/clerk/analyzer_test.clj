@@ -13,6 +13,8 @@
             [nextjournal.clerk.fixtures.dep-b]
             [nextjournal.clerk.fixtures.issue-660-repro]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.test-utils]
+            [nextjournal.clerk.utils :as utils]
             [weavejester.dependency :as dep])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -27,10 +29,12 @@
 
 (deftest ns->file
   (testing "ns arg"
-    (is (= (str (fs/file "src" "nextjournal" "clerk" "analyzer.clj")) (ana/ns->file (find-ns 'nextjournal.clerk.analyzer)))))
+    (is (str/ends-with? (ana/ns->file (find-ns 'nextjournal.clerk.analyzer))
+                        (str (fs/file "src" "nextjournal" "clerk" "analyzer.clj")) )))
 
   (testing "symbol cljc"
-    (is (= (str (fs/file "src" "nextjournal" "clerk" "viewer.cljc")) (ana/ns->file 'nextjournal.clerk.viewer)))))
+    (is (str/ends-with? (ana/ns->file 'nextjournal.clerk.viewer)
+                        (str (fs/file "src" "nextjournal" "clerk" "viewer.cljc")) ))))
 
 (deftest no-cache?
   (with-ns-binding 'nextjournal.clerk.analyzer-test
@@ -91,7 +95,7 @@
     (is (not (contains? (:deps (ana/analyze '(let [my-local (fn [])] (my-local))))
                         'clojure.set/union)))))
 
-(deftest analyze
+(deftest analyze-test
   (testing "quoted forms aren't confused with variable dependencies"
     (is (match? {:deps #{`inc}}
                 (ana/analyze '(do inc))))
@@ -100,13 +104,15 @@
   (testing "locals that shadow existing vars shouldn't show up in the deps"
     (is (= #{'clojure.core/let} (:deps (ana/analyze '(let [+ 2] +))))))
 
-  (testing "symbol referring to a java class"
-    (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
-                (ana/analyze 'io.methvin.watcher.PathUtils))))
+  (utils/when-not-bb
+   (testing "symbol referring to a java class"
+     (is (match? {:deps       #{'io.methvin.watcher.PathUtils}}
+                 (ana/analyze 'io.methvin.watcher.PathUtils)))))
 
-  (testing "namespaced symbol referring to a java thing"
-    (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
-                (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER))))
+  (utils/when-not-bb
+   (testing "namespaced symbol referring to a java thing"
+     (is (match? {:deps       #{'io.methvin.watcher.hashing.FileHasher}}
+                 (ana/analyze 'io.methvin.watcher.hashing.FileHasher/DEFAULT_FILE_HASHER)))))
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer/foo}
@@ -152,10 +158,10 @@
 
   (is (match? {:ns-effect? false
                :vars '#{nextjournal.clerk.analyzer-test/!state}
-               :deps       #{'clojure.core/atom
-                             'clojure.core/let
-                             'clojure.core/when-not
-                             'clojure.core/defonce}}
+               :deps       (m/embeds #{'clojure.core/atom
+                                       'clojure.core/let
+                                       'clojure.core/when-not
+                                       'clojure.core/defonce})}
               (with-ns-binding 'nextjournal.clerk.analyzer-test
                 (ana/analyze '(defonce !state (atom {}))))))
 
@@ -193,15 +199,17 @@
   (testing "macro-expansion defining var occurs in deps"
     (is (= 2 (count (:deps (ana/analyze '(nextjournal.clerk.fixtures.macros/emit-nonsense))))))))
 
-(deftest symbol->jar
-  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
-  (is (ana/symbol->jar 'io.methvin.watcher.PathUtils/cast))
-  (testing "does not resolve jdk builtins"
-    (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient)))))
+(utils/when-not-bb
+ (deftest symbol->jar
+   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils))
+   (is (ana/symbol->jar 'io.methvin.watcher.PathUtils/cast))
+   (testing "does not resolve jdk builtins"
+     (is (not (ana/symbol->jar 'java.net.http.HttpClient/newHttpClient))))))
 
 (deftest find-location
-  (testing "clojure.core/inc"
-    (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc))))
+  (utils/when-not-bb
+   (testing "clojure.core/inc"
+     (is (re-find #"clojure-1\..*\.jar" (ana/find-location 'clojure.core/inc)))))
 
   (testing "weavejester.dependency/graph"
     (is (re-find #"dependency-.*\.jar" (ana/find-location 'weavejester.dependency/graph)))))
@@ -303,13 +311,14 @@
                                   (inc a#))))))))
 
 (deftest analyze-doc
-  (is (match? #{{:form '(ns example-notebook),
-                 :deps set?}
-                {:form '#{1 3 2}}
-                {:jar string? :hash string?}}
-              (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
+  (utils/when-not-bb
+   (is (match? #{{:form '(ns example-notebook),
+                  :deps set?}
+                 {:form '#{1 3 2}}
+                 {:jar string? :hash string?}}
+               (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
 #{3 1 2}"
-                   analyze-string :->analysis-info vals set)))
+                                    analyze-string :->analysis-info vals set))))
   (testing "preserves *ns*"
     (with-ns-binding 'nextjournal.clerk.analyzer-test
       (is (= (find-ns 'nextjournal.clerk.analyzer-test)

@@ -6,15 +6,17 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
-            [multiformats.base.b58 :as b58]
             [multiformats.hash :as hash]
             [nextjournal.clerk.analyzer.impl :as ana :refer [analyze*]]
             [nextjournal.clerk.classpath :as cp]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.walk :as walk]
-            [taoensso.nippy :as nippy]
             [weavejester.dependency :as dep]))
+
+(when-not utils/bb?
+  (require '[taoensso.nippy :as nippy]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,10 +44,10 @@
 #_(no-cache? '^{:nextjournal.clerk/no-cache false} (def ^:nextjournal.clerk/no-cache my-rand (rand-int 10)))
 
 (defn sha1-base58 [s]
-  (->> s hash/sha1 hash/encode b58/format-btc))
+  (->> s hash/sha1 hash/encode (utils/->base58)))
 
 (defn sha2-base58 [s]
-  (->> s hash/sha2-512 hash/encode b58/format-btc))
+  (->> s hash/sha2-512 hash/encode (utils/->base58)))
 
 #_(sha1-base58 "hello")
 
@@ -80,12 +82,15 @@
                          e)))))))
 
 (defn analyze-form [form]
-  (with-bindings {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)}
+  (with-bindings (utils/if-bb
+                   {}
+                   {clojure.lang.Compiler/LOADER (clojure.lang.RT/makeClassLoader)})
     (binding [ana/*deps* (or ana/*deps* (atom #{}))]
       (analyze-form* (rewrite-defcached form)))))
 
 (defn ^:private var->protocol [v]
-  (or (:protocol (meta v))
+  (or (let [p (:protocol (meta v))]
+        (when (var? p) p))
       v))
 
 (defn get-vars+forward-declarations [nodes]
@@ -382,13 +387,14 @@
   ([separator ns] (str/replace (namespace-munge ns) "." separator)))
 
 (defn ns->file [ns]
-  (some (fn [dir]
-          (some (fn [ext]
-                  (let [path (str dir fs/file-separator (ns->path ns) ext)]
-                    (when (fs/exists? path)
-                      path)))
-                [".clj" ".cljc"]))
-        (cp/classpath-directories)))
+  (let [ns-path (ns->path ns)]
+    (some (fn [dir]
+            (some (fn [ext]
+                    (let [path (str dir fs/file-separator ns-path ext)]
+                      (when (fs/exists? path)
+                        path)))
+                  [".clj" ".cljc"]))
+          (cp/classpath-directories))))
 
 (defn var->file [var]
   (when-let [file-from-var (-> var meta :file)]
@@ -416,18 +422,19 @@
 (defn guard [x f]
   (when (f x) x))
 
-(defn symbol->jar [sym]
-  (some-> (if (qualified-symbol? sym)
-            (-> sym namespace symbol)
-            sym)
-          ^Class resolve
-          .getProtectionDomain
-          .getCodeSource
-          .getLocation
-          ^java.net.URL (guard #(= "file" (.getProtocol ^java.net.URL %)))
-          .getFile
-          (guard #(str/ends-with? % ".jar"))
-          normalize-filename))
+(utils/when-not-bb
+ (defn symbol->jar [sym]
+   (some-> (if (qualified-symbol? sym)
+             (-> sym namespace symbol)
+             sym)
+           ^Class resolve
+           .getProtectionDomain
+           .getCodeSource
+           .getLocation
+           ^java.net.URL (guard #(= "file" (.getProtocol ^java.net.URL %)))
+           .getFile
+           (guard #(str/ends-with? % ".jar"))
+           normalize-filename)))
 
 #_(symbol->jar 'io.methvin.watcher.PathUtils)
 #_(symbol->jar 'io.methvin.watcher.PathUtils/cast)
@@ -453,7 +460,7 @@
         (if-let [ns (and (qualified-symbol? sym) (-> sym namespace symbol find-ns))]
           (or (ns->file ns)
               (ns->jar ns))
-          (symbol->jar sym)))))
+          (utils/when-not-bb (symbol->jar sym))))))
 
 #_(find-location `inc)
 #_(find-location `*print-dup*)
@@ -646,10 +653,12 @@
    (let [digest-fn (case hash-type
                      :sha1 sha1-base58
                      :sha512 sha2-base58)]
-     (binding [nippy/*incl-metadata?* false]
-       (-> value
-           nippy/fast-freeze
-           digest-fn)))))
+     (utils/if-bb (-> value pr-str digest-fn)
+                  #_{:clj-kondo/ignore [:unresolved-namespace]}
+                  (binding [nippy/*incl-metadata?* false]
+                    (-> value
+                        nippy/fast-freeze
+                        digest-fn))))))
 
 #_(valuehash (range 100))
 #_(valuehash :sha1 (range 100))
@@ -674,7 +683,6 @@
                                               (assoc-in state [:->hash deref-dep] (->hash-str (eval deref-dep))))
                                             analyzed-doc
                                             (sort topo-comp deref-deps-to-eval))]
-      #_(prn :hash-deref-deps/form form :deref-deps deref-deps-to-eval)
       (hash doc-with-deref-dep-hashes (sort topo-comp (dep/transitive-dependents-set graph deref-deps-to-eval))))
     analyzed-doc))
 

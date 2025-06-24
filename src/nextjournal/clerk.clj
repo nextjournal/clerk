@@ -662,3 +662,7 @@
   (clear-cache!)
   (halt!)
   )
+
+(comment
+  (with-cache 1)
+  )

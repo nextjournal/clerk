@@ -7,6 +7,7 @@
             [nextjournal.clerk :as clerk]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
+            [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]))
@@ -64,7 +65,6 @@
     (let [{:as result :keys [blob->result]} (eval/eval-string "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")]
       (is (= result
              (eval/eval-string blob->result "(ns my-random-test-ns-2) {inc (java.util.UUID/randomUUID)}")))))
-
   (testing "side-effecting expression returning nil gets cached in memory"
     (let [code "(ns my-random-test-ns-2) (do (clojure.lang.Var/intern (the-ns 'my-random-test-ns-2) 'ruuid (java.util.UUID/randomUUID)) nil)"
           {:keys [blob->result]} (eval/eval-string code)]
@@ -255,8 +255,9 @@
   (testing "class is not cachable"
     (is (not (eval/cachable? java.lang.String)))
     (is (not (eval/cachable? {:foo java.lang.String}))))
-  (testing "image is cachable"
-    (is (eval/cachable? (javax.imageio.ImageIO/read (io/file "trees.png"))))))
+  (u/when-not-bb
+   (testing "image is cachable"
+     (is (eval/cachable? (javax.imageio.ImageIO/read (io/file "trees.png")))))))
 
 (deftest show!-test
   (testing "in-memory cache is preserved when exception is thrown (#549)"

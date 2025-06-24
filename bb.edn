@@ -1,9 +1,7 @@
-{:min-bb-version "0.9.159"
+{:min-bb-version "1.12.202"
  :paths ["bb"]
- :deps {io.github.nextjournal/dejavu {:git/sha "4980e0cc18c9b09fb220874ace94ba6b57a749ca"}
-        io.github.nextjournal/cas-client {:git/sha "d9f838937ebc8b645fe5764949e72a6df8e344de"}
-        mvxcvi/multiformats {:git/url "https://github.com/greglook/clj-multiformats"
-                             :git/sha "1189f1fb26db180cd8dcfd50518cdf553c0ff9e1"}}
+ :deps {io.github.nextjournal/dejavu {:git/sha "7276cd9cec1bad001d595b52cee9e83a60d43bf0"}
+        io.github.nextjournal/cas-client {:git/sha "114d3d88d38a2068ec844b0e6c808eaaa6aa64ef"}}
  :tasks
  {:requires
   ([tasks :as t]
@@ -55,6 +53,22 @@
               (apply clojure (cond-> "-X:test"
                                clojure (str ":" clojure-version))
                      *command-line-args*))}
+
+  test:bb {:doc "Run babashka tests"
+           :extra-paths ["test"]
+           :extra-deps {io.github.nextjournal/clerk {:local/root "."}
+                        nubank/matcher-combinators {:mvn/version "3.5.1"}
+                        org.clojure/test.check {:mvn/version "1.1.1"}
+                        io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+           :task cognitect.test-runner/-main}
+
+  dev:bb {:extra-deps {io.github.nextjournal/clerk {:local/root "."}}
+          :extra-paths ["notebooks" "resources" "test"]
+          :task (exec 'tasks/bb-nrepl)}
+
+  build:bb {:extra-deps {io.github.nextjournal/clerk {:local/root "."}}
+            :extra-paths ["notebooks" "resources" "test"]
+            :task (exec 'nextjournal.clerk/build!)}
 
   playwright:version {:doc "Print used playwright version from ui_tests/yarn.json"
                       :task (print (->> (babashka.process/shell {:out :string} "grep -E 'playwright-core \"(.*)\"' ui_tests/yarn.lock")

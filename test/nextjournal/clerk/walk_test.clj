@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.walk-test
   (:require [clojure.test :refer [deftest is are]]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.walk :as walk]))
 
 (deftest test-postwalk
@@ -79,9 +80,10 @@
                  (reduce + (map (comp inc val) c))))
           (is (= (walk/walk inc #(reduce + %) c)
                  (reduce + (map inc c)))))
-        (when (instance? clojure.lang.Sorted c)
-          (is (= (.comparator ^clojure.lang.Sorted c)
-                 (.comparator ^clojure.lang.Sorted walked))))))))
+        (utils/when-not-bb
+         (when (instance? clojure.lang.Sorted c)
+           (is (= (.comparator ^clojure.lang.Sorted c)
+                  (.comparator ^clojure.lang.Sorted walked)))))))))
 
 ; Checks that walk preserves the MapEntry type. See CLJ-2031.
 (deftest walk-mapentry

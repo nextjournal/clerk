@@ -3,14 +3,14 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [weavejester.dependency :as tnsd]
    [edamame.core :as e]
-   [nextjournal.clerk.viewer :as v]
    [nextjournal.clerk.always-array-map :as aam]
    [nextjournal.clerk.analyzer :refer [valuehash]]
+   [nextjournal.clerk.viewer :as v]
    [nextjournal.clerk.walk :as w]
    [rewrite-clj.node :as rnode]
-   [rewrite-clj.parser :as rparse]))
+   [rewrite-clj.parser :as rparse]
+   [weavejester.dependency :as tnsd]))
 
 (def already-loaded-sci-namespaces
   (atom '#{applied-science.js-interop
