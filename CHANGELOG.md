@@ -10,8 +10,7 @@ Changes can be:
 
 * 🌟 Add compatibility with Babashka
 
-  Currently requires a dev build of Babashka ([6b89b78](https://github.com/babashka/babashka/commit/6b89b78c38e72d296f211e024d4079bf1504f3e4)
-  or newer).
+  Requires Babashka 1.12.204 or newer.
 
 * 🕵🏻 New dependency analyzer implementation
 

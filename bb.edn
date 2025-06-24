@@ -1,4 +1,4 @@
-{:min-bb-version "1.12.202"
+{:min-bb-version "1.12.204"
  :paths ["bb"]
  :deps {io.github.nextjournal/dejavu {:git/sha "7276cd9cec1bad001d595b52cee9e83a60d43bf0"}
         io.github.nextjournal/cas-client {:git/sha "114d3d88d38a2068ec844b0e6c808eaaa6aa64ef"}}
