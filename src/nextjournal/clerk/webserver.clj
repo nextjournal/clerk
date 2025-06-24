@@ -22,10 +22,6 @@
  (require '[editscript.core :as-alias editscript])
  (require '[editscript.core :as editscript]))
 
-(def help-doc
-{:ns *ns*
-:blocks [{:type :markdown :doc (md/parse "Use `nextjournal.clerk/show!` to make your notebook appear…")}]})
-
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
 (defonce !last-sender-ch (atom nil))
@@ -164,14 +160,12 @@
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
   (broadcast! (u/if-not-bb-and (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                (cond-> {:type :set-state!
-                         :doc (present+reset! doc)}
-                  (and nav-path (not skip-history?))
+                               {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+                               (cond-> {:type :set-state!
+                                        :doc (present+reset! doc)}
+                                 (and nav-path (not skip-history?))
                   (assoc :effects [(v/->render-eval (list 'nextjournal.clerk.render/history-push-state
                                                           (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
-
-#_(update-doc! (help-doc))
 
 (defn update-error! [ex]
   (update-doc! (assoc @!doc :error ex)))
