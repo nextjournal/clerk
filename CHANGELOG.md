@@ -8,6 +8,11 @@ Changes can be:
 
 ## Unreleased
 
+* 🌟 Add compatibility with Babashka
+
+  Currently requires a dev build of Babashka ([6b89b78](https://github.com/babashka/babashka/commit/6b89b78c38e72d296f211e024d4079bf1504f3e4
+  or newer)).
+
 * 🕵🏻 New dependency analyzer implementation
 
    Based on the analyzer from [hyperfiddle/rfc](https://github.com/hyperfiddle/rcf). This replaces `tools.analyzer` and drops the dependency.
