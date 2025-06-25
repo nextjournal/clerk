@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.webserver-test
-  (:require [clojure.java.io :as io]
+  (:require [babashka.fs :as fs]
+            [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.test-utils]
@@ -11,6 +12,15 @@
 (deftest ->file-or-ns
   (is (= 'nextjournal.clerk.tap (webserver/->file-or-ns "'nextjournal.clerk.tap")))
   (is (= "notebooks/rule_30.clj" (webserver/->file-or-ns "notebooks/rule_30.clj"))))
+
+(deftest ->nav-path-test
+  (is (= "notebooks/rule_30"
+         (webserver/->nav-path (str (fs/file (fs/cwd) "notebooks/rule_30.clj")))
+         (webserver/->nav-path "notebooks/rule_30.clj")))
+  (is (= "'nextjournal.clerk.home"
+         (webserver/->nav-path 'nextjournal.clerk.home)))
+  (is (= "/https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj"
+         (webserver/->nav-path "https://raw.githubusercontent.com/nextjournal/clerk-demo/main/notebooks/rule_30.clj"))))
 
 (deftest serve-blob
   (utils/when-not-bb

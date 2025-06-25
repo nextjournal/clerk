@@ -8,6 +8,8 @@ Changes can be:
 
 ## Unreleased
 
+* 🐞 Fix navigation path and reload when serving notebook over http
+
 * 🌟 Add compatibility with Babashka
 
   Requires Babashka 1.12.204 or newer.
