@@ -242,13 +242,11 @@
         (or (symbol? file-or-ns) (instance? clojure.lang.Namespace file-or-ns))
         (str "'" file-or-ns)
 
+        (and (string? file-or-ns) (re-matches #"^http?s://.*" file-or-ns))
+        (str "/" file-or-ns)
+
         (string? file-or-ns)
         (paths/drop-extension (or (paths/path-in-cwd file-or-ns) file-or-ns))))
-
-#_(->nav-path (str (fs/file (fs/cwd) "notebooks/rule_30.clj")))
-#_(->nav-path 'nextjournal.clerk.index)
-#_(->nav-path "notebooks/rule_30.clj")
-#_(->nav-path 'nextjournal.clerk.home)
 
 (defn find-first-existing-file [files]
   (first (filter fs/exists? files)))
@@ -323,10 +321,10 @@
                       file-or-ns)
                (catch ^:sci/error Exception e
                  (u/if-bb
-                  (binding [*out* *err*]
-                    (println
-                     (str/join "\n" (sci.core/format-stacktrace (sci.core/stacktrace e)))))
-                  nil)))
+                   (binding [*out* *err*]
+                     (println
+                      (str/join "\n" (sci.core/format-stacktrace (sci.core/stacktrace e)))))
+                   nil)))
           {:status 200
            :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
            :body (view/->html {:doc (view/doc->viewer @!doc)
