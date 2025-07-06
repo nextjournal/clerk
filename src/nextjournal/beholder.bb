@@ -17,7 +17,6 @@
       (run! unwatch ws))))
 
 (defn normalize-response [resp]
-  (prn :resp resp)
   (-> resp
       (update :path fs/path)
       (update :type (fn [k]
@@ -26,7 +25,6 @@
 
 (defn watch [cb & paths]
   @load-pod
-  (prn :paths paths)
   (let [cb (comp cb normalize-response)
         watch (requiring-resolve 'pod.babashka.fswatcher/watch)]
     (->Watchers (mapv #(watch % cb) paths))))
