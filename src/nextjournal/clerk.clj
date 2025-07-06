@@ -640,7 +640,6 @@
 (comment
   (def watcher
     (beholder/watch #(file-event %) "notebooks" "src"))
-
   (beholder/stop watcher)
   (show! "notebooks/rule_30.clj")
   (show! "notebooks/viewer_api.clj")
