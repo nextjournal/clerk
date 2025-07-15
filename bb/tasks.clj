@@ -78,6 +78,5 @@
   ((requiring-resolve 'nextjournal.clerk/serve!) args)
   (-> (Runtime/getRuntime)
       (.addShutdownHook (Thread. (fn []
-                                   ((requiring-resolve 'nextjournal.clerk/halt!))
                                    (fs/delete ".nrepl-port")))))
   (deref (promise)))
