@@ -4,7 +4,7 @@
         babashka/fs {:mvn/version "0.5.22"}
         borkdude/edamame {:mvn/version "1.4.28"}
         weavejester/dependency {:mvn/version "0.2.1"}
-        com.nextjournal/beholder {:mvn/version "1.0.2"}
+        com.nextjournal/beholder {:mvn/version "1.0.3"}
         org.flatland/ordered {:mvn/version "1.15.12"}
         io.github.nextjournal/markdown {:mvn/version "0.7.186"}
         babashka/process {:mvn/version "0.4.16"}
