@@ -64,7 +64,12 @@
 
   dev:bb {:extra-deps {io.github.nextjournal/clerk {:local/root "."}}
           :extra-paths ["notebooks" "resources" "test"]
-          :task (exec 'tasks/bb-nrepl)}
+          :task (do
+                  ;; add metadata from nextjournal.clerk/serve to tasks/bb-nrepl for option parsing
+                  (let [v (requiring-resolve 'nextjournal.clerk/serve!)
+                        m (meta v)]
+                    (alter-meta! (requiring-resolve 'tasks/bb-nrepl) (constantly m)))
+                  (exec 'tasks/bb-nrepl))}
 
   build:bb {:extra-deps {io.github.nextjournal/clerk {:local/root "."}}
             :extra-paths ["notebooks" "resources" "test"]
