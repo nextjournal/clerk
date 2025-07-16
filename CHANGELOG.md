@@ -14,7 +14,7 @@ Changes can be:
 
 * ⚡️ Add compatibility with Babashka
 
-  Clerk is now compatible with Babashka 1.12.204 or newer. @borkdude
+  Clerk is now compatible with Babashka 1.12.206 or newer. @borkdude
 
 * 🕵🏻 New dependency analyzer implementation
 
