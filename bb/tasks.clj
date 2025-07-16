@@ -55,10 +55,7 @@
   (update-changelog)
   (update-readme)
   (update-book)
-  (shell "git add"
-         "resources/META-INF"
-         "README.md"
-         "CHANGELOG.md")
+  (shell "git add -u")
   (shell (str "git commit -m v" (shared/version)))
   (tag)
   (println "\n\nRun:\n\n" "  git push --atomic"
