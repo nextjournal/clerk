@@ -55,6 +55,7 @@
               :class-dir class-dir}))
 
 (defn deploy [opts]
+  (jar {})
   (try ((requiring-resolve 'deps-deploy.deps-deploy/deploy)
         (merge {:installer :remote
                 :artifact jar-file
