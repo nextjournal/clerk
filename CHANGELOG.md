@@ -8,15 +8,17 @@ Changes can be:
 
 ## Unreleased
 
-* 🐞 Fix navigation path and reload when serving notebook over http
+...
 
-* 🌟 Add compatibility with Babashka
+## 0.18.1142 (2025-07-16)
 
-  Requires Babashka 1.12.204 or newer.
+* ⚡️ Add compatibility with Babashka
+
+  Clerk is now compatible with Babashka 1.12.204 or newer. @borkdude
 
 * 🕵🏻 New dependency analyzer implementation
 
-   Based on the analyzer from [hyperfiddle/rfc](https://github.com/hyperfiddle/rcf). This replaces `tools.analyzer` and drops the dependency.
+   Based on the analyzer from [hyperfiddle/rfc](https://github.com/hyperfiddle/rcf). This replaces `tools.analyzer` and drops the dependency. @borkdude
 
      * Adds compatibility with Clojure 1.12 qualified method syntax, fixes [#734](https://github.com/nextjournal/clerk/issues/734)
      * Adds compatibility with `core.cache`, fixes [#724](https://github.com/nextjournal/clerk/issues/724)
@@ -34,6 +36,8 @@ Changes can be:
    Delay the evaluation of a `RenderFn` to when it's invoked so we no longer are evaluating on read.
 
    Also switch transmission of unreadable symbols and keywords to a `#clerk/unreadble-edn` reader tag.
+   
+* 🐞 Fix navigation path and reload when serving notebook over http
 
 * 🐞 Fix rendering of number whose magnitude is greater than 2^53 @krzsztf
 
