@@ -168,18 +168,35 @@
            :path->doc path->doc
            :paths (vec (keys path->doc)))))
 
+(defn download-text-file [url]
+  (let [client (java.net.http.HttpClient/newHttpClient)
+        request (-> (java.net.http.HttpRequest/newBuilder)
+                    (.uri (java.net.URI/create url))
+                    (.build))
+        response (.send client request (java.net.http.HttpResponse$BodyHandlers/ofString))]
+    (.body response)))
+
 (defn- node-ssr!
   [{:keys [viewer-js state]
     :or {viewer-js
          ;; for local REPL testing
          "./public/js/viewer.js"}}]
-  (sh {:in (str "import '" viewer-js "';"
-                "globalThis.CLERK_SSR = true;"
-                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
-      "node"
-      "--abort-on-uncaught-exception"
-      "--input-type=module"
-      "--trace-warnings"))
+  (let [viewer-js (if (str/starts-with? viewer-js "http")
+                    (let [tmp (-> (fs/create-temp-file)
+                                  (fs/file)
+                                  (fs/delete-on-exit)
+                                  str)
+                          src (download-text-file viewer-js)]
+                      (spit tmp src)
+                      tmp)
+                    viewer-js)]
+    (sh {:in (str "import '" viewer-js "';"
+                  "globalThis.CLERK_SSR = true;"
+                  "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
+        "node"
+        "--abort-on-uncaught-exception"
+        "--input-type=module"
+        "--trace-warnings")))
 
 (comment
   (declare so) ;; captured in REPL in ssr! function
