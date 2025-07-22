@@ -2,7 +2,6 @@
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
             [babashka.process :refer [sh]]
-            [babashka.process.pprint]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -13,9 +12,14 @@
             [nextjournal.clerk.git :as git]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]))
+
+;; TODO: expose this namespace in bb as no-op
+(utils/when-not-bb
+ (require '[babashka.process.pprint]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
