@@ -193,7 +193,6 @@
         in (str "import '" viewer-js "';"
                 "globalThis.CLERK_SSR = true;"
                 "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
-    (def in in)
     (sh {:in in}
         "node"
         "--abort-on-uncaught-exception"
@@ -402,8 +401,6 @@
                       ;; test https
                       :resource->url {"/js/viewer.js" "https://storage.clerk.garden/nextjournal/clerk-assets@2WtVkTBNZA213UdQKZmWTVuF7TUJ/viewer.js?immutable=true"}
                       :index "notebooks/rule_30.clj"})
-
-  (spit "/tmp/script2.mjs" in)
 
   (build-static-app! {:ssr? true
                       :compile-css? true
