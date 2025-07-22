@@ -182,17 +182,19 @@
          ;; for local REPL testing
          "./public/js/viewer.js"}}]
   (let [viewer-js (if (str/starts-with? viewer-js "http")
-                    (let [tmp (-> (fs/create-temp-file)
+                    (let [tmp (-> (fs/create-temp-file {:suffix ".mjs"})
                                   (fs/file)
                                   (fs/delete-on-exit)
                                   str)
                           src (download-text-file viewer-js)]
                       (spit tmp src)
                       tmp)
-                    viewer-js)]
-    (sh {:in (str "import '" viewer-js "';"
-                  "globalThis.CLERK_SSR = true;"
-                  "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
+                    viewer-js)
+        in (str "import '" viewer-js "';"
+                "globalThis.CLERK_SSR = true;"
+                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
+    (def in in)
+    (sh {:in in}
         "node"
         "--abort-on-uncaught-exception"
         "--input-type=module"
@@ -394,6 +396,14 @@
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
                       :index "notebooks/rule_30.clj"})
+
+  (build-static-app! {:ssr? true
+                      :exclude-js? true
+                      ;; test https
+                      :resource->url {"/js/viewer.js" "https://storage.clerk.garden/nextjournal/clerk-assets@2WtVkTBNZA213UdQKZmWTVuF7TUJ/viewer.js?immutable=true"}
+                      :index "notebooks/rule_30.clj"})
+
+  (spit "/tmp/script2.mjs" in)
 
   (build-static-app! {:ssr? true
                       :compile-css? true
