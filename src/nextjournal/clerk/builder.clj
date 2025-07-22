@@ -173,7 +173,6 @@
                 "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
       "node"
       "--abort-on-uncaught-exception"
-      "--experimental-network-imports"
       "--input-type=module"
       "--trace-warnings"))
 
