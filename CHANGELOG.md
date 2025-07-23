@@ -8,7 +8,8 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 🐜 Fix reagent unsafe html rendering and KaTeX viewer, @borkdude fixes [#759](https://github.com/nextjournal/clerk/issues/759).
+* 🐞 Server-side-rendering: drop experimental node flag, @borkdude, fixes [#757](https://github.com/nextjournal/clerk/issues/757).
 
 ## 0.18.1142 (2025-07-16)
 
