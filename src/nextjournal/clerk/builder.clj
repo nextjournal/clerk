@@ -12,9 +12,14 @@
             [nextjournal.clerk.git :as git]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.paths :as paths]
+            [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as viewer]
             [nextjournal.clerk.webserver :as webserver]))
+
+;; TODO: expose this namespace in bb as no-op
+(utils/when-not-bb
+ (require '[babashka.process.pprint]))
 
 (def clerk-docs
   (into ["CHANGELOG.md"
@@ -163,19 +168,36 @@
            :path->doc path->doc
            :paths (vec (keys path->doc)))))
 
+(defn download-text-file [url]
+  (let [client (java.net.http.HttpClient/newHttpClient)
+        request (-> (java.net.http.HttpRequest/newBuilder)
+                    (.uri (java.net.URI/create url))
+                    (.build))
+        response (.send client request (java.net.http.HttpResponse$BodyHandlers/ofString))]
+    (.body response)))
+
 (defn- node-ssr!
   [{:keys [viewer-js state]
     :or {viewer-js
          ;; for local REPL testing
          "./public/js/viewer.js"}}]
-  (sh {:in (str "import '" viewer-js "';"
+  (let [viewer-js (if (str/starts-with? viewer-js "http")
+                    (let [tmp (-> (fs/create-temp-file {:suffix ".mjs"})
+                                  (fs/file)
+                                  (fs/delete-on-exit)
+                                  str)
+                          src (download-text-file viewer-js)]
+                      (spit tmp src)
+                      tmp)
+                    viewer-js)
+        in (str "import '" viewer-js "';"
                 "globalThis.CLERK_SSR = true;"
-                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")}
-      "node"
-      "--abort-on-uncaught-exception"
-      "--experimental-network-imports"
-      "--input-type=module"
-      "--trace-warnings"))
+                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
+    (sh {:in in}
+        "node"
+        "--abort-on-uncaught-exception"
+        "--input-type=module"
+        "--trace-warnings")))
 
 (comment
   (declare so) ;; captured in REPL in ssr! function
@@ -372,6 +394,12 @@
                       :exclude-js? true
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
+                      :index "notebooks/rule_30.clj"})
+
+  (build-static-app! {:ssr? true
+                      :exclude-js? true
+                      ;; test https
+                      :resource->url {"/js/viewer.js" "https://storage.clerk.garden/nextjournal/clerk-assets@2WtVkTBNZA213UdQKZmWTVuF7TUJ/viewer.js?immutable=true"}
                       :index "notebooks/rule_30.clj"})
 
   (build-static-app! {:ssr? true
