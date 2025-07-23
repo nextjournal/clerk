@@ -1033,7 +1033,7 @@
             :nextjournal/value
             (fn [hiccup]
               (if (string? hiccup)
-                [:div {:dangerouslySetInnerHTML `(reagent.core/unsafe-html ~hiccup)}]
+                hiccup
                 (w/postwalk (fn [x] (if (wrapped-value? x)
                                       [(inspect-fn)
                                        (present (inherit-opts wrapped-value x (swap! !path-idx inc)))]
