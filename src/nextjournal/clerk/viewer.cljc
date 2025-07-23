@@ -820,7 +820,6 @@
    {:name :nextjournal.markdown/formula
     :transform-fn (comp :text ->value)
     :render-fn '(fn [tex]
-                  (prn :tex tex)
                   (nextjournal.clerk.render/render-katex tex {:inline? true}))}
    {:name :nextjournal.markdown/block-formula
     :transform-fn (comp :text ->value)

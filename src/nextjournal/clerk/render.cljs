@@ -981,7 +981,6 @@
         default-loading-view))))
 
 (defn render-katex [tex-string {:keys [inline?]}]
-  (prn :text-string tex-string :inline inline?)
   (let [katex (hooks/use-d3-require "katex@0.16.4")]
     (if katex
       [:span {:dangerouslySetInnerHTML (r/unsafe-html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false)))}]
