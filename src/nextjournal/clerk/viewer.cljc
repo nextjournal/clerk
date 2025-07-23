@@ -819,7 +819,9 @@
    ;; formulas
    {:name :nextjournal.markdown/formula
     :transform-fn (comp :text ->value)
-    :render-fn '(fn [tex] (nextjournal.clerk.render/render-katex tex {:inline? true}))}
+    :render-fn '(fn [tex]
+                  (prn :tex tex)
+                  (nextjournal.clerk.render/render-katex tex {:inline? true}))}
    {:name :nextjournal.markdown/block-formula
     :transform-fn (comp :text ->value)
     :render-fn 'nextjournal.clerk.render/render-katex}
@@ -1031,7 +1033,7 @@
             :nextjournal/value
             (fn [hiccup]
               (if (string? hiccup)
-                [:div {:dangerouslySetInnerHTML {:__html hiccup}}]
+                hiccup
                 (w/postwalk (fn [x] (if (wrapped-value? x)
                                       [(inspect-fn)
                                        (present (inherit-opts wrapped-value x (swap! !path-idx inc)))]

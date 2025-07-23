@@ -922,7 +922,7 @@
 
 (defn render-html [markup]
   (r/as-element (if (string? markup)
-                  [:span {:dangerouslySetInnerHTML {:__html markup}}]
+                  [:span {:dangerouslySetInnerHTML (r/unsafe-html markup)}]
                   markup)))
 
 (defn render-promise [p opts]
@@ -981,9 +981,10 @@
         default-loading-view))))
 
 (defn render-katex [tex-string {:keys [inline?]}]
+  (prn :text-string tex-string :inline inline?)
   (let [katex (hooks/use-d3-require "katex@0.16.4")]
     (if katex
-      [:span {:dangerouslySetInnerHTML {:__html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false))}}]
+      [:span {:dangerouslySetInnerHTML (r/unsafe-html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false)))}]
       default-loading-view)))
 
 (defn render-mathjax [value]
