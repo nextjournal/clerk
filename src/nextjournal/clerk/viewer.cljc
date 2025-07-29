@@ -863,7 +863,11 @@
     :transform-fn (into-markup (fn [{:keys [ref]}]
                                  [:span.sidenote [:sup {:style {:margin-right "3px"}} (str (inc ref))]]))}
    {:name :nextjournal.markdown/sidenote-ref
-    :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
+    :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}
+   {:name :nextjournal.markdown/html-block
+    :transform-fn (into-markup [:<>])}
+   {:name :nextjournal.markdown/html-inline
+    :transform-fn (into-markup [:<>])}])
 
 (def char-viewer
   {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
