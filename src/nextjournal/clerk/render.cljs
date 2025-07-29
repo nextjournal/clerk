@@ -925,9 +925,6 @@
                   [:span {:dangerouslySetInnerHTML (r/unsafe-html markup)}]
                   markup)))
 
-(defn render-markdown-html [s]
-  (r/as-element [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:dangerouslySetInnerHTML (r/unsafe-html s)}]))
-
 (defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]
     (hooks/use-effect (fn []

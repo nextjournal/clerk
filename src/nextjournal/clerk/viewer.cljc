@@ -8,7 +8,6 @@
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [clojure.tools.reader :as tools.reader]
-                      [hiccup2.core :as hiccup]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[goog.crypt]
@@ -784,11 +783,20 @@
             (.setTimeZone (java.util.TimeZone/getTimeZone "GMT")))))
 
 (def markdown-viewers
-  [{:name :nextjournal.markdown/image
+  [{:name :nextjournal.markdown/doc
+    :transform-fn (into-markup (fn [{:keys [id]}] [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:data-block-id id}]))}
+   {:name :nextjournal.markdown/heading
+    :transform-fn (into-markup
+                   (fn [{:keys [attrs heading-level]}]
+                     [(str "h" heading-level) attrs]))}
+   {:name :nextjournal.markdown/image
     :transform-fn (fn [{node :nextjournal/value}]
                     (with-viewer `html-viewer
                       [:img.inline (-> node :attrs (update :src process-image-source (::doc node)))]))}
-   
+   {:name :nextjournal.markdown/blockquote :transform-fn (into-markup [:blockquote])}
+   {:name :nextjournal.markdown/paragraph :transform-fn (into-markup [:p])}
+   {:name :nextjournal.markdown/plain :transform-fn (into-markup [:<>])}
+   {:name :nextjournal.markdown/ruler :transform-fn (into-markup [:hr])}
    {:name :nextjournal.markdown/code
     :transform-fn (update-val #(with-viewer `html-viewer
                                  [:div.code-viewer.code-listing
@@ -855,7 +863,15 @@
     :transform-fn (into-markup (fn [{:keys [ref]}]
                                  [:span.sidenote [:sup {:style {:margin-right "3px"}} (str (inc ref))]]))}
    {:name :nextjournal.markdown/sidenote-ref
-    :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}])
+    :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}
+   {:name :nextjournal.markdown/html-block
+    :transform-fn (fn [wrapped-value]
+                    (let [text (-> wrapped-value :nextjournal/value :content first :text)]
+                      (with-viewer `html-viewer [:span text])))}
+   {:name :nextjournal.markdown/html-inline
+    :transform-fn (fn [wrapped-value]
+                    (let [text (-> wrapped-value :nextjournal/value :content first :text)]
+                      (with-viewer `html-viewer [:span text])))}])
 
 (def char-viewer
   {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
@@ -1036,11 +1052,6 @@
    :render-fn 'nextjournal.clerk.render/render-html
    :transform-fn (comp mark-presented transform-html)})
 
-(def markdown-html-viewer
-  {:name `markdown-html-viewer
-   :render-fn 'nextjournal.clerk.render/render-markdown-html
-   :transform-fn (comp mark-presented transform-html)})
-
 #_(present (with-viewer html-viewer [:div {:nextjournal/value (range 30)} {:nextjournal/value (range 30)}]))
 
 (def plotly-viewer
@@ -1051,25 +1062,12 @@
 
 (def markdown-viewer
   {:name `markdown-viewer
-   ;; :add-viewers markdown-viewers
-   #?@(:clj [:transform-fn (fn [wrapped-value]
-                             (with-viewer markdown-html-viewer
-                               (-> wrapped-value
-                                   (update :nextjournal/value #(do
-                                                                 (def o %)
-                                                                 (let [x (->> (cond->> % (string? %)
-                                                                                       md/parse)
-                                                                              (md/->hiccup
-                                                                               (assoc md/default-hiccup-renderers
-                                                                                      #_#_:doc (partial md/into-hiccup
-                                                                                                    [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8])
-                                                                                      :html-inline (comp hiccup/raw md/node->text)
-                                                                                      :html-block (comp hiccup/raw md/node->text)))
-                                                                              (hiccup/html)
-                                                                              str)]
-                                                                   (def x x)
-                                                                   x)))
-                                   )))])})
+   :add-viewers markdown-viewers
+   :transform-fn (fn [wrapped-value]
+                   (-> wrapped-value
+                       mark-presented
+                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
+                       (with-md-viewer)))})
 
 (def code-viewer
   {:name `code-viewer
@@ -1406,7 +1404,6 @@
    katex-viewer
    mathjax-viewer
    html-viewer
-   markdown-html-viewer
    plotly-viewer
    vega-lite-viewer
    markdown-viewer
