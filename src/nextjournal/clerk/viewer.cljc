@@ -1079,8 +1079,8 @@
                                                                                        md/parse)
                                                                               (md/->hiccup
                                                                                (assoc md/default-hiccup-renderers
-                                                                                      :html-block str
-                                                                                      :html-inline str))
+                                                                                      :html-inline (comp hiccup/raw md/node->text)
+                                                                                      :html-block (comp hiccup/raw md/node->text)))
                                                                               (hiccup/html)
                                                                               str)]
                                                                    (def x x)
