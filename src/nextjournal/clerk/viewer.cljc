@@ -8,6 +8,7 @@
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [clojure.tools.reader :as tools.reader]
+                      [hiccup2.core :as hiccup]
                       [nextjournal.clerk.config :as config]
                       [nextjournal.clerk.analyzer :as analyzer]]
                 :cljs [[goog.crypt]
@@ -867,7 +868,11 @@
    {:name :nextjournal.markdown/html-block
     :transform-fn (fn [wrapped-value]
                     (let [text (-> wrapped-value :nextjournal/value :content first :text)]
-                      (with-viewer `html-viewer text)))}])
+                      (with-viewer `html-viewer text)))}
+   {:name :nextjournal.markdown/html-inline
+    :transform-fn (fn [wrapped-value]
+                    (let [text (-> wrapped-value :nextjournal/value :content first :text)]
+                      (with-viewer `raw-html-viewer text)))}])
 
 (def char-viewer
   {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
@@ -1048,6 +1053,11 @@
    :render-fn 'nextjournal.clerk.render/render-html
    :transform-fn (comp mark-presented transform-html)})
 
+(def raw-html-viewer
+  {:name `raw-html-viewer
+   :render-fn 'nextjournal.clerk.render/render-raw-html
+   :transform-fn (comp mark-presented transform-html)})
+
 #_(present (with-viewer html-viewer [:div {:nextjournal/value (range 30)} {:nextjournal/value (range 30)}]))
 
 (def plotly-viewer
@@ -1058,12 +1068,24 @@
 
 (def markdown-viewer
   {:name `markdown-viewer
-   :add-viewers markdown-viewers
-   :transform-fn (fn [wrapped-value]
-                   (-> wrapped-value
-                       mark-presented
-                       (update :nextjournal/value #(cond->> % (string? %) md/parse))
-                       (with-md-viewer)))})
+   ;; :add-viewers markdown-viewers
+   #?@(:clj [:transform-fn (fn [wrapped-value]
+                             (with-viewer html-viewer
+                               (-> wrapped-value
+                                   #_mark-presented
+                                   (update :nextjournal/value #(do
+                                                                 (def o %)
+                                                                 (let [x (->> (cond->> % (string? %)
+                                                                                       md/parse)
+                                                                              (md/->hiccup
+                                                                               (assoc md/default-hiccup-renderers
+                                                                                      :html-block str
+                                                                                      :html-inline str))
+                                                                              (hiccup/html)
+                                                                              str)]
+                                                                   (def x x)
+                                                                   x)))
+                                   )))])})
 
 (def code-viewer
   {:name `code-viewer
@@ -1400,6 +1422,7 @@
    katex-viewer
    mathjax-viewer
    html-viewer
+   raw-html-viewer
    plotly-viewer
    vega-lite-viewer
    markdown-viewer
