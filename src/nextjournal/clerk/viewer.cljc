@@ -865,13 +865,9 @@
    {:name :nextjournal.markdown/sidenote-ref
     :transform-fn (fn [wrapped-value] (with-viewer `html-viewer [:sup.sidenote-ref (-> wrapped-value ->value :ref inc)]))}
    {:name :nextjournal.markdown/html-block
-    :transform-fn (fn [wrapped-value]
-                    (let [text (-> wrapped-value :nextjournal/value :content first :text)]
-                      (with-viewer `html-viewer [:span text])))}
+    :transform-fn (into-markup [:<>])}
    {:name :nextjournal.markdown/html-inline
-    :transform-fn (fn [wrapped-value]
-                    (let [text (-> wrapped-value :nextjournal/value :content first :text)]
-                      (with-viewer `html-viewer [:span text])))}])
+    :transform-fn (into-markup [:<>])}])
 
 (def char-viewer
   {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
