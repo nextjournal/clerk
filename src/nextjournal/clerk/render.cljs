@@ -922,19 +922,11 @@
 
 (defn render-html [markup]
   (r/as-element (if (string? markup)
-                  (if (= "<em>" markup)
-                    [:em]
-                    [:span {:dangerouslySetInnerHTML (r/unsafe-html markup)}])
+                  [:span {:dangerouslySetInnerHTML (r/unsafe-html markup)}]
                   markup)))
 
-(defn render-raw-html [s]
-  (r/as-element [(fn []
-                   (let [!ref (atom nil)]
-                     (r/create-class
-                      {:component-did-mount (fn [this]
-                                              (when-let [ref @!ref]
-                                                (set! (.-outerHTML ref) s)))
-                       :reagent-render (fn [] [:span {:ref #(reset! !ref %)} s])})))]))
+(defn render-markdown-html [s]
+  (r/as-element [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {:dangerouslySetInnerHTML (r/unsafe-html s)}]))
 
 (defn render-promise [p opts]
   (let [!state (hooks/use-state {:pending true})]
