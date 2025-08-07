@@ -14,6 +14,10 @@
   yarn-install {:doc "Installs and updates npm dependencies"
                 :task (shell "yarn install")}
 
+  watch:only-cljs {:doc "Starts shadow-cljs & clerk"
+                   :task (clojure "-M:build:test:sci:demo:dev:clear-main -m shadow.cljs.devtools.cli watch viewer")
+                   :depends [yarn-install]}
+
   watch:cljs {:doc "Starts shadow-cljs & clerk"
               :task (apply clojure "-X:build:test:sci:demo:dev" *command-line-args*)
               :depends [yarn-install]}
@@ -62,14 +66,19 @@
                         io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
            :task cognitect.test-runner/-main}
 
-  dev:bb {:extra-deps {io.github.nextjournal/clerk {:local/root "."}}
-          :extra-paths ["notebooks" "resources" "test"]
-          :task (do
-                  ;; add metadata from nextjournal.clerk/serve to tasks/bb-nrepl for option parsing
-                  (let [v (requiring-resolve 'nextjournal.clerk/serve!)
-                        m (meta v)]
-                    (alter-meta! (requiring-resolve 'tasks/bb-nrepl) (constantly m)))
-                  (exec 'tasks/bb-nrepl))}
+  watch:bb {:extra-deps {io.github.nextjournal/clerk {:local/root "."}}
+            :extra-paths ["notebooks" "resources" "test"]
+            :task (do
+                    (System/setProperty "clerk.resource_manifest" (str {"/js/viewer.js" "/js/viewer.js"}))
+                    (binding [;; this is a workaround until the next bb comes out
+                              *warn-on-reflection* *warn-on-reflection*]
+                      (let [v (requiring-resolve 'nextjournal.clerk/serve!)
+                            m (meta v)]
+                        ;; add metadata from nextjournal.clerk/serve to tasks/bb-nrepl for option parsing
+                        (alter-meta! (requiring-resolve 'tasks/bb-nrepl) (constantly m))))
+                    (exec 'tasks/bb-nrepl))}
+  -dev:bb {:depends [watch:bb watch:only-cljs]}
+  dev:bb {:task (run '-dev:bb {:parallel true})}
 
   build:bb {:extra-deps {io.github.nextjournal/clerk {:local/root "."}}
             :extra-paths ["notebooks" "resources" "test"]

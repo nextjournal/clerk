@@ -69,9 +69,8 @@
   (shared/version))
 
 (defn bb-nrepl [args]
-  (System/setProperty "clerk.resource_manifest" (str {"/js/viewer.js" "/js/viewer.js"}))
-  ((requiring-resolve 'babashka.nrepl.server/start-server!) {:host "localhost" :port 1339})
-  (spit ".nrepl-port" "1339")
+  ((requiring-resolve 'babashka.nrepl.server/start-server!) {:host "localhost" :port 13399})
+  (spit ".nrepl-port" "13399")
   ((requiring-resolve 'nextjournal.clerk/serve!) args)
   (-> (Runtime/getRuntime)
       (.addShutdownHook (Thread. (fn []

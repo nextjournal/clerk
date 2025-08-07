@@ -1,6 +1,6 @@
 (ns nextjournal.clerk.dev-launcher
-  "A dev launcher that launches nrepl, shadow-cljs and once the first cljs compliation completes, Clerk.
-  
+  "A dev launcher that launches nrepl, shadow-cljs and once the first cljs compilation completes, Clerk.
+
   Avoiding other ns requires here so the REPL comes up early."
   (:require [nrepl.cmdline :as nrepl])
   (:import (java.lang.management ManagementFactory)

@@ -4,7 +4,7 @@
         babashka/fs {:mvn/version "0.5.22"}
         borkdude/edamame {:mvn/version "1.4.28"}
         weavejester/dependency {:mvn/version "0.2.1"}
-        com.nextjournal/beholder {:mvn/version "1.0.3"}
+        com.nextjournal/beholder {:local/root "/Users/borkdude/dev/beholder"} #_{:mvn/version "1.0.3"}
         org.flatland/ordered {:mvn/version "1.15.12"}
         io.github.nextjournal/markdown {:mvn/version "0.7.186"}
         babashka/process {:mvn/version "0.4.16"}
@@ -64,7 +64,8 @@
 
            :test {:extra-deps {nubank/matcher-combinators {:mvn/version "3.5.1"}
                                org.clojure/test.check {:mvn/version "1.1.1"}
-                               lambdaisland/kaocha {:mvn/version "1.66.1034"}
+                               lambdaisland/kaocha {:mvn/version "1.66.1034"
+                                                    :exclusions [com.nextjournal/beholder]}
                                io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
                   :extra-paths ["test"]
                   :jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/js/viewer.js\"}"]
@@ -102,4 +103,6 @@
 
            :test-release-js {:jvm-opts ["-Dclerk.resource_manifest={\"/js/viewer.js\" \"/viewer.js\"}"]
                              :exec-args {:out-path "build"}
-                             :main-opts ["-m" "babashka.cli.exec"]}}}
+                             :main-opts ["-m" "babashka.cli.exec"]}
+
+           :clear-main {:main-opts []}}}
