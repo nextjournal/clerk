@@ -21,8 +21,7 @@
             [reagent.ratom :as ratom]
             [sci.core :as sci]
             [sci.ctx-store]
-            [shadow.cljs.modern :refer [defclass]]
-            [shadow.esm :as esm]))
+            [shadow.cljs.modern :refer [defclass]]))
 
 (r/set-default-compiler! (r/create-compiler {:function-components true}))
 
