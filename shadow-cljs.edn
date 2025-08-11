@@ -8,7 +8,9 @@
                    :compiler-options {:source-map true}
                    :dev {:modules {:viewer {:entries [devtools]}}}
                    :modules {:viewer {:entries [nextjournal.clerk.sci-env
-                                                nextjournal.clerk.trim-image]}}
+                                                nextjournal.clerk.trim-image]}
+                             :katex {:entries ["katex"]
+                                     :depends-on #{:viewer}}}
                    :js-options {:output-feature-set :es8}
                    :build-hooks [(shadow.cljs.build-report/hook
                                   {:output-to "report.html" :print-table true})]}}}
