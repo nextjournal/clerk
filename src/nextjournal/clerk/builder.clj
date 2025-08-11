@@ -193,6 +193,7 @@
         in (str "import '" viewer-js "';"
                 "globalThis.CLERK_SSR = true;"
                 "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
+    (spit "in.mjs" in)
     (sh {:in in}
         "node"
         "--abort-on-uncaught-exception"
@@ -390,11 +391,12 @@
   (build-static-app! {:index "notebooks/document_linking.clj"
                       :paths ["notebooks/viewers/html.clj" "notebooks/rule_30.clj"]})
 
+  ;; document is not defined
   (build-static-app! {:ssr? true
                       :exclude-js? true
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
-                      :index "notebooks/rule_30.clj"})
+                      :index "notebooks/scratch.clj"})
 
   (build-static-app! {:ssr? true
                       :exclude-js? true
