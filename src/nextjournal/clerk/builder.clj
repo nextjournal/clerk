@@ -191,11 +191,11 @@
                       tmp)
                     viewer-js)
         in (str "import '" viewer-js "';"
-                "import katex from \"katex\";"
-                "globalThis.clerk$katex = katex;"
+                #_"import katex from \"katex\";"
+                #_"globalThis.clerk$katex = katex;"
                 "globalThis.CLERK_SSR = true;"
                 "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
-    (spit "in.mjs" in)
+    #_(spit "in.mjs" in)
     (sh {:in in}
         "node"
         "--abort-on-uncaught-exception"
