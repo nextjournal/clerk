@@ -985,7 +985,7 @@
   (let [katex (if (some-> (unchecked-get js/globalThis "process")
                           (unchecked-get "versions")
                           (unchecked-get "node"))
-                (hooks/use-dynamic-import "katex@0.16.4")
+                (unchecked-get js/globalThis "clerk$katex")
                 (hooks/use-d3-require "katex@0.16.4"))]
     (if katex
       [:span {:dangerouslySetInnerHTML (r/unsafe-html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false)))}]
