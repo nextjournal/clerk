@@ -2,15 +2,32 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.page :as hiccup]
+            [nextjournal.clerk.cljs-libs :as cljs-libs]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.cljs-libs :as cljs-libs])
+            [nextjournal.clerk.walk :as w])
   (:import (java.net URI)))
+
+(def !state (atom #{}))
+
+(defn viewer-names [state]
+  (prn :state...)
+  (def s state)
+  (let []
+    (w/postwalk (fn [v]
+                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
+                    (do (swap! !state conj (:name viewer))
+                        v)
+                    v))
+                state)
+    (def x @!state)
+    state))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)))))
+     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
+         (viewer-names)))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
