@@ -6,7 +6,7 @@
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.3"}
         org.flatland/ordered {:mvn/version "1.15.12"}
-        io.github.nextjournal/markdown {:mvn/version "0.7.186"}
+        io.github.nextjournal/markdown {:mvn/version "0.7.189"}
         babashka/process {:mvn/version "0.4.16"}
         io.github.nextjournal/dejavu {:git/sha "7276cd9cec1bad001d595b52cee9e83a60d43bf0"}
         io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}
