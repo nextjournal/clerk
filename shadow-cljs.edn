@@ -9,7 +9,7 @@
                    :dev {:modules {:viewer {:entries [devtools]}}}
                    :modules {:viewer {:entries [nextjournal.clerk.sci-env
                                                 nextjournal.clerk.trim-image]}
-                             :katex {:entries [#_katex nextjournal.clerk.katex]
+                             :katex {:entries [katex nextjournal.clerk.katex]
                                      :depends-on #{:viewer}
                                      :exports {renderToString nextjournal.clerk.katex/renderToString}}}
                    :js-options {:output-feature-set :es8}
