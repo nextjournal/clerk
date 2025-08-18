@@ -7,20 +7,15 @@
             [nextjournal.clerk.walk :as w])
   (:import (java.net URI)))
 
-(def !state (atom #{}))
-
 (defn viewer-names [state]
-  (prn :state...)
-  (def s state)
-  (let []
+  (let [!state (atom #{})]
     (w/postwalk (fn [v]
                   (if-let [viewer (v/get-safe v :nextjournal/viewer)]
                     (do (swap! !state conj (:name viewer))
                         v)
                     v))
                 state)
-    (def x @!state)
-    state))
+    (assoc state :katex? (contains? @!state 'nextjournal.clerk.viewer/katex-viewer))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))

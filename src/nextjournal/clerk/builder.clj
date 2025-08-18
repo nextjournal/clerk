@@ -181,7 +181,9 @@
     :or {viewer-js
          ;; for local REPL testing
          "./public/js/viewer.js"}}]
-  (let [viewer-js (if (str/starts-with? viewer-js "http")
+  (def s state)
+  (let [katex? (-> state :doc :katex?)
+        viewer-js (if (str/starts-with? viewer-js "http")
                     (let [tmp (-> (fs/create-temp-file {:suffix ".mjs"})
                                   (fs/file)
                                   (fs/delete-on-exit)
@@ -191,11 +193,12 @@
                       tmp)
                     viewer-js)
         in (str "import '" viewer-js "';"
-                #_"import katex from \"katex\";"
-                #_"globalThis.clerk$katex = katex;"
+                (when katex?
+                  (str "import katex from \"katex\";"
+                       "globalThis.clerk$katex = katex;"))
                 "globalThis.CLERK_SSR = true;"
                 "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
-    #_(spit "in.mjs" in)
+    (spit "in.mjs" in)
     (sh {:in in}
         "node"
         "--abort-on-uncaught-exception"
@@ -251,7 +254,7 @@
                                           (dissoc :path->doc)
                                           cleanup))))))
     (when browse?
-      (browse/browse-url (if-let [server-url (and (= out-path "public/build") (webserver/server-url))]
+      (browse/browse-url (if-let [server-url (and (= "public/build" out-path) (webserver/server-url))]
                            (str server-url "/build/")
                            (-> index-html fs/absolutize .toString path-to-url-canonicalize))))
     {:docs docs
