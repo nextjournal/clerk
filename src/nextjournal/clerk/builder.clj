@@ -176,29 +176,34 @@
         response (.send client request (java.net.http.HttpResponse$BodyHandlers/ofString))]
     (.body response)))
 
+(defn local-js [url]
+  (if (str/starts-with? url "http")
+    (let [tmp (-> (fs/create-temp-file {:suffix ".mjs"})
+                  (fs/file)
+                  (fs/delete-on-exit)
+                  str)
+          src (download-text-file url)]
+      (spit tmp src)
+      tmp)
+    url))
+
 (defn- node-ssr!
   [{:keys [viewer-js state]
     :or {viewer-js
          ;; for local REPL testing
          "./public/js/viewer.js"}}]
-  (def s state)
   (let [katex? (-> state :doc :katex?)
-        viewer-js (if (str/starts-with? viewer-js "http")
-                    (let [tmp (-> (fs/create-temp-file {:suffix ".mjs"})
-                                  (fs/file)
-                                  (fs/delete-on-exit)
-                                  str)
-                          src (download-text-file viewer-js)]
-                      (spit tmp src)
-                      tmp)
-                    viewer-js)
+        [viewer-js katex-js] [(local-js viewer-js)
+                              (when katex?
+                                (local-js (str/replace viewer-js #"viewer.js$" "katex.js")))]
         in (str "import '" viewer-js "';"
                 (when katex?
-                  (str "import katex from \"katex\";"
-                       "globalThis.clerk$katex = katex;"))
+                  (format (str "import * as katex from \"%s\";"
+                               "globalThis.clerk$katex = katex;")
+                          katex-js))
                 "globalThis.CLERK_SSR = true;"
-                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
-    (spit "in.mjs" in)
+                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state )) "))")]
+    #_(spit "in.mjs" in)
     (sh {:in in}
         "node"
         "--abort-on-uncaught-exception"
