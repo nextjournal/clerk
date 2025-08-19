@@ -206,14 +206,16 @@
                   (format (str "import * as katex from \"%s\";"
                                "globalThis.clerk$katex = katex;")
                           katex-js))
-                "globalThis.CLERK_SSR = true;"
+                "globalThis.CLERK_SSR = true;
+                new Promise((resolve) => { setTimeout(resolve, 2000)});\n"
                 "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state )) "))")]
-    #_(spit "in.mjs" in)
-    (sh {:in in}
-        "node"
-        "--abort-on-uncaught-exception"
-        "--input-type=module"
-        "--trace-warnings")))
+    (spit "in.mjs" in)
+    (sh
+     {:out :string :in in :err :inherit}
+     "node"
+     "--abort-on-uncaught-exception"
+     "--input-type=module"
+     "--trace-warnings")))
 
 (comment
   (declare so) ;; captured in REPL in ssr! function
@@ -239,8 +241,10 @@
       (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) result)))))
 
 (defn cleanup [build-opts]
-  (select-keys build-opts
-               [:package :render-router :path->doc :current-path :resource->url :exclude-js? :index :html]))
+  (cond-> (select-keys build-opts
+                       [:package :render-router :path->doc :current-path :resource->url :exclude-js? :index :html])
+    (-> build-opts :doc :katex?)
+    (assoc :katex? true)))
 
 (defn write-static-app!
   [opts docs]

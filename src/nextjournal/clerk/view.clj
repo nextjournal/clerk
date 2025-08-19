@@ -53,6 +53,8 @@
 (defn include-css+js [state]
   (list
    (include-viewer-css state)
+   (when (:katex? state)
+     (hiccup/include-css "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.12.0/katex.min.js"))
    [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
