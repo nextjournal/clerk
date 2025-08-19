@@ -176,13 +176,17 @@
         response (.send client request (java.net.http.HttpResponse$BodyHandlers/ofString))]
     (.body response)))
 
-(defn local-js [url]
+(defn local-js [url tmp-dir]
   (if (str/starts-with? url "http")
-    (let [tmp (-> (fs/create-temp-file {:suffix ".mjs"})
-                  (fs/file)
+    (let [tmp (-> tmp-dir
+                  (fs/file (-> (fs/file-name url)
+                               (str/split  #"\?")
+                               (first)
+                               (str/replace #".js$" ".mjs")))
                   (fs/delete-on-exit)
                   str)
-          src (download-text-file url)]
+          src (download-text-file url)
+          src (str/replace src "viewer.js" "viewer.mjs")]
       (spit tmp src)
       tmp)
     url))
@@ -192,10 +196,11 @@
     :or {viewer-js
          ;; for local REPL testing
          "./public/js/viewer.js"}}]
-  (let [katex? (-> state :doc :katex?)
-        [viewer-js katex-js] [(local-js viewer-js)
+  (let [tmp-dir (fs/create-temp-dir)
+        katex? (-> state :doc :katex?)
+        [viewer-js katex-js] [(local-js viewer-js tmp-dir)
                               (when katex?
-                                (local-js (str/replace viewer-js #"viewer.js$" "katex.js")))]
+                                (local-js (str/replace viewer-js "viewer.js" "katex.js") tmp-dir))]
         in (str "import '" viewer-js "';"
                 (when katex?
                   (format (str "import * as katex from \"%s\";"
