@@ -209,7 +209,7 @@
                 "globalThis.CLERK_SSR = true;
                 new Promise((resolve) => { setTimeout(resolve, 2000)});\n"
                 "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state )) "))")]
-    (spit "in.mjs" in)
+    #_(spit "in.mjs" in)
     (sh
      {:out :string :in in :err :inherit}
      "node"
