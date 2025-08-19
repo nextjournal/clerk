@@ -50,11 +50,14 @@
                        (str/replace #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
+(defn include-katex-css [state]
+  (when (:katex? state)
+    (hiccup/include-css "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.12.0/katex.min.css")))
+
 (defn include-css+js [state]
   (list
    (include-viewer-css state)
-   (when (:katex? state)
-     (hiccup/include-css "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.12.0/katex.min.js"))
+   (include-katex-css state)
    [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
@@ -80,7 +83,8 @@
         }"])
     (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
     (if exclude-js?
-      (include-viewer-css state)
+      (list (include-viewer-css state)
+            (include-katex-css state))
       (include-css+js state))]
    [:body.dark:bg-gray-900
     [:div#clerk html]
