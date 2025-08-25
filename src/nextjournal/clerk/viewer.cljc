@@ -618,7 +618,7 @@
      (ImageIO/read
       (if (string? image-or-url)
         (let [scheme (.getScheme (URI. image-or-url))
-              http? (str/starts-with? scheme "http")]
+              http? (when scheme (str/starts-with? scheme "http"))]
           (if http?
             (:body (http/get image-or-url {:as :stream}))
             (URL. (cond->> image-or-url (not scheme) (str "file:")))))
