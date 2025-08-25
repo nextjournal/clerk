@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.viewer
   (:refer-clojure :exclude [var?])
-  (:require [clojure.datafy :as datafy]
+  (:require #?(:clj [babashka.http-client :as http])
+            [clojure.datafy :as datafy]
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -616,7 +617,11 @@
    (defn read-image [image-or-url]
      (ImageIO/read
       (if (string? image-or-url)
-        (URL. (cond->> image-or-url (not (.getScheme (URI. image-or-url))) (str "file:")))
+        (let [scheme (.getScheme (URI. image-or-url))
+              http? (str/starts-with? scheme "http")]
+          (if http?
+            (:body (http/get image-or-url {:as :stream}))
+            (URL. (cond->> image-or-url (not scheme) (str "file:")))))
         image-or-url))))
 
 #?(:clj
