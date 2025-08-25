@@ -1,6 +1,7 @@
 (ns nextjournal.clerk.builder
   "Clerk's Static App Builder."
   (:require [babashka.fs :as fs]
+            [babashka.http-client :as http]
             [babashka.process :refer [sh]]
             [clojure.java.browse :as browse]
             [clojure.java.io :as io]
@@ -169,12 +170,7 @@
            :paths (vec (keys path->doc)))))
 
 (defn download-text-file [url]
-  (let [client (java.net.http.HttpClient/newHttpClient)
-        request (-> (java.net.http.HttpRequest/newBuilder)
-                    (.uri (java.net.URI/create url))
-                    (.build))
-        response (.send client request (java.net.http.HttpResponse$BodyHandlers/ofString))]
-    (.body response)))
+  (:body (http/get url)))
 
 (defn- node-ssr!
   [{:keys [viewer-js state]

@@ -1,12 +1,13 @@
 ;; # Tables 🔢
 (ns ^:nextjournal.clerk/no-cache viewers.table
-  (:require [clojure.data.csv :as csv]
+  (:require [babashka.http-client :as http]
+            [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [honey.sql :as sql]
             [next.jdbc :as jdbc]
             [nextjournal.clerk :as clerk]
-            [nextjournal.clerk.viewer :as v]
-            [honey.sql :as sql]))
+            [nextjournal.clerk.viewer :as v]))
 
 ;; ## Empty table
 
@@ -60,8 +61,11 @@
                (-> (mapv (fn [char] (clojure.string/join "" (repeat 20 char)))
                          (map char (range 97 127))))]})
 
+(defn read-image [url]
+  (javax.imageio.ImageIO/read (:body (http/get url {:as :stream}))))
+
 ;; ## Table with images
-(clerk/table [[1 2] [3 (javax.imageio.ImageIO/read (java.net.URL. "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif"))]])
+(clerk/table [[1 2] [3 (read-image "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif")]])
 
 ;; ## Table within tables
 (clerk/table [[1 2] [3 (clerk/table [[1 2] [3 4]])]])
@@ -76,8 +80,8 @@
 (clerk/with-viewers (clerk/add-viewers [(assoc v/image-viewer :render-fn '(fn [blob] [:img {:width "30px" :height "30px" :src (nextjournal.clerk.viewer/url-for blob)}]))])
   (clerk/table
    {:rows (map (juxt identity dec) (range 1 100))
-    :head [(javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/1/17/Plus_img_364976.png"))
-           (javax.imageio.ImageIO/read (java.net.URL. "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/OCR-A_char_Hyphen-Minus.svg/543px-OCR-A_char_Hyphen-Minus.svg.png"))]}))
+    :head [(read-image "https://upload.wikimedia.org/wikipedia/commons/1/17/Plus_img_364976.png")
+           (read-image "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/OCR-A_char_Hyphen-Minus.svg/543px-OCR-A_char_Hyphen-Minus.svg.png")]}))
 
 ;; ## Custom Table Viewers
 ;; override single table components
