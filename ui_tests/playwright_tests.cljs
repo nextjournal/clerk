@@ -46,23 +46,30 @@
 
 (def console-errors (atom []))
 
+(def page-selectors {"notebooks/rule_30.clj" "h1:has-text(\"Rule 30\")"
+                     "notebooks/viewers/katex.clj" "span.katex"})
+
 (defn test-notebook
   ([page url]
    (println "Visiting" url)
    (p/do (goto page url)
          (.waitForLoadState page "networkidle")
-         (p/let [selector (or (:selector @!opts) "div")
+         (p/let [selector (or (:selector @!opts)
+                              "div")
                  _ (prn :selector selector)
                  loc (.locator page selector #js {:timeout 10000})
                  loc (.first loc #js {:timeout 10000})
                  _ (.waitFor loc #js {:state "visible"})
                  visible? (.isVisible loc)]
            (is visible?))))
+  ;; called from index-page-test
   ([page url link]
-   (p/let [txt (.innerText link)]
+   (p/let [txt (.innerText link)
+           selector (or (get page-selectors txt)
+                        "div")]
      (println "Visiting" (str url "#/" txt))
      (p/do (.click link)
-           (p/let [loc (.locator page "div")
+           (p/let [loc (.locator page selector)
                    loc (.first loc #js {:timeout 10000})
                    _ (.waitFor loc #js {:state "visible"})
                    visible? (.isVisible loc)]
