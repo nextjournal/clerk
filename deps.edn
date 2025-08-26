@@ -2,6 +2,7 @@
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         babashka/fs {:mvn/version "0.5.22"}
+        org.babashka/http-client {:mvn/version "0.4.23"}
         borkdude/edamame {:mvn/version "1.4.28"}
         weavejester/dependency {:mvn/version "0.2.1"}
         com.nextjournal/beholder {:mvn/version "1.0.3"}
