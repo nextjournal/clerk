@@ -572,20 +572,24 @@
 
 
 (defn ^:private canonicalize-form
-  "Undoes the non-deterministic transformations done by the splicing
-  reader macro."
+  "- Undoes the non-deterministic transformations done by the splicing reader macro.
+   - Makes regexes consistently hash-able"
   [form]
   (walk/postwalk (fn [f]
                    (if-let [orig-name (and (simple-symbol? f)
                                            (second (re-matches #"(.*)__\d+__auto__" (name f))))]
                      (symbol (str orig-name "#"))
-                     f))
+                     (cond (instance? java.util.regex.Pattern f)
+                           [::regex (str f)]
+                           :else f)))
                  form))
 
 (comment
   (canonicalize-form `foo-bar###)
   (canonicalize-form `(let [a# 1]
-                        (inc a#))))
+                        (inc a#)))
+  (canonicalize-form `(do #"foo"))
+  (canonicalize-form `(do '#"foo")))
 
 (defn hash-codeblock [->hash {:keys [ns graph record-missing-hash-fn]} {:as codeblock :keys [hash form id vars graph-node]}]
   (let [deps (when id (dep/immediate-dependencies graph id))
