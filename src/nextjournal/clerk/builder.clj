@@ -411,7 +411,7 @@
                       :exclude-js? true
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
-                      :index "notebooks/scratch.clj"})
+                      :index "notebooks/viewers/katex.clj"})
 
   (build-static-app! {:ssr? true
                       :exclude-js? true
