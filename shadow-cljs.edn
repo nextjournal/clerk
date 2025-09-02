@@ -9,9 +9,9 @@
                    :dev {:modules {:viewer {:entries [devtools]}}}
                    :modules {:viewer {:entries [nextjournal.clerk.sci-env
                                                 nextjournal.clerk.trim-image]}
-                             :katex {:entries [katex nextjournal.clerk.katex]
+                             :katex {:entries [katex nextjournal.clerk.render.katex]
                                      :depends-on #{:viewer}
-                                     :exports {renderToString nextjournal.clerk.katex/renderToString}}}
+                                     :exports {renderToString nextjournal.clerk.render.katex/renderToString}}}
                    :js-options {:output-feature-set :es8}
                    :build-hooks [(shadow.cljs.build-report/hook
                                   {:output-to "report.html" :print-table true})]}}}

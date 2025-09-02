@@ -1,4 +1,4 @@
-(ns nextjournal.clerk.katex
+(ns nextjournal.clerk.render.katex
   (:require ["katex" :as katex]))
 
 (defn renderToString [s]
