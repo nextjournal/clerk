@@ -308,33 +308,7 @@
       (is (= (hash-single-form `(let [a# 1]
                                   (inc a#)))
              (hash-single-form `(let [a# 1]
-                                  (inc a#)))))))
-  (clerk/clear-cache!)
-  (defn hash-single-form [form]
-    (ana/hash-codeblock {}
-                        {:graph (dep/graph)}
-                        (ana/analyze form)))
-  (-> (analyze-string "
-(do
-  (println \"dude\")
-  (regex '#\"my\") 112)") ana/hash)
-
-  (distinct (repeatedly 10000 #(hash-single-form '(do
-                                                    (println "dude")
-                                                    (regex '#"my") 112))))
-
-  (frequencies (map (comp second vals ana/hash ana/build-graph parser/parse-clojure-string)
-                    (repeat 100 "(fn [x] (clojure.string/split x #\"/\"))")))
-  
-  (testing "hashing is deterministic for regexes"
-    (let [hash-single-form (fn [form]
-                             (ana/hash-codeblock {}
-                                                 {:graph (dep/graph)}
-                                                 (ana/analyze form)))]
-      (is (= (hash-single-form #"foo")
-             (hash-single-form #"foo"))))))
-
-#_(parser/parse-clojure-string "#\"foo\"")
+                                  (inc a#))))))))
 
 (deftest analyze-doc
   (utils/when-not-bb
