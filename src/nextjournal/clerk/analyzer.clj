@@ -587,9 +587,7 @@
 (comment
   (canonicalize-form `foo-bar###)
   (canonicalize-form `(let [a# 1]
-                        (inc a#)))
-  (canonicalize-form `(do #"foo"))
-  (canonicalize-form `(do '#"foo")))
+                        (inc a#))))
 
 (defn hash-codeblock [->hash {:keys [ns graph record-missing-hash-fn]} {:as codeblock :keys [hash form id vars graph-node]}]
   (let [deps (when id (dep/immediate-dependencies graph id))
