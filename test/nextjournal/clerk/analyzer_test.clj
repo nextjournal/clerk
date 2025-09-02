@@ -302,13 +302,39 @@
       (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2))))))
 
 
-  (testing "hashing is determistics for splicing reader macros"
+  (testing "hashing is deterministic for auto-gensym-ed symbols in syntax-quote"
     (let [hash-single-form (fn [form]
                              (ana/hash-codeblock {} {:graph (dep/graph)} (ana/analyze form)))]
       (is (= (hash-single-form `(let [a# 1]
                                   (inc a#)))
              (hash-single-form `(let [a# 1]
-                                  (inc a#))))))))
+                                  (inc a#)))))))
+  (clerk/clear-cache!)
+  (defn hash-single-form [form]
+    (ana/hash-codeblock {}
+                        {:graph (dep/graph)}
+                        (ana/analyze form)))
+  (-> (analyze-string "
+(do
+  (println \"dude\")
+  (regex '#\"my\") 112)") ana/hash)
+
+  (distinct (repeatedly 10000 #(hash-single-form '(do
+                                                    (println "dude")
+                                                    (regex '#"my") 112))))
+
+  (frequencies (map (comp second vals ana/hash ana/build-graph parser/parse-clojure-string)
+                    (repeat 100 "(fn [x] (clojure.string/split x #\"/\"))")))
+  
+  (testing "hashing is deterministic for regexes"
+    (let [hash-single-form (fn [form]
+                             (ana/hash-codeblock {}
+                                                 {:graph (dep/graph)}
+                                                 (ana/analyze form)))]
+      (is (= (hash-single-form #"foo")
+             (hash-single-form #"foo"))))))
+
+#_(parser/parse-clojure-string "#\"foo\"")
 
 (deftest analyze-doc
   (utils/when-not-bb
@@ -428,7 +454,7 @@ my-uuid")]
       (is (:dep-with-missing-hash missing-hash-report)))))
 
 (deftest ->hash
-  (testing "notices change in depedency namespace"
+  (testing "notices change in dependency namespace"
     (let [test-var 'nextjournal.clerk.fixtures.generated.my-test-ns/hello
           test-string "(ns test (:require [nextjournal.clerk.fixtures.generated.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
           spit-with-value #(spit (format "test%s%s.clj" fs/file-separator (str/replace (namespace-munge (namespace test-var)) "." fs/file-separator ))
