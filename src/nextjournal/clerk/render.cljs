@@ -981,9 +981,14 @@
         default-loading-view))))
 
 (defn render-katex [tex-string {:keys [inline?]}]
-  (let [katex (hooks/use-d3-require "katex@0.16.4")]
+  (let [katex (if (some-> (unchecked-get js/globalThis "process")
+                          (unchecked-get "versions")
+                          (unchecked-get "node"))
+                (unchecked-get js/globalThis "clerk$katex")
+                (hooks/use-d3-require "katex@0.16.4"))]
     (if katex
-      [:span {:dangerouslySetInnerHTML (r/unsafe-html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false)))}]
+      (let [html (.renderToString katex tex-string (j/obj :displayMode (not inline?) :throwOnError false))]
+        [:span {:dangerouslySetInnerHTML (r/unsafe-html html)}])
       default-loading-view)))
 
 (defn render-mathjax [value]
