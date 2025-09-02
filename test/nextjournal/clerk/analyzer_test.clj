@@ -309,7 +309,6 @@
                                   (inc a#)))
              (hash-single-form `(let [a# 1]
                                   (inc a#))))))))
-
 (deftest analyze-doc
   (utils/when-not-bb
    (is (match? #{{:form '(ns example-notebook),
