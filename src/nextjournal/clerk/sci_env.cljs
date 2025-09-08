@@ -8,7 +8,6 @@
             ["@lezer/highlight" :as lezer-highlight]
             ["@nextjournal/lang-clojure" :as lang-clojure]
             ["framer-motion" :as framer-motion]
-            ["katex" :as katex]
             ["react" :as react]
             ["react-dom" :as react-dom]
             ["w3c-keyname" :as w3c-keyname]
@@ -160,7 +159,7 @@
              "@lezer/highlight" lezer-highlight
              "@nextjournal/lang-clojure" lang-clojure
              "framer-motion" framer-motion
-             "katex" katex
+             #_#_"katex" katex
              "react" react
              "react-dom" react-dom
              "w3c-keyname" w3c-keyname}

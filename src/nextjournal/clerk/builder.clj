@@ -172,28 +172,46 @@
 (defn download-text-file [url]
   (:body (http/get url)))
 
+(defn local-js [url tmp-dir]
+  (if (str/starts-with? url "http")
+    (let [tmp (-> tmp-dir
+                  (fs/file (-> (fs/file-name url)
+                               (str/split  #"\?")
+                               (first)
+                               (str/replace #".js$" ".mjs")))
+                  (fs/delete-on-exit)
+                  str)
+          src (download-text-file url)
+          src (str/replace src "viewer.js" "viewer.mjs")]
+      (spit tmp src)
+      tmp)
+    url))
+
 (defn- node-ssr!
   [{:keys [viewer-js state]
     :or {viewer-js
          ;; for local REPL testing
          "./public/js/viewer.js"}}]
-  (let [viewer-js (if (str/starts-with? viewer-js "http")
-                    (let [tmp (-> (fs/create-temp-file {:suffix ".mjs"})
-                                  (fs/file)
-                                  (fs/delete-on-exit)
-                                  str)
-                          src (download-text-file viewer-js)]
-                      (spit tmp src)
-                      tmp)
-                    viewer-js)
+  (let [tmp-dir (fs/create-temp-dir)
+        katex? (-> state :doc :katex?)
+        [viewer-js katex-js] [(local-js viewer-js tmp-dir)
+                              (when katex?
+                                (local-js (str/replace viewer-js "viewer.js" "katex.js") tmp-dir))]
         in (str "import '" viewer-js "';"
-                "globalThis.CLERK_SSR = true;"
-                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state)) "))")]
-    (sh {:in in}
-        "node"
-        "--abort-on-uncaught-exception"
-        "--input-type=module"
-        "--trace-warnings")))
+                (when katex?
+                  (format (str "import * as katex from \"%s\";"
+                               "globalThis.clerk$katex = katex;")
+                          katex-js))
+                "globalThis.CLERK_SSR = true;
+                new Promise((resolve) => { setTimeout(resolve, 2000)});\n"
+                "console.log(nextjournal.clerk.sci_env.ssr(" (pr-str (pr-str state )) "))")]
+    #_(spit "in.mjs" in)
+    (sh
+     {:out :string :in in :err :inherit}
+     "node"
+     "--abort-on-uncaught-exception"
+     "--input-type=module"
+     "--trace-warnings")))
 
 (comment
   (declare so) ;; captured in REPL in ssr! function
@@ -219,8 +237,10 @@
       (throw (ex-info (str "Clerk ssr! failed\n" out "\n" err) result)))))
 
 (defn cleanup [build-opts]
-  (select-keys build-opts
-               [:package :render-router :path->doc :current-path :resource->url :exclude-js? :index :html]))
+  (cond-> (select-keys build-opts
+                       [:package :render-router :path->doc :current-path :resource->url :exclude-js? :index :html])
+    (-> build-opts :doc :katex?)
+    (assoc :katex? true)))
 
 (defn write-static-app!
   [opts docs]
@@ -244,7 +264,7 @@
                                           (dissoc :path->doc)
                                           cleanup))))))
     (when browse?
-      (browse/browse-url (if-let [server-url (and (= out-path "public/build") (webserver/server-url))]
+      (browse/browse-url (if-let [server-url (and (= "public/build" out-path) (webserver/server-url))]
                            (str server-url "/build/")
                            (-> index-html fs/absolutize .toString path-to-url-canonicalize))))
     {:docs docs
@@ -386,11 +406,12 @@
   (build-static-app! {:index "notebooks/document_linking.clj"
                       :paths ["notebooks/viewers/html.clj" "notebooks/rule_30.clj"]})
 
+  ;; document is not defined
   (build-static-app! {:ssr? true
                       :exclude-js? true
                       ;; test against cljs release `bb build:js`
                       :resource->url {"/js/viewer.js" "./build/viewer.js"}
-                      :index "notebooks/rule_30.clj"})
+                      :index "notebooks/viewers/katex.clj"})
 
   (build-static-app! {:ssr? true
                       :exclude-js? true

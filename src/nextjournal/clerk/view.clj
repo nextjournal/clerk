@@ -2,15 +2,30 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.page :as hiccup]
+            [nextjournal.clerk.cljs-libs :as cljs-libs]
             [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.cljs-libs :as cljs-libs])
+            [nextjournal.clerk.walk :as w])
   (:import (java.net URI)))
+
+(defn viewer-names [state]
+  (let [!viewers (atom #{})]
+    (w/postwalk (fn [v]
+                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
+                    (do (swap! !viewers conj (:name viewer))
+                        v)
+                    v))
+                state)
+    (let [viewers @!viewers]
+      (assoc state :katex? (some viewers #{'nextjournal.clerk.viewer/katex-viewer
+                                           :nextjournal.markdown/formula
+                                           :nextjournal.markdown/block-formula})))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)))))
+     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
+         (viewer-names)))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
@@ -38,9 +53,14 @@
                        (str/replace #"require\(.*\)" ""))]
           [:style {:type "text/tailwindcss"} (slurp (io/resource "stylesheets/viewer.css"))])))
 
+(defn include-katex-css [state]
+  (when (:katex? state)
+    (hiccup/include-css "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.12.0/katex.min.css")))
+
 (defn include-css+js [state]
   (list
    (include-viewer-css state)
+   (include-katex-css state)
    [:script {:type "module" :src (adjust-relative-path state (get-in state [:resource->url "/js/viewer.js"]))}]
    (hiccup/include-css "https://cdn.jsdelivr.net/npm/katex@0.13.13/dist/katex.min.css")
    [:link {:rel "preconnect" :href "https://fonts.bunny.net"}]
@@ -66,7 +86,8 @@
         }"])
     (when current-path (v/open-graph-metas (-> state :path->doc (get current-path) v/->value :open-graph)))
     (if exclude-js?
-      (include-viewer-css state)
+      (list (include-viewer-css state)
+            (include-katex-css state))
       (include-css+js state))]
    [:body.dark:bg-gray-900
     [:div#clerk html]

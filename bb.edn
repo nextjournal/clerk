@@ -20,7 +20,7 @@
 
   build:js {:doc "Builds JS"
             :depends [yarn-install]
-            :task (clojure "-M:sci:demo:dev release viewer")}
+            :task (apply clojure "-M:sci:demo:dev release viewer" *command-line-args*)}
 
   build+upload-viewer-resources {:doc "Refreshes assets stored on CDN (google storage)"
                                  :extra-paths ["src"]
