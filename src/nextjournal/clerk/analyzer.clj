@@ -156,7 +156,8 @@
         deps (set/union (set/difference (into #{} (map (comp symbol var->protocol)) @!deps) vars)
                         deref-deps
                         (when (var? form) #{(symbol form)}))
-        hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
+        hash-fn (-> form meta :nextjournal.clerk/hash-fn)
+        macro? (-> analyzed :env :defmacro)]
     (cond-> {#_#_:analyzed analyzed
              :form form
              :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
@@ -170,7 +171,8 @@
       (seq vars) (assoc :vars vars)
       (seq vars-) (assoc :vars- vars-)
       (seq declared) (assoc :declared declared)
-      var (assoc :var var))))
+      var (assoc :var var)
+      macro? (assoc :macro macro?))))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
 #_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
@@ -496,55 +498,74 @@
                 (filter (comp #{:code} :type)
                         blocks))))
 
+(defn transitive-deps [id analysis-info]
+  (let [{:keys [deps]} (get analysis-info id)]
+    (when deps
+      (into deps (mapcat #(transitive-deps % analysis-info) deps)))))
+
+(defn run-macros [init-state]
+  (let [{:keys [blocks ->analysis-info]} init-state
+        macro-block-ids (keep #(when (:macro %)
+                                 (:id %)) blocks)
+
+        deps (mapcat #(transitive-deps % ->analysis-info) macro-block-ids)
+        all-block-ids (into (set macro-block-ids) deps)
+        all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
+    (doseq [block all-blocks]
+      (try
+        (load-string (:text block))
+        (catch Throwable e
+          (binding [*out* *err*]
+            (println "Error when evaluating macro deps:" (:text block))
+            (println "Namespace:" *ns*)
+            (println "Exception:" e)))))
+    (pos? (count all-blocks))))
+
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
-  Recursively decends into dependency vars as well as given they can be found in the classpath.
+  Recursively descends into dependency vars as well if they can be found in the classpath.
   "
   [doc]
-  (loop [{:as state :keys [->analysis-info analyzed-file-set counter]}
-         (-> doc
-             analyze-doc
-             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
-                    :counter 0
-                    :graph (dep/graph)))]
-    (let [unhashed (unhashed-deps ->analysis-info)
-          loc->syms (apply dissoc
-                           (group-by find-location unhashed)
-                           analyzed-file-set)]
-      (if (and (seq loc->syms) (< counter 10))
-        (recur (-> (reduce (fn [g [source symbols]]
-                             (let [jar? (or (nil? source)
-                                            (str/ends-with? source ".jar"))
-                                   gitlib-hash (and (not jar?)
-                                                    (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
-                               (if (or jar? gitlib-hash)
-                                 (update g :->analysis-info merge (into {} (map (juxt identity
-                                                                                      (constantly (if source
-                                                                                                    (or (when gitlib-hash {:hash gitlib-hash})
-                                                                                                        (hash-jar source))
-                                                                                                    {})))) symbols))
-                                 (-> g
-                                     (update :analyzed-file-set conj source)
-                                     (merge-analysis-info (analyze-file source))))))
-                           state
-                           loc->syms)
-                   (update :counter inc)))
-        (-> state
-            analyze-doc-deps
-            set-no-cache-on-redefs
-            make-deps-inherit-no-cache
-            (dissoc :analyzed-file-set :counter)))))) 
-
-(comment
-  (reset! !file->analysis-cache {})
-
-  (def parsed (parser/parse-file {:doc? true} "src/nextjournal/clerk/webserver.clj"))
-  (def analysis (time (-> parsed analyze-doc build-graph)))
-  (-> analysis :->analysis-info keys set)
-  (let [{:keys [->analysis-info]} analysis]
-    (dissoc (group-by find-location (unhashed-deps ->analysis-info)) nil))
-  (nextjournal.clerk/clear-cache!))
+  (let [init-state-fn #(-> doc
+                           analyze-doc
+                           (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
+                                  :counter 0
+                                  :graph (dep/graph)))
+        init-state (init-state-fn)
+        ran-macros? (run-macros init-state)
+        init-state (if ran-macros?
+                     (init-state-fn)
+                     init-state)]
+    (loop [{:as state :keys [->analysis-info analyzed-file-set counter]}
+           init-state]
+      (let [unhashed (unhashed-deps ->analysis-info)
+            loc->syms (apply dissoc
+                             (group-by find-location unhashed)
+                             analyzed-file-set)]
+        (if (and (seq loc->syms) (< counter 10))
+          (recur (-> (reduce (fn [g [source symbols]]
+                               (let [jar? (or (nil? source)
+                                              (str/ends-with? source ".jar"))
+                                     gitlib-hash (and (not jar?)
+                                                      (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
+                                 (if (or jar? gitlib-hash)
+                                   (update g :->analysis-info merge (into {} (map (juxt identity
+                                                                                        (constantly (if source
+                                                                                                      (or (when gitlib-hash {:hash gitlib-hash})
+                                                                                                          (hash-jar source))
+                                                                                                      {})))) symbols))
+                                   (-> g
+                                       (update :analyzed-file-set conj source)
+                                       (merge-analysis-info (analyze-file source))))))
+                             state
+                             loc->syms)
+                     (update :counter inc)))
+          (-> state
+              analyze-doc-deps
+              set-no-cache-on-redefs
+              make-deps-inherit-no-cache
+              (dissoc :analyzed-file-set :counter)))))))
 
 #_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/how_clerk_works.clj")))) :done)
 #_(do (time (build-graph (parser/parse-clojure-string (slurp "notebooks/viewer_api.clj")))) :done)

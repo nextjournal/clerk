@@ -377,7 +377,8 @@ my-uuid")]
       (is (empty? (ana/unhashed-deps ->analysis-info)))
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
   (testing "should establish dependencies across files"
-    (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
+    (let [{:keys [graph]} (binding [*ns* (find-ns 'nextjournal.clerk)]
+                            (analyze-string (slurp "src/nextjournal/clerk.clj")))]
       (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
 
 (deftest graph-nodes-with-anonymous-ids
@@ -404,10 +405,11 @@ my-uuid")]
     (is (empty?
          (let [!missing-hash-store (atom [])]
            (reset! ana/!file->analysis-cache {})
-           (-> (parser/parse-file {:doc? true} "src/nextjournal/clerk.clj")
-               ana/build-graph
-               (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
-               ana/hash)
+           (binding [*ns* (find-ns 'nextjournal.clerk)]
+             (-> (parser/parse-file {:doc? true} "src/nextjournal/clerk.clj")
+                 ana/build-graph
+                 (assoc :record-missing-hash-fn (fn [report-entry] (swap! !missing-hash-store conj report-entry)))
+                 ana/hash))
            (deref !missing-hash-store)))))
 
   (testing "known cases where missing hashes occur"
@@ -428,7 +430,7 @@ my-uuid")]
       (is (:dep-with-missing-hash missing-hash-report)))))
 
 (deftest ->hash
-  (testing "notices change in depedency namespace"
+  (testing "notices change in dependency namespace"
     (let [test-var 'nextjournal.clerk.fixtures.generated.my-test-ns/hello
           test-string "(ns test (:require [nextjournal.clerk.fixtures.generated.my-test-ns :as my-test-ns])) (str my-test-ns/hello)"
           spit-with-value #(spit (format "test%s%s.clj" fs/file-separator (str/replace (namespace-munge (namespace test-var)) "." fs/file-separator ))
