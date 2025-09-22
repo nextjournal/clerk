@@ -34,7 +34,6 @@
 (defn read-string [s]
   (edamame/parse-string s {:all true
                            :read-cond :allow
-                           :regex re-pattern
                            :features #?(:bb #{:bb :clj}
                                         :default #{:clj})
                            :end-location false
