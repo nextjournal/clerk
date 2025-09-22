@@ -286,3 +286,8 @@
   (testing "show with ns arg"
     (clerk/show! 'nextjournal.clerk.fixtures.hello)
     (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer)))))))
+
+(deftest issue-741-can-eval-quoted-regex-test
+  (is (match? {:blocks [{:type :code,
+                         :result {:nextjournal/value "foo"}}]}
+              (eval/eval-string "(re-find '#\"foo\" \"foobar\")"))))

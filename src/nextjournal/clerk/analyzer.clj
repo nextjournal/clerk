@@ -534,7 +534,7 @@
             analyze-doc-deps
             set-no-cache-on-redefs
             make-deps-inherit-no-cache
-            (dissoc :analyzed-file-set :counter)))))) 
+            (dissoc :analyzed-file-set :counter))))))
 
 (comment
   (reset! !file->analysis-cache {})
@@ -572,8 +572,7 @@
 
 
 (defn ^:private canonicalize-form
-  "Undoes the non-deterministic transformations done by the splicing
-  reader macro."
+  "Undoes the non-deterministic transformations done by the splicing reader macro."
   [form]
   (walk/postwalk (fn [f]
                    (if-let [orig-name (and (simple-symbol? f)
@@ -589,7 +588,7 @@
 
 (defn hash-codeblock [->hash {:keys [ns graph record-missing-hash-fn]} {:as codeblock :keys [hash form id vars graph-node]}]
   (let [deps (when id (dep/immediate-dependencies graph id))
-        hashed-deps (into #{} (keep ->hash) deps)]
+        hashed-deps (into (sorted-set) (keep ->hash) deps)]
     ;; NOTE: missing hashes on deps might occur e.g. when some dependencies are interned at runtime
     (when record-missing-hash-fn
       (when-some [dep-with-missing-hash
@@ -600,9 +599,14 @@
         (record-missing-hash-fn (assoc codeblock
                                        :dep-with-missing-hash dep-with-missing-hash
                                        :graph-node graph-node :ns ns))))
-    (sha1-base58 (binding [*print-length* nil]
-                   (pr-str (set/union (conj hashed-deps (if form (-> form remove-type-meta canonicalize-form) hash))
-                                      vars))))))
+    (binding [*print-length* nil]
+      (let [form-with-deps-sorted
+            (-> hashed-deps
+                (conj (if form
+                        (-> form remove-type-meta canonicalize-form pr-str)
+                        hash))
+                (into (map str) vars))]
+        (sha1-base58 (pr-str form-with-deps-sorted))))))
 
 #_(hash-codeblock {} {:graph (dep/graph)} {})
 #_(hash-codeblock {} {:graph (dep/graph)} {:hash "foo"})
