@@ -223,17 +223,27 @@
             (not (and (map? viewer) (empty? viewer)))
             (assoc :nextjournal/viewer (normalize-viewer viewer))))))
 
+(declare var-from-def?)
+
 ;; TODO: Think of a better name
 (defn with-viewer-extracting-opts [viewer & opts+items]
   ;; TODO: maybe support sequantial & viewer-opts?
+  (prn :opts+items opts+items)
   (cond
     (and (map? (first opts+items))
          (not (wrapped-value? (first opts+items)))
          (seq (set/intersection parser/block-settings (set (keys (first opts+items))) )))
     (with-viewer viewer (first opts+items) (rest opts+items))
 
-    (and (sequential? (first opts+items)) (= 1 (count opts+items)))
+    (and (= 1 (count opts+items))
+         (sequential? (first opts+items)))
     (apply (partial with-viewer viewer) opts+items)
+
+    (and (= 1 (count opts+items))
+         (var-from-def? (first opts+items)))
+    (do
+      (prn :dude)
+      (with-viewer viewer (first opts+items)))
 
     :else
     (with-viewer viewer opts+items)))
