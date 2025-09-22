@@ -572,7 +572,7 @@
 
 
 (defn ^:private canonicalize-form
-  "- Undoes the non-deterministic transformations done by the splicing reader macro."
+  "Undoes the non-deterministic transformations done by the splicing reader macro."
   [form]
   (walk/postwalk (fn [f]
                    (if-let [orig-name (and (simple-symbol? f)
