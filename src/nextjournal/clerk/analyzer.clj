@@ -534,7 +534,7 @@
             analyze-doc-deps
             set-no-cache-on-redefs
             make-deps-inherit-no-cache
-            (dissoc :analyzed-file-set :counter)))))) 
+            (dissoc :analyzed-file-set :counter))))))
 
 (comment
   (reset! !file->analysis-cache {})
@@ -572,16 +572,13 @@
 
 
 (defn ^:private canonicalize-form
-  "- Undoes the non-deterministic transformations done by the splicing reader macro.
-   - Makes regexes consistently hash-able"
+  "- Undoes the non-deterministic transformations done by the splicing reader macro."
   [form]
   (walk/postwalk (fn [f]
                    (if-let [orig-name (and (simple-symbol? f)
                                            (second (re-matches #"(.*)__\d+__auto__" (name f))))]
                      (symbol (str orig-name "#"))
-                     (cond (instance? java.util.regex.Pattern f)
-                           [::regex (str f)]
-                           :else f)))
+                     f))
                  form))
 
 (comment
