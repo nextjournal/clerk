@@ -308,7 +308,20 @@
       (is (= (hash-single-form `(let [a# 1]
                                   (inc a#)))
              (hash-single-form `(let [a# 1]
-                                  (inc a#))))))))
+                                  (inc a#)))))))
+
+  (testing "hashing is deterministic for regexes"
+    (let [regex-graph #(->
+                        (parser/parse-clojure-string "
+(def id identity)
+
+[+ - id #\"my\"]")
+                        (ana/analyze-doc)
+                        (ana/build-graph)
+                        (ana/hash)
+                        :->hash)]
+      (apply = (repeatedly 100 regex-graph)))))
+
 (deftest analyze-doc
   (utils/when-not-bb
    (is (match? #{{:form '(ns example-notebook),
