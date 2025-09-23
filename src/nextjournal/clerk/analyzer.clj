@@ -444,7 +444,6 @@
 
 (defn var->location [var]
   (when-let [file (:file (meta var))]
-    (prn :file file)
     (some-> (if (try (fs/absolute? file)
                      ;; fs/absolute? crashes in bb on Windows due to the :file
                      ;; metadata containing "<expr>"
