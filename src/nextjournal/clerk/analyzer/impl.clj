@@ -384,7 +384,10 @@
                (:macro (meta maybe-macro)))
         (do
           (swap! *deps* conj maybe-macro)
-          (let [expanded (macroexpand-hook maybe-macro form env (rest form))]
+          (let [expanded (macroexpand-hook maybe-macro form env (rest form))
+                env (if (identical? #'defmacro maybe-macro)
+                      (assoc env :defmacro true)
+                      env)]
             (analyze* env expanded)))
         {:op       :invoke
          :form     form
@@ -427,7 +430,9 @@
                                :ns          ns
                                :resolved-to v
                                :type        (type v)})))
-      (let [meta (-> (dissoc (meta sym) :inline :inline-arities)
+      (let [meta (-> (dissoc (meta sym) :inline :inline-arities
+                             ;; babashka has :macro on var symbol through defmacro
+                             :macro)
                      (update-vals unquote'))]
         (intern (ns-sym ns) (with-meta sym meta))))))
 
@@ -447,14 +452,15 @@
                 (assoc-in env [:namespaces ns :mappings sym] var)))
         args (when-let [[_ init] (find args :init)]
                (assoc args :init (analyze* env init)))]
-    (merge {:op       :def
-            :env      env
-            :form     form
-            :name     sym
-            :doc      (or (:doc args) (-> sym meta :doc))
-            :children (into [:meta] (when (:init args) [:init]))
-            :var (get-in env [:namespaces ns :mappings sym])
-            :meta {:val (meta sym)}}
+    (merge (cond-> {:op       :def
+                    :env      env
+                    :form     form
+                    :name     sym
+                    :doc      (or (:doc args) (-> sym meta :doc))
+                    :children (into [:meta] (when (:init args) [:init]))
+                    :var (get-in env [:namespaces ns :mappings sym])
+                    :meta {:val (meta sym)}}
+             (:defmacro env) (assoc :macro true))
            args)))
 
 (defmethod -parse 'fn* [env [op & args :as form]]
