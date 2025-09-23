@@ -310,3 +310,8 @@
           second (do (eval/eval-string ns)
                      @@(resolve 'fixture-ns/state))]
       (is (= [2 0] [first second])))))
+
+(deftest issue-741-can-eval-quoted-regex-test
+  (is (match? {:blocks [{:type :code,
+                         :result {:nextjournal/value "foo"}}]}
+              (eval/eval-string "(re-find '#\"foo\" \"foobar\")"))))

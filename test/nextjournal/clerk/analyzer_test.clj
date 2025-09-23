@@ -302,13 +302,25 @@
       (is (not (:no-cache? (get ->analysis-info 'nextjournal.clerk.analyzer-test.redefs/a#2))))))
 
 
-  (testing "hashing is determistics for splicing reader macros"
+  (testing "hashing is deterministic for auto-gensym-ed symbols in syntax-quote"
     (let [hash-single-form (fn [form]
                              (ana/hash-codeblock {} {:graph (dep/graph)} (ana/analyze form)))]
       (is (= (hash-single-form `(let [a# 1]
                                   (inc a#)))
              (hash-single-form `(let [a# 1]
-                                  (inc a#))))))))
+                                  (inc a#)))))))
+
+  (testing "hashing is deterministic for regexes"
+    (let [regex-graph #(->
+                        (parser/parse-clojure-string "
+(def id identity)
+
+[+ - id #\"my\"]")
+                        (ana/analyze-doc)
+                        (ana/build-graph)
+                        (ana/hash)
+                        :->hash)]
+      (apply = (repeatedly 100 regex-graph)))))
 
 (deftest analyze-doc
   (utils/when-not-bb
