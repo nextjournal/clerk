@@ -383,7 +383,6 @@
       (if (and (var? maybe-macro)
                (:macro (meta maybe-macro)))
         (do
-          ;; macroexpand is the macro here, we should register in the env that the var about to be def-ed is a macro
           (swap! *deps* conj maybe-macro)
           (let [expanded (macroexpand-hook maybe-macro form env (rest form))
                 env (if (identical? #'defmacro maybe-macro)
