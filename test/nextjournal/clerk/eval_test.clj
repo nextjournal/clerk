@@ -295,7 +295,7 @@
     (clerk/clear-cache!)
     (let [fixture-ns "(ns fixture-ns) (def state (atom 0))"
           _ (eval/eval-string fixture-ns)
-          ns "(ns my-random-namepace (:require [fixture-ns]))
+          ns "(ns my-random-namespace (:require [fixture-ns]))
 
 (defn helper-fn [x] x)
 

@@ -431,7 +431,9 @@
                                :ns          ns
                                :resolved-to v
                                :type        (type v)})))
-      (let [meta (-> (dissoc (meta sym) :inline :inline-arities)
+      (let [meta (-> (dissoc (meta sym) :inline :inline-arities
+                             ;; babashka has :macro on var symbol through defmacro
+                             :macro)
                      (update-vals unquote'))]
         (intern (ns-sym ns) (with-meta sym meta))))))
 
