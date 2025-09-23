@@ -444,6 +444,7 @@
 
 (defn var->location [var]
   (when-let [file (:file (meta var))]
+    (prn :file file)
     (some-> (if (fs/absolute? file)
               (when (fs/exists? file)
                 (fs/relativize (fs/cwd) (fs/file file)))
