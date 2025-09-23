@@ -445,7 +445,10 @@
 (defn var->location [var]
   (when-let [file (:file (meta var))]
     (prn :file file)
-    (some-> (if (fs/absolute? file)
+    (some-> (if (try (fs/absolute? file)
+                     ;; fs/absolute? crashes in bb on Windows due to the :file
+                     ;; metadata containing "<expr>"
+                     (catch Exception _ false))
               (when (fs/exists? file)
                 (fs/relativize (fs/cwd) (fs/file file)))
               (when-let [resource (io/resource file)]
