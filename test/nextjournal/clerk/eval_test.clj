@@ -286,3 +286,27 @@
   (testing "show with ns arg"
     (clerk/show! 'nextjournal.clerk.fixtures.hello)
     (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer)))))))
+
+(deftest macro-analysis-test
+  (testing "macros are executed before analysis such that expressions relying on
+  them get properly cached and executed once"
+    (remove-ns 'my-random-namespace)
+    (remove-ns 'fixture-ns)
+    (clerk/clear-cache!)
+    (let [fixture-ns "(ns fixture-ns) (def state (atom 0))"
+          _ (eval/eval-string fixture-ns)
+          ns "(ns my-random-namepace (:require [fixture-ns]))
+
+(defn helper-fn [x] x)
+
+(defmacro my-macro [x] (helper-fn `(do ~x ~x)))
+
+(my-macro (swap! fixture-ns/state inc))
+
+@fixture-ns/state"
+          first (do (eval/eval-string ns)
+                    @@(resolve 'fixture-ns/state))
+          _ (eval/eval-string fixture-ns)
+          second (do (eval/eval-string ns)
+                     @@(resolve 'fixture-ns/state))]
+      (is (= [2 0] [first second])))))

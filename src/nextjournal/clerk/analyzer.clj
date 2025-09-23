@@ -164,15 +164,15 @@
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)
+             :macro macro?}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)
       (seq vars) (assoc :vars vars)
       (seq vars-) (assoc :vars- vars-)
       (seq declared) (assoc :declared declared)
-      var (assoc :var var)
-      macro? (assoc :macro macro?))))
+      var (assoc :var var))))
 
 #_(:vars     (analyze '(do (declare x y) (def x 0) (def z) (def w 0)))) ;=> x y z w
 #_(:vars-    (analyze '(do (def x 0) (declare x y) (def z) (def w 0)))) ;=> x z w
@@ -507,7 +507,6 @@
   (let [{:keys [blocks ->analysis-info]} init-state
         macro-block-ids (keep #(when (:macro %)
                                  (:id %)) blocks)
-
         deps (mapcat #(transitive-deps % ->analysis-info) macro-block-ids)
         all-block-ids (into (set macro-block-ids) deps)
         all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
