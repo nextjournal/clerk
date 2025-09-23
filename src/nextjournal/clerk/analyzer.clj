@@ -501,10 +501,27 @@
                 (filter (comp #{:code} :type)
                         blocks))))
 
-(defn transitive-deps [id analysis-info]
-  (let [{:keys [deps]} (get analysis-info id)]
-    (when deps
-      (into deps (mapcat #(transitive-deps % analysis-info) deps)))))
+(defn transitive-deps
+  ([id analysis-info]
+   (loop [seen #{}
+          deps #{id}
+          res #{}]
+     (if (seq deps)
+       (let [dep (first deps)]
+         (if (contains? seen dep)
+           (recur seen (rest deps) res)
+           (let [{new-deps :deps} (get analysis-info dep)
+                 seen (conj seen dep)
+                 deps (concat (rest deps) new-deps)
+                 res (into res deps)]
+             (recur seen deps res))))
+       res))))
+
+#_(transitive-deps id analysis-info)
+
+#_(transitive-deps :main {:main {:deps [:main :other]}
+                          :other {:deps [:another]}
+                          :another {:deps [:another-one :another :main]}})
 
 (defn run-macros [init-state]
   (let [{:keys [blocks ->analysis-info]} init-state
@@ -535,7 +552,7 @@
                                   :counter 0
                                   :graph (dep/graph)))
         init-state (init-state-fn)
-        ran-macros? (run-macros init-state)
+        ran-macros? false #_(run-macros init-state)
         init-state (if ran-macros?
                      (init-state-fn)
                      init-state)]
