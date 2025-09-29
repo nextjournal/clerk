@@ -383,6 +383,8 @@
       (if (and (var? maybe-macro)
                (:macro (meta maybe-macro)))
         (do
+          (when (= "my-random-namespace" (namespace (symbol maybe-macro)))
+            (prn :var maybe-macro))
           (swap! *deps* conj maybe-macro)
           (let [expanded (macroexpand-hook maybe-macro form env (rest form))
                 env (if (identical? #'defmacro maybe-macro)

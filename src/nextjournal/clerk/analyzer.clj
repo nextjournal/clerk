@@ -552,10 +552,11 @@
                                   :counter 0
                                   :graph (dep/graph)))
         init-state (init-state-fn)
-        ran-macros? false #_(run-macros init-state)
+        ran-macros? (run-macros init-state)
         init-state (if ran-macros?
                      (init-state-fn)
                      init-state)]
+    ;; #dbg (def istate1 init-state)
     (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
       (let [unhashed (unhashed-deps ->analysis-info)
             loc->syms (apply dissoc
@@ -648,14 +649,19 @@
         (record-missing-hash-fn (assoc codeblock
                                        :dep-with-missing-hash dep-with-missing-hash
                                        :graph-node graph-node :ns ns))))
-    (binding [*print-length* nil]
-      (let [form-with-deps-sorted
-            (-> hashed-deps
-                (conj (if form
-                        (-> form remove-type-meta canonicalize-form pr-str)
-                        hash))
-                (into (map str) vars))]
-        (sha1-base58 (pr-str form-with-deps-sorted))))))
+    (let [res (binding [*print-length* nil]
+                (let [form-with-deps-sorted
+                      (-> hashed-deps
+                          (conj (if form
+                                  (-> form remove-type-meta canonicalize-form pr-str)
+                                  hash))
+                          (into (map str) vars))]
+                  (sha1-base58 (pr-str form-with-deps-sorted))))]
+      ;; (when (= '(def a1 (do (swap! fixture-ns/state inc) (attempt1 9999)))
+      ;;          form)
+      ;;   #dbg (def all [res form deps hashed-deps]))
+      res)
+    ))
 
 #_(hash-codeblock {} {:graph (dep/graph)} {})
 #_(hash-codeblock {} {:graph (dep/graph)} {:hash "foo"})
