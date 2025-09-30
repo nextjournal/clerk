@@ -533,7 +533,7 @@
         all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
     (doseq [block all-blocks]
       (try
-        (println "loading" (:text block))
+        (println "loading in namespace" *ns* (:text block))
         (load-string (:text block))
         (catch Throwable e
           (binding [*out* *err*]
@@ -661,7 +661,10 @@
                                   hash))
                           (into (map str) vars))]
                   (sha1-base58 (pr-str form-with-deps-sorted))))]
-      (when (= '(def a1 (do (swap! fixture-ns/state inc) (rand-int (attempt1 9999))))
+      (when (= '(def a1
+                  (do
+                    (println "a1")
+                    (attempt1 (rand-int 9999))))
                form)
         (prn :deps-x-hashes (sort (zipmap deps (map ->hash deps))))
         (prn :res res))
