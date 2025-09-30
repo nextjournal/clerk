@@ -287,6 +287,40 @@
     (clerk/show! 'nextjournal.clerk.fixtures.hello)
     (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer)))))))
 
+(deftest macro-analysis-test
+  (testing "macros are executed before analysis such that expressions relying on
+  them get properly cached and executed once"
+    (remove-ns 'my-random-namespace)
+    (remove-ns 'fixture-ns)
+    (clerk/clear-cache!)
+    (binding [;; somehow this is necessary to make the test pass... why?
+              #_#_*ns* (create-ns 'my-random-namespace)]
+      (let [fixture-ns "(ns fixture-ns) (def state (atom 0))"
+            _ (load-string fixture-ns)
+            ns "(ns my-random-namespace)
+(defn macro-helper* [x] x)
+
+(defmacro attempt1
+  [& body]
+  `(macro-helper* (try
+                    (do ~@body)
+                    (catch Exception e# e#))))
+
+
+(def a1
+  (do
+    (println \"a1\")
+    (attempt1 (rand-int 9999))))"
+            _ (prn :first-eval)
+            _ (eval/eval-string ns)
+            first-rand @(resolve 'my-random-namespace/a1)
+            _ (eval/eval-string ns)
+            second-rand @(resolve 'my-random-namespace/a1)]
+        (is (= first-rand second-rand))
+        #_(is (= 1 first second))))))
+
+#_@(resolve 'my-random-namespace/a1)
+
 (deftest issue-741-can-eval-quoted-regex-test
   (is (match? {:blocks [{:type :code,
                          :result {:nextjournal/value "foo"}}]}

@@ -38,9 +38,15 @@
     (let [local? (and (simple-symbol? sym)
                       (contains? (:locals env) sym))]
       (when-not local?
-        (when (symbol? sym)
+        (when (symbol? sym) ;; TODO: we already checkd for symbol?
           (let [sym-ns  (when-let [ns (namespace sym)] (symbol ns))
                 full-ns (resolve-ns sym-ns env)]
+            (let [sym-name (-> sym name symbol)]
+              (when (= 'attempt1 sym-name)
+                (prn (when (or (not sym-ns) full-ns)
+                       (let [name (if sym-ns (-> sym name symbol) sym)]
+                         (binding [*ns* (or full-ns ns)]
+                           (resolve name)))))))
             (when (or (not sym-ns) full-ns)
               (let [name (if sym-ns (-> sym name symbol) sym)]
                 (binding [*ns* (or full-ns ns)]
@@ -383,8 +389,13 @@
       (if (and (var? maybe-macro)
                (:macro (meta maybe-macro)))
         (do
+          (when (= "my-random-namespace" (namespace (symbol maybe-macro)))
+            (prn :var maybe-macro (:macro (meta maybe-macro))))
           (swap! *deps* conj maybe-macro)
-          (let [expanded (macroexpand-hook maybe-macro form env (rest form))]
+          (let [expanded (macroexpand-hook maybe-macro form env (rest form))
+                env (if (identical? #'defmacro maybe-macro)
+                      (assoc env :defmacro true)
+                      env)]
             (analyze* env expanded)))
         {:op       :invoke
          :form     form
@@ -427,9 +438,12 @@
                                :ns          ns
                                :resolved-to v
                                :type        (type v)})))
-      (let [meta (-> (dissoc (meta sym) :inline :inline-arities)
+      (let [meta (-> (dissoc (meta sym) :inline :inline-arities
+                             ;; babashka has :macro on var symbol through defmacro
+                             :macro)
                      (update-vals unquote'))]
-        (intern (ns-sym ns) (with-meta sym meta))))))
+        (doto (intern (ns-sym ns) (with-meta sym meta))
+          prn)))))
 
 (defmethod -parse 'def [{:keys [ns] :as env} [_ sym & expr :as form]]
   (let [pfn  (fn
@@ -447,14 +461,15 @@
                 (assoc-in env [:namespaces ns :mappings sym] var)))
         args (when-let [[_ init] (find args :init)]
                (assoc args :init (analyze* env init)))]
-    (merge {:op       :def
-            :env      env
-            :form     form
-            :name     sym
-            :doc      (or (:doc args) (-> sym meta :doc))
-            :children (into [:meta] (when (:init args) [:init]))
-            :var (get-in env [:namespaces ns :mappings sym])
-            :meta {:val (meta sym)}}
+    (merge (cond-> {:op       :def
+                    :env      env
+                    :form     form
+                    :name     sym
+                    :doc      (or (:doc args) (-> sym meta :doc))
+                    :children (into [:meta] (when (:init args) [:init]))
+                    :var (get-in env [:namespaces ns :mappings sym])
+                    :meta {:val (meta sym)}}
+             (:defmacro env) (assoc :macro true))
            args)))
 
 (defmethod -parse 'fn* [env [op & args :as form]]
