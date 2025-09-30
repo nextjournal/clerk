@@ -338,6 +338,7 @@
                                                                                (:file doc) (assoc :file (:file doc)))
                                  block+analysis (add-block-id (merge block form-analysis))]
                              (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
+                               (prn :eval form)
                                (eval form))
                              (-> state
                                  (store-info block+analysis)
@@ -532,6 +533,7 @@
         all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
     (doseq [block all-blocks]
       (try
+        (println "loading" (:text block))
         (load-string (:text block))
         (catch Throwable e
           (binding [*out* *err*]
@@ -553,6 +555,7 @@
                                   :graph (dep/graph)))
         init-state (init-state-fn)
         ran-macros? (run-macros init-state)
+        ;; _ (prn :ran-macros? ran-macros?)
         init-state (if ran-macros?
                      (init-state-fn)
                      init-state)]
@@ -580,11 +583,12 @@
                              state
                              loc->syms)
                      (update :counter inc)))
-          (-> state
-              analyze-doc-deps
-              set-no-cache-on-redefs
-              make-deps-inherit-no-cache
-              (dissoc :analyzed-file-set :counter)))))))
+          (let [res (-> state
+                        analyze-doc-deps
+                        set-no-cache-on-redefs
+                        make-deps-inherit-no-cache
+                        (dissoc :analyzed-file-set :counter))]
+            res))))))
 
 (comment
   (reset! !file->analysis-cache {})
@@ -657,9 +661,10 @@
                                   hash))
                           (into (map str) vars))]
                   (sha1-base58 (pr-str form-with-deps-sorted))))]
-      ;; (when (= '(def a1 (do (swap! fixture-ns/state inc) (attempt1 9999)))
-      ;;          form)
-      ;;   #dbg (def all [res form deps hashed-deps]))
+      (when (= '(def a1 (do (swap! fixture-ns/state inc) (rand-int (attempt1 9999))))
+               form)
+        (prn :deps-x-hashes (sort (zipmap deps (map ->hash deps))))
+        (prn :res res))
       res)
     ))
 

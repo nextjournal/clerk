@@ -38,9 +38,15 @@
     (let [local? (and (simple-symbol? sym)
                       (contains? (:locals env) sym))]
       (when-not local?
-        (when (symbol? sym)
+        (when (symbol? sym) ;; TODO: we already checkd for symbol?
           (let [sym-ns  (when-let [ns (namespace sym)] (symbol ns))
                 full-ns (resolve-ns sym-ns env)]
+            (let [sym-name (-> sym name symbol)]
+              (when (= 'attempt1 sym-name)
+                (prn (when (or (not sym-ns) full-ns)
+                       (let [name (if sym-ns (-> sym name symbol) sym)]
+                         (binding [*ns* (or full-ns ns)]
+                           (resolve name)))))))
             (when (or (not sym-ns) full-ns)
               (let [name (if sym-ns (-> sym name symbol) sym)]
                 (binding [*ns* (or full-ns ns)]
@@ -384,7 +390,7 @@
                (:macro (meta maybe-macro)))
         (do
           (when (= "my-random-namespace" (namespace (symbol maybe-macro)))
-            (prn :var maybe-macro))
+            (prn :var maybe-macro (:macro (meta maybe-macro))))
           (swap! *deps* conj maybe-macro)
           (let [expanded (macroexpand-hook maybe-macro form env (rest form))
                 env (if (identical? #'defmacro maybe-macro)
@@ -436,7 +442,8 @@
                              ;; babashka has :macro on var symbol through defmacro
                              :macro)
                      (update-vals unquote'))]
-        (intern (ns-sym ns) (with-meta sym meta))))))
+        (doto (intern (ns-sym ns) (with-meta sym meta))
+          prn)))))
 
 (defmethod -parse 'def [{:keys [ns] :as env} [_ sym & expr :as form]]
   (let [pfn  (fn

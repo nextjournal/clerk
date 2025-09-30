@@ -300,14 +300,14 @@
 ;; this function should be run during macro pre-analysis
 (defn helper-fn-compile-time [x] x)
 
+(defn helper-fn-runtime [x] x)
+
 (defmacro attempt1
   [x]
   (helper-fn-compile-time
     `(try
-       (do (helper-fn-runtime ~x))
+       (do (do helper-fn-runtime ~x))
        (catch Exception e# e#))))
-
-(defn helper-fn-runtime [x] x)
 
 ;; a1 has dependency on helper-fn-runtime, but this isn't clear when we don't macro-expand before analysis
 ;; if we don't, then a1 gets a different hash compared to the next time and we get twice the side effects
@@ -320,6 +320,7 @@
           first (do (eval/eval-string ns)
                     @@(resolve 'fixture-ns/state))
           first-rand @(resolve 'my-random-namespace/a1)
+          _ (prn :first-rand first-rand)
           _ (prn :second-eval)
           second (do (eval/eval-string ns)
                      @@(resolve 'fixture-ns/state))
