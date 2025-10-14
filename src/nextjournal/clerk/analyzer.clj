@@ -338,7 +338,6 @@
                                                                                (:file doc) (assoc :file (:file doc)))
                                  block+analysis (add-block-id (merge block form-analysis))]
                              (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
-                               (prn :eval form)
                                (eval form))
                              (-> state
                                  (store-info block+analysis)
@@ -548,8 +547,6 @@
   Recursively descends into dependency vars as well if they can be found in the classpath.
   "
   [doc]
-  (def d doc) ;; NOTE: doc has :ns!
-  (prn :build-graph *ns* )
   (let [init-state-fn #(-> doc
                            analyze-doc
                            (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))

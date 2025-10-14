@@ -69,7 +69,6 @@
              _ (reset! !last-file file)
              {:keys [blob->result]} @webserver/!doc
              {:keys [result time-ms]} (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
-                                                      (prn :clerk-show-ns *ns*)
                                                       (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))]
          (if (:error result)
            (println (str "Clerk encountered an error evaluating '" file "' after " time-ms "ms."))
