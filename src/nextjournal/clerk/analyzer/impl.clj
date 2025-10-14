@@ -389,11 +389,12 @@
   (if (seq? form)
     (let [[f & args] form
           maybe-macro (resolve-sym f env)]
+      (when (= "my-random-namespace" (when (var? maybe-macro)
+                                       (-> maybe-macro symbol namespace)))
+        (prn :var maybe-macro (:macro (meta maybe-macro))))
       (if (and (var? maybe-macro)
                (:macro (meta maybe-macro)))
         (do
-          (when (= "my-random-namespace" (namespace (symbol maybe-macro)))
-            (prn :var maybe-macro (:macro (meta maybe-macro))))
           (swap! *deps* conj maybe-macro)
           (let [expanded (macroexpand-hook maybe-macro form env (rest form))
                 env (if (identical? #'defmacro maybe-macro)

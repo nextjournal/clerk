@@ -548,6 +548,8 @@
   Recursively descends into dependency vars as well if they can be found in the classpath.
   "
   [doc]
+  (def d doc) ;; NOTE: doc has :ns!
+  (prn :build-graph *ns* )
   (let [init-state-fn #(-> doc
                            analyze-doc
                            (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
