@@ -298,12 +298,10 @@
                 (when set-status-fn
                   (set-status-fn {:progress 0.10 :status "Analyzing…"}))
                 ;; this fixes something if I set it to the namespace of the notebook... why
-                (prn :nsss *ns*)
-                (binding [#_#_*ns* (find-ns 'clojure.core)]
-                  (-> parsed-doc
-                      (assoc :blob->result in-memory-cache)
-                      analyzer/build-graph
-                      analyzer/hash))))]
+                (-> parsed-doc
+                    (assoc :blob->result in-memory-cache)
+                    analyzer/build-graph
+                    analyzer/hash)))]
         (when (and (not-empty (:var->block-id analyzed-doc))
                    (not ns))
           (throw (ex-info "namespace must be set" (select-keys analyzed-doc [:file :ns]))))
