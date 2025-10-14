@@ -81,10 +81,7 @@
     (apply #'clojure.core/definterface &form &env name sigs)))
 
 (defmethod macroexpand-hook :default [the-var &form &env args]
-  (let [expansion (apply the-var &form (:locals &env) args)]
-    (when (= the-var (resolve 'my-random-namespace/attempt1))
-      (prn :macroexpand expansion))
-    expansion))
+  (apply the-var &form (:locals &env) args))
 
 (defmulti -parse (fn [_env form] (and (seq? form) (first form))))
 
