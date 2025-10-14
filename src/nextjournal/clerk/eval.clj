@@ -297,7 +297,6 @@
               (do
                 (when set-status-fn
                   (set-status-fn {:progress 0.10 :status "Analyzing…"}))
-                ;; this fixes something if I set it to the namespace of the notebook... why
                 (-> parsed-doc
                     (assoc :blob->result in-memory-cache)
                     analyzer/build-graph

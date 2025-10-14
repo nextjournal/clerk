@@ -293,11 +293,7 @@
     (remove-ns 'my-random-namespace)
     (remove-ns 'fixture-ns)
     (clerk/clear-cache!)
-    (binding [;; somehow this is necessary to make the test pass... why?
-              #_#_*ns* (create-ns 'my-random-namespace)]
-      (let [fixture-ns "(ns fixture-ns) (def state (atom 0))"
-            _ (load-string fixture-ns)
-            ns "(ns my-random-namespace)
+    (let [ns "(ns my-random-namespace)
 (defn macro-helper* [x] x)
 
 (defmacro attempt1
@@ -311,13 +307,11 @@
   (do
     (println \"a1\")
     (attempt1 (rand-int 9999))))"
-            _ (prn :first-eval)
-            _ (eval/eval-string ns)
-            first-rand @(resolve 'my-random-namespace/a1)
-            _ (eval/eval-string ns)
-            second-rand @(resolve 'my-random-namespace/a1)]
-        (is (= first-rand second-rand))
-        #_(is (= 1 first second))))))
+          _ (eval/eval-string ns)
+          first-rand @(resolve 'my-random-namespace/a1)
+          _ (eval/eval-string ns)
+          second-rand @(resolve 'my-random-namespace/a1)]
+      (is (= first-rand second-rand)))))
 
 #_@(resolve 'my-random-namespace/a1)
 

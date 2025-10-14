@@ -389,9 +389,6 @@
   (if (seq? form)
     (let [[f & args] form
           maybe-macro (resolve-sym f env)]
-      (when (= "my-random-namespace" (when (var? maybe-macro)
-                                       (-> maybe-macro symbol namespace)))
-        (prn :var maybe-macro (:macro (meta maybe-macro))))
       (if (and (var? maybe-macro)
                (:macro (meta maybe-macro)))
         (do
@@ -446,8 +443,7 @@
                              ;; babashka has :macro on var symbol through defmacro
                              :macro)
                      (update-vals unquote'))]
-        (doto (intern (ns-sym ns) (with-meta sym meta))
-          prn)))))
+        (intern (ns-sym ns) (with-meta sym meta))))))
 
 (defmethod -parse 'def [{:keys [ns] :as env} [_ sym & expr :as form]]
   (let [pfn  (fn

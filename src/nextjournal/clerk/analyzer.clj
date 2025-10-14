@@ -532,7 +532,7 @@
         all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
     (doseq [block all-blocks]
       (try
-        (println "loading in namespace" *ns* (:text block))
+        ;; (println "loading in namespace" *ns* (:text block))
         (load-string (:text block))
         (catch Throwable e
           (binding [*out* *err*]
@@ -580,12 +580,11 @@
                              state
                              loc->syms)
                      (update :counter inc)))
-          (let [res (-> state
-                        analyze-doc-deps
-                        set-no-cache-on-redefs
-                        make-deps-inherit-no-cache
-                        (dissoc :analyzed-file-set :counter))]
-            res))))))
+          (-> state
+              analyze-doc-deps
+              set-no-cache-on-redefs
+              make-deps-inherit-no-cache
+              (dissoc :analyzed-file-set :counter)))))))
 
 (comment
   (reset! !file->analysis-cache {})
@@ -650,23 +649,14 @@
         (record-missing-hash-fn (assoc codeblock
                                        :dep-with-missing-hash dep-with-missing-hash
                                        :graph-node graph-node :ns ns))))
-    (let [res (binding [*print-length* nil]
-                (let [form-with-deps-sorted
-                      (-> hashed-deps
-                          (conj (if form
-                                  (-> form remove-type-meta canonicalize-form pr-str)
-                                  hash))
-                          (into (map str) vars))]
-                  (sha1-base58 (pr-str form-with-deps-sorted))))]
-      (when (= '(def a1
-                  (do
-                    (println "a1")
-                    (attempt1 (rand-int 9999))))
-               form)
-        (prn :deps-x-hashes (sort (zipmap deps (map ->hash deps))))
-        (prn :res res))
-      res)
-    ))
+    (binding [*print-length* nil]
+      (let [form-with-deps-sorted
+            (-> hashed-deps
+                (conj (if form
+                        (-> form remove-type-meta canonicalize-form pr-str)
+                        hash))
+                (into (map str) vars))]
+        (sha1-base58 (pr-str form-with-deps-sorted))))))
 
 #_(hash-codeblock {} {:graph (dep/graph)} {})
 #_(hash-codeblock {} {:graph (dep/graph)} {:hash "foo"})
