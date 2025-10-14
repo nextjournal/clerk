@@ -554,11 +554,9 @@
                                   :graph (dep/graph)))
         init-state (init-state-fn)
         ran-macros? (run-macros init-state)
-        ;; _ (prn :ran-macros? ran-macros?)
         init-state (if ran-macros?
                      (init-state-fn)
                      init-state)]
-    ;; #dbg (def istate1 init-state)
     (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
       (let [unhashed (unhashed-deps ->analysis-info)
             loc->syms (apply dissoc
