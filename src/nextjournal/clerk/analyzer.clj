@@ -337,7 +337,7 @@
                            (let [{:as form-analysis :keys [ns-effect? form]} (cond-> (analyze (:form block))
                                                                                (:file doc) (assoc :file (:file doc)))
                                  block+analysis (add-block-id (merge block form-analysis))]
-                             (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
+                             (when ns-effect?
                                (eval form))
                              (-> state
                                  (store-info block+analysis)

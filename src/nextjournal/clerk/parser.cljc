@@ -472,7 +472,7 @@
                                     :text nstring
                                     :form (add-loc opts loc form)
                                     :loc loc}]
-                    (when (ns? form)
+                    (when (ns? form) ;; needs to run before setting doc `:ns` via `*ns*`
                       (eval form))
                     (cond-> (-> state
                                 (assoc :add-comment-on-line? true)
