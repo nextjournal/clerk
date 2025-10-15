@@ -547,44 +547,45 @@
   Recursively descends into dependency vars as well if they can be found in the classpath.
   "
   [doc]
-  (let [init-state-fn #(-> doc
-                           analyze-doc
-                           (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
-                                  :counter 0
-                                  :graph (dep/graph)))
-        init-state (init-state-fn)
-        ran-macros? (run-macros init-state)
-        init-state (if ran-macros?
-                     (init-state-fn)
-                     init-state)]
-    (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
-      (let [unhashed (unhashed-deps ->analysis-info)
-            loc->syms (apply dissoc
-                             (group-by find-location unhashed)
-                             analyzed-file-set)]
-        (if (and (seq loc->syms) (< counter 10))
-          (recur (-> (reduce (fn [g [source symbols]]
-                               (let [jar? (or (nil? source)
-                                              (str/ends-with? source ".jar"))
-                                     gitlib-hash (and (not jar?)
-                                                      (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
-                                 (if (or jar? gitlib-hash)
-                                   (update g :->analysis-info merge (into {} (map (juxt identity
-                                                                                        (constantly (if source
-                                                                                                      (or (when gitlib-hash {:hash gitlib-hash})
-                                                                                                          (hash-jar source))
-                                                                                                      {})))) symbols))
-                                   (-> g
-                                       (update :analyzed-file-set conj source)
-                                       (merge-analysis-info (analyze-file source))))))
-                             state
-                             loc->syms)
-                     (update :counter inc)))
-          (-> state
-              analyze-doc-deps
-              set-no-cache-on-redefs
-              make-deps-inherit-no-cache
-              (dissoc :analyzed-file-set :counter)))))))
+  (binding [*ns* (:ns doc)]
+    (let [init-state-fn #(-> doc
+                             analyze-doc
+                             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
+                                    :counter 0
+                                    :graph (dep/graph)))
+          init-state (init-state-fn)
+          ran-macros? (run-macros init-state)
+          init-state (if ran-macros?
+                       (init-state-fn)
+                       init-state)]
+      (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
+        (let [unhashed (unhashed-deps ->analysis-info)
+              loc->syms (apply dissoc
+                               (group-by find-location unhashed)
+                               analyzed-file-set)]
+          (if (and (seq loc->syms) (< counter 10))
+            (recur (-> (reduce (fn [g [source symbols]]
+                                 (let [jar? (or (nil? source)
+                                                (str/ends-with? source ".jar"))
+                                       gitlib-hash (and (not jar?)
+                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
+                                   (if (or jar? gitlib-hash)
+                                     (update g :->analysis-info merge (into {} (map (juxt identity
+                                                                                          (constantly (if source
+                                                                                                        (or (when gitlib-hash {:hash gitlib-hash})
+                                                                                                            (hash-jar source))
+                                                                                                        {})))) symbols))
+                                     (-> g
+                                         (update :analyzed-file-set conj source)
+                                         (merge-analysis-info (analyze-file source))))))
+                               state
+                               loc->syms)
+                       (update :counter inc)))
+            (-> state
+                analyze-doc-deps
+                set-no-cache-on-redefs
+                make-deps-inherit-no-cache
+                (dissoc :analyzed-file-set :counter))))))))
 
 (comment
   (reset! !file->analysis-cache {})
