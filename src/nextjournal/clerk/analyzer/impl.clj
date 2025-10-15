@@ -41,12 +41,6 @@
         (when (symbol? sym) ;; TODO: we already checkd for symbol?
           (let [sym-ns  (when-let [ns (namespace sym)] (symbol ns))
                 full-ns (resolve-ns sym-ns env)]
-            (let [sym-name (-> sym name symbol)]
-              (when (= 'attempt1 sym-name)
-                (prn (when (or (not sym-ns) full-ns)
-                       (let [name (if sym-ns (-> sym name symbol) sym)]
-                         (binding [*ns* (or full-ns ns)]
-                           (resolve name)))))))
             (when (or (not sym-ns) full-ns)
               (let [name (if sym-ns (-> sym name symbol) sym)]
                 (binding [*ns* (or full-ns ns)]
