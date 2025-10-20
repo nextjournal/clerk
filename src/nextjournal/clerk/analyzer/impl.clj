@@ -38,13 +38,12 @@
     (let [local? (and (simple-symbol? sym)
                       (contains? (:locals env) sym))]
       (when-not local?
-        (when (symbol? sym) ;; TODO: we already checkd for symbol?
-          (let [sym-ns  (when-let [ns (namespace sym)] (symbol ns))
-                full-ns (resolve-ns sym-ns env)]
-            (when (or (not sym-ns) full-ns)
-              (let [name (if sym-ns (-> sym name symbol) sym)]
-                (binding [*ns* (or full-ns ns)]
-                  (resolve name))))))))))
+        (let [sym-ns  (when-let [ns (namespace sym)] (symbol ns))
+              full-ns (resolve-ns sym-ns env)]
+          (when (or (not sym-ns) full-ns)
+            (let [name (if sym-ns (-> sym name symbol) sym)]
+              (binding [*ns* (or full-ns ns)]
+                (resolve name)))))))))
 
 (defn resolve-sym-node [{:keys [env] :as ast}]
   (assert (= :symbol (:op ast)))
