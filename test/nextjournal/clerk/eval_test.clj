@@ -287,6 +287,34 @@
     (clerk/show! 'nextjournal.clerk.fixtures.hello)
     (is (fs/exists? (:file (meta (resolve 'nextjournal.clerk.fixtures.hello/answer)))))))
 
+(deftest macro-analysis-test
+  (testing "macros are executed before analysis such that expressions relying on
+  them get properly cached and executed once"
+    (remove-ns 'my-random-namespace)
+    (remove-ns 'fixture-ns)
+    (clerk/clear-cache!)
+    (let [ns "(ns my-random-namespace)
+(defn macro-helper* [x] x)
+
+(defmacro attempt1
+  [& body]
+  `(macro-helper* (try
+                    (do ~@body)
+                    (catch Exception e# e#))))
+
+
+(def a1
+  (do
+    (println \"a1\")
+    (attempt1 (rand-int 9999))))"
+          _ (eval/eval-string ns)
+          first-rand @(resolve 'my-random-namespace/a1)
+          _ (eval/eval-string ns)
+          second-rand @(resolve 'my-random-namespace/a1)]
+      (is (= first-rand second-rand)))))
+
+#_@(resolve 'my-random-namespace/a1)
+
 (deftest issue-741-can-eval-quoted-regex-test
   (is (match? {:blocks [{:type :code,
                          :result {:nextjournal/value "foo"}}]}

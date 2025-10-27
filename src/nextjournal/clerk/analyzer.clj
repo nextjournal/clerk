@@ -156,14 +156,16 @@
         deps (set/union (set/difference (into #{} (map (comp symbol var->protocol)) @!deps) vars)
                         deref-deps
                         (when (var? form) #{(symbol form)}))
-        hash-fn (-> form meta :nextjournal.clerk/hash-fn)]
+        hash-fn (-> form meta :nextjournal.clerk/hash-fn)
+        macro? (-> analyzed :env :defmacro)]
     (cond-> {#_#_:analyzed analyzed
              :form form
              :ns-effect? (some? (some #{'clojure.core/require 'clojure.core/in-ns} deps))
              :freezable? (and (not (some #{'clojure.core/intern} deps))
                               (<= (count vars) 1)
                               (if (seq vars) (= var (first vars)) true))
-             :no-cache? (no-cache? form (-> def-node :form second) *ns*)}
+             :no-cache? (no-cache? form (-> def-node :form second) *ns*)
+             :macro macro?}
       hash-fn (assoc :hash-fn hash-fn)
       (seq deps) (assoc :deps deps)
       (seq deref-deps) (assoc :deref-deps deref-deps)
@@ -335,7 +337,7 @@
                            (let [{:as form-analysis :keys [ns-effect? form]} (cond-> (analyze (:form block))
                                                                                (:file doc) (assoc :file (:file doc)))
                                  block+analysis (add-block-id (merge block form-analysis))]
-                             (when ns-effect? ;; needs to run before setting doc `:ns` via `*ns*`
+                             (when ns-effect?
                                (eval form))
                              (-> state
                                  (store-info block+analysis)
@@ -442,7 +444,10 @@
 
 (defn var->location [var]
   (when-let [file (:file (meta var))]
-    (some-> (if (fs/absolute? file)
+    (some-> (if (try (fs/absolute? file)
+                     ;; fs/absolute? crashes in bb on Windows due to the :file
+                     ;; metadata containing "<expr>"
+                     (catch Exception _ false))
               (when (fs/exists? file)
                 (fs/relativize (fs/cwd) (fs/file file)))
               (when-let [resource (io/resource file)]
@@ -496,45 +501,91 @@
                 (filter (comp #{:code} :type)
                         blocks))))
 
+(defn transitive-deps
+  ([id analysis-info]
+   (loop [seen #{}
+          deps #{id}
+          res #{}]
+     (if (seq deps)
+       (let [dep (first deps)]
+         (if (contains? seen dep)
+           (recur seen (rest deps) res)
+           (let [{new-deps :deps} (get analysis-info dep)
+                 seen (conj seen dep)
+                 deps (concat (rest deps) new-deps)
+                 res (into res deps)]
+             (recur seen deps res))))
+       res))))
+
+#_(transitive-deps id analysis-info)
+
+#_(transitive-deps :main {:main {:deps [:main :other]}
+                          :other {:deps [:another]}
+                          :another {:deps [:another-one :another :main]}})
+
+(defn run-macros [init-state]
+  (let [{:keys [blocks ->analysis-info]} init-state
+        macro-block-ids (keep #(when (:macro %)
+                                 (:id %)) blocks)
+        deps (mapcat #(transitive-deps % ->analysis-info) macro-block-ids)
+        all-block-ids (into (set macro-block-ids) deps)
+        all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
+    (doseq [block all-blocks]
+      (try
+        ;; (println "loading in namespace" *ns* (:text block))
+        (load-string (:text block))
+        (catch Throwable e
+          (binding [*out* *err*]
+            (println "Error when evaluating macro deps:" (:text block))
+            (println "Namespace:" *ns*)
+            (println "Exception:" e)))))
+    (pos? (count all-blocks))))
+
 (defn build-graph
   "Analyzes the forms in the given file and builds a dependency graph of the vars.
 
-  Recursively decends into dependency vars as well as given they can be found in the classpath.
+  Recursively descends into dependency vars as well if they can be found in the classpath.
   "
   [doc]
-  (loop [{:as state :keys [->analysis-info analyzed-file-set counter]}
-         (-> doc
-             analyze-doc
-             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
-                    :counter 0
-                    :graph (dep/graph)))]
-    (let [unhashed (unhashed-deps ->analysis-info)
-          loc->syms (apply dissoc
-                           (group-by find-location unhashed)
-                           analyzed-file-set)]
-      (if (and (seq loc->syms) (< counter 10))
-        (recur (-> (reduce (fn [g [source symbols]]
-                             (let [jar? (or (nil? source)
-                                            (str/ends-with? source ".jar"))
-                                   gitlib-hash (and (not jar?)
-                                                    (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
-                               (if (or jar? gitlib-hash)
-                                 (update g :->analysis-info merge (into {} (map (juxt identity
-                                                                                      (constantly (if source
-                                                                                                    (or (when gitlib-hash {:hash gitlib-hash})
-                                                                                                        (hash-jar source))
-                                                                                                    {})))) symbols))
-                                 (-> g
-                                     (update :analyzed-file-set conj source)
-                                     (merge-analysis-info (analyze-file source))))))
-                           state
-                           loc->syms)
-                   (update :counter inc)))
-        (-> state
-            analyze-doc-deps
-            set-no-cache-on-redefs
-            make-deps-inherit-no-cache
-            (dissoc :analyzed-file-set :counter))))))
+  (binding [*ns* (:ns doc)]
+    (let [init-state-fn #(-> doc
+                             analyze-doc
+                             (assoc :analyzed-file-set (cond-> #{} (:file doc) (conj (:file doc)))
+                                    :counter 0
+                                    :graph (dep/graph)))
+          init-state (init-state-fn)
+          ran-macros? (run-macros init-state)
+          init-state (if ran-macros?
+                       (init-state-fn)
+                       init-state)]
+      (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
+        (let [unhashed (unhashed-deps ->analysis-info)
+              loc->syms (apply dissoc
+                               (group-by find-location unhashed)
+                               analyzed-file-set)]
+          (if (and (seq loc->syms) (< counter 10))
+            (recur (-> (reduce (fn [g [source symbols]]
+                                 (let [jar? (or (nil? source)
+                                                (str/ends-with? source ".jar"))
+                                       gitlib-hash (and (not jar?)
+                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
+                                   (if (or jar? gitlib-hash)
+                                     (update g :->analysis-info merge (into {} (map (juxt identity
+                                                                                          (constantly (if source
+                                                                                                        (or (when gitlib-hash {:hash gitlib-hash})
+                                                                                                            (hash-jar source))
+                                                                                                        {})))) symbols))
+                                     (-> g
+                                         (update :analyzed-file-set conj source)
+                                         (merge-analysis-info (analyze-file source))))))
+                               state
+                               loc->syms)
+                       (update :counter inc)))
+            (-> state
+                analyze-doc-deps
+                set-no-cache-on-redefs
+                make-deps-inherit-no-cache
+                (dissoc :analyzed-file-set :counter))))))))
 
 (comment
   (reset! !file->analysis-cache {})
