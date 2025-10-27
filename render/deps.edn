@@ -9,7 +9,7 @@
                                         :exclusions [org.babashka/sci]}
         io.github.nextjournal/clojure-mode {:git/sha "1f55406087814a0dda6806396aa596dbe13ea302"}
         thheller/shadow-cljs {:mvn/version "3.2.0"}
-        io.github.squint-cljs/cherry {;; :local/root "/Users/borkdude/dev/cherry"
-                                      :git/sha "8de9f27"
-                                      :git/tag "v0.4.26"
+        io.github.squint-cljs/cherry {;;:local/root "/Users/borkdude/dev/cherry"
+                                      :git/sha "ffb00e9"
+                                      :git/tag "v0.4.32"
                                       :exclusions [org.babashka/sci]}}}
