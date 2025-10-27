@@ -503,25 +503,12 @@
 
 (defn transitive-deps
   ([id analysis-info]
-   (loop [seen #{}
-          deps #{id}
-          res #{}]
-     (if (seq deps)
-       (let [dep (first deps)]
-         (if (contains? seen dep)
-           (recur seen (rest deps) res)
-           (let [{new-deps :deps} (get analysis-info dep)
-                 seen (conj seen dep)
-                 deps (concat (rest deps) new-deps)
-                 res (into res deps)]
-             (recur seen deps res))))
-       res))))
-
-#_(transitive-deps id analysis-info)
-
-#_(transitive-deps :main {:main {:deps [:main :other]}
-                          :other {:deps [:another]}
-                          :another {:deps [:another-one :another :main]}})
+   (let [graph (reduce-kv (fn [graph k {:keys [deps]}]
+                            (reduce (fn [graph dep]
+                                      (dep/depend graph k dep))
+                                    graph deps))
+                          (dep/graph) analysis-info)]
+     (dep/transitive-dependencies graph id))))
 
 (defn run-macros [init-state]
   (let [{:keys [blocks ->analysis-info]} init-state
