@@ -501,20 +501,12 @@
                 (filter (comp #{:code} :type)
                         blocks))))
 
-(defn transitive-deps
-  ([id analysis-info]
-   (let [graph (reduce-kv (fn [graph k {:keys [deps]}]
-                            (reduce (fn [graph dep]
-                                      (dep/depend graph k dep))
-                                    graph deps))
-                          (dep/graph) analysis-info)]
-     (dep/transitive-dependencies graph id))))
-
 (defn run-macros [init-state]
   (let [{:keys [blocks ->analysis-info]} init-state
         macro-block-ids (keep #(when (:macro %)
                                  (:id %)) blocks)
-        deps (mapcat #(transitive-deps % ->analysis-info) macro-block-ids)
+        {:keys [graph]} (analyze-doc-deps init-state)
+        deps (mapcat (partial dep/transitive-dependencies graph) macro-block-ids)
         all-block-ids (into (set macro-block-ids) deps)
         all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
     (doseq [block all-blocks]
