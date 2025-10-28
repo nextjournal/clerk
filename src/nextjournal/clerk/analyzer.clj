@@ -502,7 +502,7 @@
                         blocks))))
 
 (defn run-macros [init-state]
-  (let [{:keys [blocks ->analysis-info]} init-state
+  (let [{:keys [blocks]} init-state
         macro-block-ids (keep #(when (:macro %)
                                  (:id %)) blocks)
         {:keys [graph]} (analyze-doc-deps init-state)
