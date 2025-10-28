@@ -1312,6 +1312,7 @@
    :nextjournal/blob-id (str (gensym "error"))})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
+  (prn :block (:store!-cljs-namespace doc))
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->render-eval (list 'ns (if ns (ns-name ns) 'user))))
@@ -1343,8 +1344,10 @@
   {:name `notebook-viewer
    :render-fn 'nextjournal.clerk.render/render-notebook
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+                   (prn :notebooks-viewer (:store!-cljs-namespace wrapped-value))
                    (-> wrapped-value
-                       (update :nextjournal/value (partial process-blocks viewers))
+                       (update :nextjournal/value (fn [value]
+                                                    (process-blocks viewers (assoc value :store!-cljs-namespace (:store!-cljs-namespace wrapped-value)))))
                        mark-presented))})
 
 (def render-eval-viewer
@@ -1666,12 +1669,18 @@
                    (into {}
                          (map (fn [[k v]]
                                 [k (if (preserve-keys-fn k)
-                                     v
-                                     (present* (inherit-opts wrapped-value v k)))]))
+                                     (do
+                                       (prn :preserve-keys)
+                                       v)
+                                     (let [v (inherit-opts wrapped-value v k)]
+                                       (prn :child (:store!-cljs-namespace v))
+                                       (present* v)))]))
                          xs)
                    (into []
                          (comp (if paginate? (drop+take-xf fetch-opts') identity)
-                               (map-indexed (fn [i x] (present* (inherit-opts wrapped-value x (+ i (or offset 0))))))
+                               (map-indexed (fn [i x] (present* (let [v (inherit-opts wrapped-value x (+ i (or offset 0)))]
+                                                                  (prn :child (:store!-cljs-namespace v))
+                                                                  v))))
                                (remove nil?))
                          (ensure-sorted xs)))
         {:as elision :keys [total unbounded?]} (and paginate? (get-elision wrapped-value))
@@ -1809,6 +1818,14 @@
   ;; Check for elisions as well
   (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
 
+(defn where-am-i
+  ([] (where-am-i 10))
+  ([depth]
+   (let [ks [:fileName :lineNumber :className]]
+     (pprint/print-table
+      ks
+      (map (comp #(select-keys % ks) bean)
+           (take depth (.getStackTrace (Thread/currentThread))))))))
 
 (defn present
   "Presents the given value `x`.
@@ -1820,15 +1837,17 @@
         !path->wrapped-value (atom {})
         _ (prn :cljs-namespaces-prev (:cljs-namespaces x))
         store!-cljs-namespace (or (:store!-cljs-namespace x)
-                                  (prn :creating-fn)
-                                  (let [state (atom #{})]
-                                   (fn ([] @state)
-                                     ([{:as wrapped-value :keys [nextjournal/viewer]}]
-                                      (when-let [r (:require-cljs viewer)]
-                                        (let [cljs-ns (if (true? r)
-                                                        (-> viewer :render-fn namespace symbol)
-                                                        r)]
-                                          (swap! state conj cljs-ns)))))))]
+                                  (let [state (atom #{})
+                                        f (fn ([] @state)
+                                            ([{:as wrapped-value :keys [nextjournal/viewer]}]
+                                             (when-let [r (:require-cljs viewer)]
+                                               (let [cljs-ns (if (true? r)
+                                                               (-> viewer :render-fn namespace symbol)
+                                                               r)]
+                                                 (swap! state conj cljs-ns)))))]
+                                    (prn :created-fn f (hash state))
+                                    #_(where-am-i 20)
+                                    f))]
     (-> (ensure-wrapped-with-viewers x)
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
