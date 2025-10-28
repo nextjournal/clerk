@@ -501,33 +501,12 @@
                 (filter (comp #{:code} :type)
                         blocks))))
 
-(defn transitive-deps
-  ([id analysis-info]
-   (loop [seen #{}
-          deps #{id}
-          res #{}]
-     (if (seq deps)
-       (let [dep (first deps)]
-         (if (contains? seen dep)
-           (recur seen (rest deps) res)
-           (let [{new-deps :deps} (get analysis-info dep)
-                 seen (conj seen dep)
-                 deps (concat (rest deps) new-deps)
-                 res (into res deps)]
-             (recur seen deps res))))
-       res))))
-
-#_(transitive-deps id analysis-info)
-
-#_(transitive-deps :main {:main {:deps [:main :other]}
-                          :other {:deps [:another]}
-                          :another {:deps [:another-one :another :main]}})
-
 (defn run-macros [init-state]
-  (let [{:keys [blocks ->analysis-info]} init-state
+  (let [{:keys [blocks]} init-state
         macro-block-ids (keep #(when (:macro %)
                                  (:id %)) blocks)
-        deps (mapcat #(transitive-deps % ->analysis-info) macro-block-ids)
+        {:keys [graph]} (analyze-doc-deps init-state)
+        deps (mapcat (partial dep/transitive-dependencies graph) macro-block-ids)
         all-block-ids (into (set macro-block-ids) deps)
         all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
     (doseq [block all-blocks]

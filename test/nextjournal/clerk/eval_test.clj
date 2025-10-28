@@ -294,14 +294,17 @@
     (remove-ns 'fixture-ns)
     (clerk/clear-cache!)
     (let [ns "(ns my-random-namespace)
+(defn helper-compile-time1 [x] x)
+(defn helper-compile-time2 [x] (helper-compile-time1 x))
+
 (defn macro-helper* [x] x)
 
 (defmacro attempt1
   [& body]
+  (helper-compile-time2
   `(macro-helper* (try
                     (do ~@body)
-                    (catch Exception e# e#))))
-
+                    (catch Exception e# e#)))))
 
 (def a1
   (do
