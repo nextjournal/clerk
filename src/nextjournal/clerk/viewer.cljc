@@ -941,11 +941,13 @@
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
+                              :!budget :store!-wrapped-value :store!-cljs-namespace
+                              :present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :store!-cljs-namespace
+                                                  :present-elision-fn :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
@@ -1708,9 +1710,10 @@
     (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts))
     (throw (ex-info "could not find wrapped-value at path" {:!path->wrapped-value !path->wrapped-value :fetch-otps fetch-opts}))))
 
-
 (defn ^:private present* [{:as wrapped-value
-                           :keys [path !budget store!-wrapped-value]
+                           :keys [path !budget
+                                  store!-wrapped-value
+                                  store!-cljs-namespace]
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
@@ -1718,7 +1721,8 @@
     (store!-wrapped-value wrapped-value))
   (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
         xs (->value wrapped-value-applied)]
-    #_(prn :xs xs :type (type xs) :path path)
+    (when store!-cljs-namespace
+      (store!-cljs-namespace wrapped-value-applied))
     (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))
     (-> (merge (->opts wrapped-value-applied)
@@ -1813,16 +1817,30 @@
   [x]
   (let [opts (when (wrapped-value? x)
                (->opts (normalize-viewer-opts x)))
-        !path->wrapped-value (atom {})]
+        !path->wrapped-value (atom {})
+        _ (prn :cljs-namespaces-prev (:cljs-namespaces x))
+        store!-cljs-namespace (or (:store!-cljs-namespace x)
+                                  (prn :creating-fn)
+                                  (let [state (atom #{})]
+                                   (fn ([] @state)
+                                     ([{:as wrapped-value :keys [nextjournal/viewer]}]
+                                      (when-let [r (:require-cljs viewer)]
+                                        (let [cljs-ns (if (true? r)
+                                                        (-> viewer :render-fn namespace symbol)
+                                                        r)]
+                                          (swap! state conj cljs-ns)))))))]
     (-> (ensure-wrapped-with-viewers x)
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
+                :store!-cljs-namespace store!-cljs-namespace
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
                 :path (:path opts [])}
                (make-!budget-opts opts)
                opts)
         present*
-        assign-closing-parens)))
+        assign-closing-parens
+        (assoc :cljs-namespaces (doto (store!-cljs-namespace)
+                                  (prn :cljs-nnnn))))))
 
 (comment
   (present [\a \b])
