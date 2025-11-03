@@ -22,11 +22,26 @@
                                                 :nextjournal.markdown/formula
                                                 :nextjournal.markdown/block-formula}))))))
 
+(defn with-store!-cljs-namespace
+  [x]
+  (assoc x :store!-cljs-namespace
+         (let [state (atom #{})
+               f (fn ([] @state)
+                   ([{:as wrapped-value :keys [nextjournal/viewer]}]
+                    (when-let [r (:require-cljs viewer)]
+                      (let [cljs-ns (if (true? r)
+                                      (-> viewer :render-fn namespace symbol)
+                                      r)]
+                        (swap! state conj cljs-ns)))))]
+           f)))
+
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
+     (-> (merge doc opts) v/notebook
+         (with-store!-cljs-namespace)
+         v/present (cljs-libs/prepend-required-cljs opts)
          (viewer-names)))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))

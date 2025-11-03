@@ -538,6 +538,7 @@
                                    (str "-" (str/join "-" path))))))
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
+  (prn :transform-result (:store!-cljs-namespace wrapped-value) (hash (:store!-cljs-namespace wrapped-value)))
   (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
         {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
@@ -1312,7 +1313,8 @@
    :nextjournal/blob-id (str (gensym "error"))})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
-  (prn :block (:store!-cljs-namespace doc))
+  (when-not (:store!-cljs-namespace doc)
+    (throw (ex-info "NOOO PROCESS_BLOCKS" {})))
   (-> doc
       (assoc :atom-var-name->state (atom-var-name->state doc))
       (assoc :ns (->render-eval (list 'ns (if ns (ns-name ns) 'user))))
@@ -1344,10 +1346,8 @@
   {:name `notebook-viewer
    :render-fn 'nextjournal.clerk.render/render-notebook
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                   (prn :notebooks-viewer (:store!-cljs-namespace wrapped-value))
                    (-> wrapped-value
-                       (update :nextjournal/value (fn [value]
-                                                    (process-blocks viewers (assoc value :store!-cljs-namespace (:store!-cljs-namespace wrapped-value)))))
+                       (update :nextjournal/value (partial process-blocks viewers))
                        mark-presented))})
 
 (def render-eval-viewer
@@ -1504,7 +1504,11 @@
     x))
 
 (defn apply-viewers* [wrapped-value]
+  (when-not (:store!-cljs-namespace wrapped-value)
+    (throw (ex-info "NOOOOO APPLYVIEWERS*" {})))
   (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
+        _ (when-not (:store!-cljs-namespace hoisted-wrapped-value)
+            (throw (ex-info "NOOOOO APPLYVIEWERS* HOISTED" {})))
         viewers (->viewers hoisted-wrapped-value)
         _ (when (empty? viewers)
             (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
@@ -1516,6 +1520,8 @@
                                                                            (assoc :nextjournal/applied-viewer viewer))
                                                                  transform-fn transform-fn))
                             viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
+        _ (when-not (:store!-cljs-namespace transformed-value)
+            (throw (ex-info "NOOOOO APPLYVIEWERS* TRANDFORMEd" {})))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
@@ -1726,6 +1732,7 @@
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
+  (prn :present* store!-wrapped-value (hash store!-wrapped-value))
   (when store!-wrapped-value
     (store!-wrapped-value wrapped-value))
   (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
@@ -1834,32 +1841,21 @@
   [x]
   (let [opts (when (wrapped-value? x)
                (->opts (normalize-viewer-opts x)))
-        !path->wrapped-value (atom {})
-        _ (prn :cljs-namespaces-prev (:cljs-namespaces x))
-        store!-cljs-namespace (or (:store!-cljs-namespace x)
-                                  (let [state (atom #{})
-                                        f (fn ([] @state)
-                                            ([{:as wrapped-value :keys [nextjournal/viewer]}]
-                                             (when-let [r (:require-cljs viewer)]
-                                               (let [cljs-ns (if (true? r)
-                                                               (-> viewer :render-fn namespace symbol)
-                                                               r)]
-                                                 (swap! state conj cljs-ns)))))]
-                                    (prn :created-fn f (hash state))
-                                    #_(where-am-i 20)
-                                    f))]
+        !path->wrapped-value (atom {})]
+    (when-not (:store!-cljs-namespace x)
+      (where-am-i 30)
+      (throw (ex-info "NO CLJS STORE" {})))
     (-> (ensure-wrapped-with-viewers x)
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
-                :store!-cljs-namespace store!-cljs-namespace
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
                 :path (:path opts [])}
                (make-!budget-opts opts)
                opts)
         present*
         assign-closing-parens
-        (assoc :cljs-namespaces (doto (store!-cljs-namespace)
-                                  (prn :cljs-nnnn))))))
+        (assoc :cljs-namespaces (when-let [f (:store!-cljs-namespace x)]
+                                  (f))))))
 
 (comment
   (present [\a \b])
