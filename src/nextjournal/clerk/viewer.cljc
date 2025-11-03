@@ -1315,39 +1315,47 @@
 (defn process-blocks [viewers {:as doc :keys [ns]}]
   (when-not (:store!-cljs-namespace doc)
     (throw (ex-info "NOOO PROCESS_BLOCKS" {})))
-  (-> doc
-      (assoc :atom-var-name->state (atom-var-name->state doc))
-      (assoc :ns (->render-eval (list 'ns (if ns (ns-name ns) 'user))))
-      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
-                                             (map (comp present (partial ensure-wrapped-with-viewers viewers))))))
-      (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
-      #_(assoc :footer (present (footer doc)))
+  (let [opts (->opts doc)]
+    (-> doc
+        (assoc :atom-var-name->state (atom-var-name->state doc))
+        (assoc :ns (->render-eval (list 'ns (if ns (ns-name ns) 'user))))
+        (update :blocks
+                (fn [blocks]
+                  (into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
+                                 (map (comp #(present (merge opts %)) (partial ensure-wrapped-with-viewers viewers))))
+                        blocks)))
+        (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
+        #_(assoc :footer (present (footer doc)))
 
-      (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
-      (update :file str)
+        (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
+        (update :file str)
 
-      (select-keys [:atom-var-name->state
-                    :blocks :package
-                    :doc-css-class
-                    :error
-                    :file
-                    :open-graph
-                    :ns
-                    :title
-                    :toc
-                    :toc-visibility
-                    :header
-                    :footer])
-      (update-if :error present-error)
-      (assoc :sidenotes? (boolean (seq (:footnotes doc))))
-      #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
+        (select-keys [:atom-var-name->state
+                      :blocks :package
+                      :doc-css-class
+                      :error
+                      :file
+                      :open-graph
+                      :ns
+                      :title
+                      :toc
+                      :toc-visibility
+                      :header
+                      :footer])
+        (update-if :error present-error)
+        (assoc :sidenotes? (boolean (seq (:footnotes doc))))
+        #?(:clj (cond-> ns (assoc :scope (datafy-scope ns)))))))
 
 (def notebook-viewer
   {:name `notebook-viewer
    :render-fn 'nextjournal.clerk.render/render-notebook
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
+                   (when-not (:store!-cljs-namespace wrapped-value)
+                     (throw (ex-info "NOOOOTEBOOK VIEWER" {})))
+                   (def x (->opts wrapped-value))
                    (-> wrapped-value
-                       (update :nextjournal/value (partial process-blocks viewers))
+                       (update :nextjournal/value (fn [value]
+                                                    (process-blocks viewers (merge (->opts wrapped-value) value))))
                        mark-presented))})
 
 (def render-eval-viewer
@@ -1504,10 +1512,8 @@
     x))
 
 (defn apply-viewers* [wrapped-value]
-  (when-not (:store!-cljs-namespace wrapped-value)
-    (throw (ex-info "NOOOOO APPLYVIEWERS*" {})))
   (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
-        _ (when-not (:store!-cljs-namespace hoisted-wrapped-value)
+        #_#__ (when-not (:store!-cljs-namespace hoisted-wrapped-value)
             (throw (ex-info "NOOOOO APPLYVIEWERS* HOISTED" {})))
         viewers (->viewers hoisted-wrapped-value)
         _ (when (empty? viewers)
@@ -1520,7 +1526,7 @@
                                                                            (assoc :nextjournal/applied-viewer viewer))
                                                                  transform-fn transform-fn))
                             viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
-        _ (when-not (:store!-cljs-namespace transformed-value)
+        #_#__ (when-not (:store!-cljs-namespace transformed-value)
             (throw (ex-info "NOOOOO APPLYVIEWERS* TRANDFORMEd" {})))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
@@ -1842,7 +1848,7 @@
   (let [opts (when (wrapped-value? x)
                (->opts (normalize-viewer-opts x)))
         !path->wrapped-value (atom {})]
-    (when-not (:store!-cljs-namespace x)
+    #_(when-not (:store!-cljs-namespace x)
       (where-am-i 30)
       (throw (ex-info "NO CLJS STORE" {})))
     (-> (ensure-wrapped-with-viewers x)
@@ -1856,6 +1862,8 @@
         assign-closing-parens
         (assoc :cljs-namespaces (when-let [f (:store!-cljs-namespace x)]
                                   (f))))))
+
+#_(require '[nextjournal.clerk] :reload-all)
 
 (comment
   (present [\a \b])
