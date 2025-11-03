@@ -1313,7 +1313,7 @@
    :nextjournal/blob-id (str (gensym "error"))})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
-  (when-not (:store!-cljs-namespace doc)
+ #_ (when-not (:store!-cljs-namespace doc)
     (throw (ex-info "NOOO PROCESS_BLOCKS" {})))
   (let [opts (->opts doc)]
     (-> doc
@@ -1350,7 +1350,7 @@
   {:name `notebook-viewer
    :render-fn 'nextjournal.clerk.render/render-notebook
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                   (when-not (:store!-cljs-namespace wrapped-value)
+                   #_(when-not (:store!-cljs-namespace wrapped-value)
                      (throw (ex-info "NOOOOTEBOOK VIEWER" {})))
                    (-> wrapped-value
                        (update :nextjournal/value (fn [value]
