@@ -1860,7 +1860,8 @@
                opts)
         present*
         assign-closing-parens
-        (assoc :cljs-namespaces (when-let [f (:store!-cljs-namespace x)]
+        (assoc :cljs-namespaces (when-let [f (get-safe x :store!-cljs-namespace)]
+                                  (prn :f f)
                                   (f))))))
 
 #_(require '[nextjournal.clerk] :reload-all)
