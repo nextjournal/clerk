@@ -1830,14 +1830,15 @@
   ;; Check for elisions as well
   (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
 
-(defn where-am-i
-  ([] (where-am-i 10))
-  ([depth]
-   (let [ks [:fileName :lineNumber :className]]
-     (pprint/print-table
-      ks
-      (map (comp #(select-keys % ks) bean)
-           (take depth (.getStackTrace (Thread/currentThread))))))))
+#?(:clj
+   (defn where-am-i
+     ([] (where-am-i 10))
+     ([depth]
+      (let [ks [:fileName :lineNumber :className]]
+        (pprint/print-table
+         ks
+         (map (comp #(select-keys % ks) bean)
+              (take depth (.getStackTrace (Thread/currentThread)))))))))
 
 (defn present
   "Presents the given value `x`.
