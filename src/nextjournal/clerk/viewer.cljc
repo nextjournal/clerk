@@ -1352,7 +1352,6 @@
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                    (when-not (:store!-cljs-namespace wrapped-value)
                      (throw (ex-info "NOOOOTEBOOK VIEWER" {})))
-                   (def x (->opts wrapped-value))
                    (-> wrapped-value
                        (update :nextjournal/value (fn [value]
                                                     (process-blocks viewers (merge (->opts wrapped-value) value))))
