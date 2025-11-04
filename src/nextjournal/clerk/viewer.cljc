@@ -1831,9 +1831,7 @@
                (make-!budget-opts opts)
                opts)
         present*
-        assign-closing-parens
-        (assoc :cljs-namespaces (when-let [f (get-safe x :store!-cljs-namespace)]
-                                  (f))))))
+        assign-closing-parens)))
 
 (comment
   (present [\a \b])
