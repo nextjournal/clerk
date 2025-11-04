@@ -7,7 +7,6 @@
    [nextjournal.clerk.always-array-map :as aam]
    [nextjournal.clerk.analyzer :refer [valuehash]]
    [nextjournal.clerk.viewer :as v]
-   [nextjournal.clerk.walk :as w]
    [rewrite-clj.node :as rnode]
    [rewrite-clj.parser :as rparse]
    [weavejester.dependency :as tnsd]))
