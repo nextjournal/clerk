@@ -38,6 +38,8 @@
                    (java.nio.file Files StandardOpenOption)
                    (javax.imageio ImageIO))))
 
+(def ^:dynamic *collect-cljs-namespace-fn* nil)
+
 (defrecord RenderFn [form #?(:cljs f)]
   #?@(:cljs [IFn
              (-invoke [_] (@f))
@@ -1718,6 +1720,8 @@
     (store!-wrapped-value wrapped-value))
   (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
         xs (->value wrapped-value-applied)]
+    (when *collect-cljs-namespace-fn*
+      (*collect-cljs-namespace-fn* wrapped-value-applied))
     #_(prn :xs xs :type (type xs) :path path)
     (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))

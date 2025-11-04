@@ -187,18 +187,9 @@
     (slurp resource)))
 
 (defn prepend-required-cljs [doc {:keys [dedupe-cljs]}]
-  (let [state (new-cljs-state)]
-    (w/postwalk (fn [v]
-                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
-                    (if-let [r (:require-cljs viewer)]
-                      (let [cljs-ns (if (true? r)
-                                      ;; at this point, the render-fn has been transformed to a `ViewerFn`, which contains a :form
-                                      (-> viewer :render-fn :form namespace symbol)
-                                      r)]
-                        (require-cljs* state cljs-ns))
-                      v)
-                    v))
-                doc)
+  (let [cljs-namespaces (v/*collect-cljs-namespace-fn*)
+        state (new-cljs-state)]
+    (run! #(require-cljs* state %) cljs-namespaces)
     (if-let [cljs-sources (not-empty
                            (filter #(or (not dedupe-cljs)
                                         (when-not (contains? @dedupe-cljs %)

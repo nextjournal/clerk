@@ -23,7 +23,15 @@
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
-   (binding [*ns* ns]
+   (binding [*ns* ns
+             v/*collect-cljs-namespace-fn* (let [state (atom #{})]
+                                             (fn ([] @state)
+                                               ([{:as wrapped-value :keys [nextjournal/viewer]}]
+                                                (when-let [r (:require-cljs viewer)]
+                                                  (let [cljs-ns (if (true? r)
+                                                                  (-> viewer :render-fn namespace symbol)
+                                                                  r)]
+                                                    (swap! state conj cljs-ns))))))]
      (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
          (viewer-names)))))
 
