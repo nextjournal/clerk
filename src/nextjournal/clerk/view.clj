@@ -8,9 +8,9 @@
   (:import (java.net URI)))
 
 (defn viewer-names [state]
+  (prn "viewer names")
   (time
-   (let [_ (prn :viewer-names)
-         !viewers (atom #{})]
+   (let [!viewers (atom #{})]
      (w/postwalk (fn [v]
                        (if-let [viewer (v/get-safe v :nextjournal/viewer)]
                          (do (swap! !viewers conj (:name viewer))

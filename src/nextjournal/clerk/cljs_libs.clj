@@ -186,33 +186,20 @@
     (slurp resource)))
 
 (defn prepend-required-cljs [doc {:keys [dedupe-cljs]}]
-  (time (let [state (new-cljs-state)
-              cljs-namespaces (:cljs-namespaces doc)]
-          (prn :cljs-namespaces cljs-namespaces)
-          (run! #(require-cljs* state %) cljs-namespaces)
-
-          #_(w/postwalk (fn [v]
-                       (if-let [viewer (v/get-safe v :nextjournal/viewer)]
-                         (if-let [r (:require-cljs viewer)]
-                           (let [cljs-ns (if (true? r)
-                                           ;; at this point, the render-fn has been transformed to a `ViewerFn`, which contains a :form
-                                           (-> viewer :render-fn :form namespace symbol)
-                                           r)]
-                             (require-cljs* state cljs-ns))
-                           v)
-                         v))
-                     doc)
-         (if-let [cljs-sources (not-empty
-                                (filter #(or (not dedupe-cljs)
-                                             (when-not (contains? @dedupe-cljs %)
-                                               (swap! dedupe-cljs conj %)
-                                               true))
-                                        (mapv slurp-resource (keep ns->resource (all-ns state)))))]
-           (-> doc
-               ;; make sure :cljs-libs is the first key, so these are read + evaluated first
-               (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->render-eval `(load-string ~code-str))) cljs-sources))
-               (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources)))
-           doc))))
+  (let [state (new-cljs-state)
+        cljs-namespaces (:cljs-namespaces doc)]
+    (run! #(require-cljs* state %) cljs-namespaces)
+    (if-let [cljs-sources (not-empty
+                           (filter #(or (not dedupe-cljs)
+                                        (when-not (contains? @dedupe-cljs %)
+                                          (swap! dedupe-cljs conj %)
+                                          true))
+                                   (mapv slurp-resource (keep ns->resource (all-ns state)))))]
+      (-> doc
+          ;; make sure :cljs-libs is the first key, so these are read + evaluated first
+          (aam/assoc-before :cljs-libs (mapv (fn [code-str] (v/->render-eval `(load-string ~code-str))) cljs-sources))
+          (aam/assoc-before :nextjournal.clerk/remount (valuehash :sha1 cljs-sources)))
+      doc)))
 
 ;;;; Scratch
 

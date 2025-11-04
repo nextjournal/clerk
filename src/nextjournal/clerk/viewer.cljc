@@ -538,7 +538,6 @@
                                    (str "-" (str/join "-" path))))))
 
 (defn transform-result [{:as wrapped-value :keys [path]}]
-  (prn :transform-result (:store!-cljs-namespace wrapped-value) (hash (:store!-cljs-namespace wrapped-value)))
   (let [{:as cell :keys [form id settings result] ::keys [fragment-item? doc]} (:nextjournal/value wrapped-value)
         {:keys [package]} doc
         {:nextjournal/keys [value blob-id viewers]} result
@@ -563,7 +562,6 @@
                                          (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
                              #?(:clj (->> (process-blobs blob-opts))))
         render-eval-result? (-> presented-result :nextjournal/value render-eval?)]
-    #_(prn :presented-result render-eval? presented-result)
     (-> wrapped-value
         mark-presented
         (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
@@ -573,7 +571,7 @@
                                      (-> form meta :nextjournal.clerk/open-graph :image)
                                      (assoc :nextjournal/open-graph-image-capture true)
 
-                                     #?@(:clj [(= blob-mode :lazy-load)
+                                     #?@(:clj [(= :lazy-loadb blob-mode)
                                                (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                                       :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-block]))]))}
                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)))))
@@ -1313,8 +1311,6 @@
    :nextjournal/blob-id (str (gensym "error"))})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
- #_ (when-not (:store!-cljs-namespace doc)
-    (throw (ex-info "NOOO PROCESS_BLOCKS" {})))
   (let [opts (->opts doc)]
     (-> doc
         (assoc :atom-var-name->state (atom-var-name->state doc))
@@ -1350,8 +1346,6 @@
   {:name `notebook-viewer
    :render-fn 'nextjournal.clerk.render/render-notebook
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
-                   #_(when-not (:store!-cljs-namespace wrapped-value)
-                     (throw (ex-info "NOOOOTEBOOK VIEWER" {})))
                    (-> wrapped-value
                        (update :nextjournal/value (fn [value]
                                                     (process-blocks viewers (merge (->opts wrapped-value) value))))
@@ -1512,8 +1506,6 @@
 
 (defn apply-viewers* [wrapped-value]
   (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
-        #_#__ (when-not (:store!-cljs-namespace hoisted-wrapped-value)
-            (throw (ex-info "NOOOOO APPLYVIEWERS* HOISTED" {})))
         viewers (->viewers hoisted-wrapped-value)
         _ (when (empty? viewers)
             (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
@@ -1525,8 +1517,6 @@
                                                                            (assoc :nextjournal/applied-viewer viewer))
                                                                  transform-fn transform-fn))
                             viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
-        #_#__ (when-not (:store!-cljs-namespace transformed-value)
-            (throw (ex-info "NOOOOO APPLYVIEWERS* TRANDFORMEd" {})))
         wrapped-value' (cond-> transformed-value
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
@@ -1680,17 +1670,13 @@
                    (into {}
                          (map (fn [[k v]]
                                 [k (if (preserve-keys-fn k)
-                                     (do
-                                       (prn :preserve-keys)
-                                       v)
+                                     v
                                      (let [v (inherit-opts wrapped-value v k)]
-                                       (prn :child (:store!-cljs-namespace v))
                                        (present* v)))]))
                          xs)
                    (into []
                          (comp (if paginate? (drop+take-xf fetch-opts') identity)
                                (map-indexed (fn [i x] (present* (let [v (inherit-opts wrapped-value x (+ i (or offset 0)))]
-                                                                  (prn :child (:store!-cljs-namespace v))
                                                                   v))))
                                (remove nil?))
                          (ensure-sorted xs)))
@@ -1737,7 +1723,6 @@
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
-  (prn :present* store!-wrapped-value (hash store!-wrapped-value))
   (when store!-wrapped-value
     (store!-wrapped-value wrapped-value))
   (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
@@ -1830,16 +1815,6 @@
   ;; Check for elisions as well
   (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
 
-#?(:clj
-   (defn where-am-i
-     ([] (where-am-i 10))
-     ([depth]
-      (let [ks [:fileName :lineNumber :className]]
-        (pprint/print-table
-         ks
-         (map (comp #(select-keys % ks) bean)
-              (take depth (.getStackTrace (Thread/currentThread)))))))))
-
 (defn present
   "Presents the given value `x`.
 
@@ -1848,9 +1823,6 @@
   (let [opts (when (wrapped-value? x)
                (->opts (normalize-viewer-opts x)))
         !path->wrapped-value (atom {})]
-    #_(when-not (:store!-cljs-namespace x)
-      (where-am-i 30)
-      (throw (ex-info "NO CLJS STORE" {})))
     (-> (ensure-wrapped-with-viewers x)
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
@@ -1861,10 +1833,7 @@
         present*
         assign-closing-parens
         (assoc :cljs-namespaces (when-let [f (get-safe x :store!-cljs-namespace)]
-                                  (prn :f f)
                                   (f))))))
-
-#_(require '[nextjournal.clerk] :reload-all)
 
 (comment
   (present [\a \b])
