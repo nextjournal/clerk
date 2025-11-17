@@ -8,7 +8,7 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 💫 Detect and throw on infinte loops during presentation
 
 ## 0.18.1158 (2025-11-17)
 
