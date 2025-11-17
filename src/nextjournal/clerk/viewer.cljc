@@ -1519,7 +1519,7 @@
                            (merge (->value transformed-value)))]
       (if (and transform-fn (not render-fn))
         (if (<= 10 recursion-counter)
-          (throw (ex-info "infinity" wrapped-value'))
+          (throw (ex-info "Clerk detected an infinte loop during presentation." wrapped-value'))
           (recur (inc recursion-counter) wrapped-value'))
         (-> wrapped-value'
             (assoc :nextjournal/viewer viewer)
