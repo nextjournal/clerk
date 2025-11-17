@@ -1498,27 +1498,32 @@
     (merge x (hoist-nested-wrapped-value (get-safe x :nextjournal/value)))
     x))
 
-(defn apply-viewers* [wrapped-value]
-  (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
-        viewers (->viewers hoisted-wrapped-value)
-        _ (when (empty? viewers)
-            (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
-        {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]}
-        (viewer-for viewers hoisted-wrapped-value)
-        transformed-value (cond-> (ensure-wrapped-with-viewers viewers
-                                                               (cond-> (-> hoisted-wrapped-value
-                                                                           (dissoc :nextjournal/viewer)
-                                                                           (assoc :nextjournal/applied-viewer viewer))
-                                                                 transform-fn transform-fn))
-                            viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
-        wrapped-value' (cond-> transformed-value
-                         (-> transformed-value ->value wrapped-value?)
-                         (merge (->value transformed-value)))]
-    (if (and transform-fn (not render-fn))
-      (recur wrapped-value')
-      (-> wrapped-value'
-          (assoc :nextjournal/viewer viewer)
-          (merge (->opts wrapped-value))))))
+(defn apply-viewers*
+  [wrapped-value]
+  (loop [recursion-counter 0
+         wrapped-value wrapped-value]
+    (let [hoisted-wrapped-value (hoist-nested-wrapped-value wrapped-value)
+          viewers (->viewers hoisted-wrapped-value)
+          _ (when (empty? viewers)
+              (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
+          {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]}
+          (viewer-for viewers hoisted-wrapped-value)
+          transformed-value (cond-> (ensure-wrapped-with-viewers viewers
+                                                                 (cond-> (-> hoisted-wrapped-value
+                                                                             (dissoc :nextjournal/viewer)
+                                                                             (assoc :nextjournal/applied-viewer viewer))
+                                                                   transform-fn transform-fn))
+                              viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
+          wrapped-value' (cond-> transformed-value
+                           (-> transformed-value ->value wrapped-value?)
+                           (merge (->value transformed-value)))]
+      (if (and transform-fn (not render-fn))
+        (if (<= 10 recursion-counter)
+          (throw (ex-info "infinity" wrapped-value'))
+          (recur (inc recursion-counter) wrapped-value'))
+        (-> wrapped-value'
+            (assoc :nextjournal/viewer viewer)
+            (merge (->opts wrapped-value)))))))
 
 (defn apply-viewers [x]
   (apply-viewers* (ensure-wrapped-with-viewers x)))
