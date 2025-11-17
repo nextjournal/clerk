@@ -132,7 +132,13 @@
 
   (testing "table viewer (with :transform-fn) width can be overriden"
     (is (= :full
-           (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]})))))))
+           (:nextjournal/width (v/apply-viewers (v/table {:nextjournal.clerk/width :full} {:a [1] :b [2] :c [3]}))))))
+
+  (testing "infinite loop detection"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (v/present (v/with-viewers [{:pred number?
+                                              :transform-fn (v/update-val inc)}]
+                              1))))))
 
 (deftest presenting-wrapped-values
   (testing "apply-viewers is invariant on wrapped values"

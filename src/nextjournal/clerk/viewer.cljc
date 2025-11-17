@@ -1511,11 +1511,14 @@
                                                                            (assoc :nextjournal/applied-viewer viewer))
                                                                  transform-fn transform-fn))
                             viewers-to-add (update :nextjournal/viewers add-viewers viewers-to-add))
-        wrapped-value' (cond-> transformed-value
+        recursion-counter (::recursion-counter wrapped-value 0)
+        wrapped-value' (cond-> (assoc transformed-value ::recursion-counter (inc recursion-counter))
                          (-> transformed-value ->value wrapped-value?)
                          (merge (->value transformed-value)))]
     (if (and transform-fn (not render-fn))
-      (recur wrapped-value')
+      (if (<= 10 recursion-counter)
+        (throw (ex-info "infinity" wrapped-value'))
+        (recur wrapped-value'))
       (-> wrapped-value'
           (assoc :nextjournal/viewer viewer)
           (merge (->opts wrapped-value))))))
