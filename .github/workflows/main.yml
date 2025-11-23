@@ -91,14 +91,14 @@ jobs:
           cli: '1.12.0.1530'
           bb: latest
 
-      - name: 🗝 maven cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.m2
-            ~/.gitlibs
-            ~/.deps.clj
-          key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}
+      # - name: 🗝 maven cache
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: |
+      #       ~/.m2
+      #       ~/.gitlibs
+      #       ~/.deps.clj
+      #     key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}
       - name: 🧪 Run tests
         shell: bash
         run: |
