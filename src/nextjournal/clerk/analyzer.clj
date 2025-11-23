@@ -408,7 +408,7 @@
 
 (defn normalize-filename [f]
   (if (fs/windows?)
-    (-> f fs/normalize fs/unixify)
+    (-> f fs/normalize utils/unixify)
     f))
 
 (defn ns->jar [ns]
@@ -456,7 +456,7 @@
                                       "jar" (first (str/split (.getPath resource) #"!"))
                                       "file" (str resource))]
                   (-> resource-file java.net.URI. io/file str))))
-            fs/unixify)))
+            utils/unixify)))
 
 #_(var->location #'inc)
 #_(var->location #'var->location)
@@ -550,7 +550,7 @@
                                  (let [jar? (or (nil? source)
                                                 (str/ends-with? source ".jar"))
                                        gitlib-hash (and (not jar?)
-                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
+                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (utils/unixify source))))]
                                    (if (or jar? gitlib-hash)
                                      (update g :->analysis-info merge (into {} (map (juxt identity
                                                                                           (constantly (if source
