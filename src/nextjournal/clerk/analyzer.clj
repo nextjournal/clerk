@@ -451,12 +451,15 @@
               (when (fs/exists? file)
                 (fs/relativize (fs/cwd) (fs/file file)))
               (when-let [resource (io/resource file)]
-                (let [protocol (.getProtocol resource)]
-                  (or (and (= "jar" protocol)
-                           (second (re-find #"^file:(.*)!" (.getFile resource))))
-                      (and (= "file" protocol)
-                           (.getFile resource))))))
+                (let [protocol (.getProtocol resource)
+                      resource-file (case protocol
+                                      "jar" (first (str/split (.getPath resource) #"!"))
+                                      "file" (str resource))]
+                  (-> resource-file java.net.URI. io/file str))))
             str)))
+
+#_(var->location #'inc)
+#_(var->location #'var->location)
 
 (defn find-location [sym]
   (if (deref? sym)
@@ -537,12 +540,6 @@
           init-state (if ran-macros?
                        (init-state-fn)
                        init-state)]
-      (let [{:as _state :keys [->analysis-info analyzed-file-set _counter]} init-state
-            unhashed (unhashed-deps ->analysis-info)
-            loc->syms (apply dissoc
-                             (group-by find-location unhashed)
-                             analyzed-file-set)]
-        (prn :loc->syms loc->syms))
       (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
         (let [unhashed (unhashed-deps ->analysis-info)
               loc->syms (apply dissoc
@@ -550,7 +547,6 @@
                                analyzed-file-set)]
           (if (and (seq loc->syms) (< counter 10))
             (recur (-> (reduce (fn [g [source symbols]]
-                                 (prn :source source)
                                  (let [jar? (or (nil? source)
                                                 (str/ends-with? source ".jar"))
                                        gitlib-hash (and (not jar?)
