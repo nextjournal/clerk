@@ -133,13 +133,13 @@ jobs:
           bb: latest
 
       - name: 🗝 maven cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.m2
-            ~/.gitlibs
-            ~/.deps.clj
-          key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}-${{ hashFiles('bb.edn') }}
+        # uses: actions/cache@v3
+        # with:
+        #   path: |
+        #     ~/.m2
+        #     ~/.gitlibs
+        #     ~/.deps.clj
+        #   key: ${{ runner.os }}-maven-test-${{ hashFiles('deps.edn') }}-${{ hashFiles('bb.edn') }}
 
       - name: 🧪 Run tests
         shell: bash
