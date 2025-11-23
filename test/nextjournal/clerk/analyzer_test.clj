@@ -324,10 +324,6 @@
 
 (deftest analyze-doc
   (utils/when-not-bb
-   (prn :result
-        (-> "^:nextjournal.clerk/no-cache (ns example-notebook)
-#{3 1 2}"
-            analyze-string :->analysis-info vals set))
    (is (match? #{{:form '(ns example-notebook),
                   :deps set?}
                  {:form '#{1 3 2}}
