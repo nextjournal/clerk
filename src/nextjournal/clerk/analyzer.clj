@@ -537,8 +537,13 @@
           init-state (if ran-macros?
                        (init-state-fn)
                        init-state)]
+      (let [{:as _state :keys [->analysis-info analyzed-file-set _counter]} init-state
+            unhashed (unhashed-deps ->analysis-info)
+            loc->syms (apply dissoc
+                             (group-by find-location unhashed)
+                             analyzed-file-set)]
+        (prn :loc->syms loc->syms))
       (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
-        (prn :analysis->info (set (vals ->analysis-info)))
         (let [unhashed (unhashed-deps ->analysis-info)
               loc->syms (apply dissoc
                                (group-by find-location unhashed)
