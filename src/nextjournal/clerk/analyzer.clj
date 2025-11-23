@@ -456,7 +456,7 @@
                                       "jar" (first (str/split (.getPath resource) #"!"))
                                       "file" (str resource))]
                   (-> resource-file java.net.URI. io/file str))))
-            str)))
+            fs/unixify)))
 
 #_(var->location #'inc)
 #_(var->location #'var->location)
