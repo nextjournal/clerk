@@ -538,12 +538,14 @@
                        (init-state-fn)
                        init-state)]
       (loop [{:as state :keys [->analysis-info analyzed-file-set counter]} init-state]
+        (prn :analysis->info (set (vals ->analysis-info)))
         (let [unhashed (unhashed-deps ->analysis-info)
               loc->syms (apply dissoc
                                (group-by find-location unhashed)
                                analyzed-file-set)]
           (if (and (seq loc->syms) (< counter 10))
             (recur (-> (reduce (fn [g [source symbols]]
+                                 (prn :source source)
                                  (let [jar? (or (nil? source)
                                                 (str/ends-with? source ".jar"))
                                        gitlib-hash (and (not jar?)
