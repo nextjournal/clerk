@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.utils
-  (:require [alphabase.base58 :as base58]))
+  (:require [alphabase.base58 :as base58]
+            [clojure.string :as str]))
 
 (def bb? (System/getProperty "babashka.version"))
 
@@ -23,3 +24,6 @@
 
 (defn ->base58 [x]
   (base58/encode x))
+
+(defn unixify [x]
+  (str/replace (str x) "\\" "/"))
