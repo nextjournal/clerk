@@ -241,7 +241,7 @@
 (deftest present
   (testing "only transform-fn can select viewer"
     (is (match? {:nextjournal/value [:div.viewer.markdown-viewer.w-full.max-w-prose.px-8 {}
-                                     ["h1" {:id "hello-markdown!"} [:<> "👋 Hello "] [:em [:<> "markdown"]] [:<> "!"]]]
+                                     [:h1 {:id "hello-markdown!"} [:<> "👋 Hello "] [:em [:<> "markdown"]] [:<> "!"]]]
                  :nextjournal/viewer {:name `v/markdown-node-viewer}}
                 (v/present (v/with-viewer {:transform-fn (comp v/md v/->value)}
                              "# 👋 Hello _markdown_!")))))
