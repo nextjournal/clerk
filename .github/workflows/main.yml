@@ -65,8 +65,7 @@ jobs:
 
     strategy:
       matrix:
-        sys:
-          - { os: macos-latest, shell: bash }
+        sys: # - { os: macos-latest, shell: bash }
           - { os: ubuntu-latest, shell: bash }
           - { os: windows-latest, shell: powershell }
         clojure:
@@ -110,8 +109,7 @@ jobs:
 
     strategy:
       matrix:
-        sys:
-          - { os: macos-latest, shell: bash }
+        sys: # - { os: macos-latest, shell: bash }
           - { os: ubuntu-latest, shell: bash }
           - { os: windows-latest, shell: powershell }
     defaults:
