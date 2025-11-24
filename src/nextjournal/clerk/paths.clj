@@ -2,7 +2,8 @@
   "Clerk's paths expansion and paths-fn handling."
   (:require [babashka.fs :as fs]
             [clojure.edn :as edn]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [nextjournal.clerk.utils :as utils])
   (:import [java.net URL]))
 
 (defn ^:private ensure-not-empty [build-opts {:as opts :keys [error expanded-paths]}]
@@ -130,7 +131,7 @@
              (fs/exists? file))
     (let [rel (fs/relativize (fs/cwd) (fs/canonicalize file #{:nofollow-links}))]
       (when-not (str/starts-with? (str rel) "..")
-        (fs/unixify rel)))))
+        (utils/unixify rel)))))
 
 #_(path-in-cwd "notebooks/rule_30.clj")
 #_(path-in-cwd "/tmp/foo.clj")
