@@ -145,8 +145,8 @@ jobs:
         shell: bash
         run: |
           # temporarily using dev build because of https://github.com/babashka/sci/issues/1011
-          bash <(curl https://raw.githubusercontent.com/babashka/babashka/master/install)  --dev-build --dir .
-          ./bb test:bb
+          bash <(curl https://raw.githubusercontent.com/babashka/babashka/master/install)  --dev-build --dir /tmp
+          /tmp/bb test:bb
 
   static-build:
     runs-on: ubuntu-latest
