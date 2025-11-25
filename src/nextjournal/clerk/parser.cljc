@@ -435,7 +435,6 @@
   ([{:as opts :keys [skip-doc?]} initial-state s]
    (binding [*ns* (:ns initial-state *ns*)]
      (loop [{:as state :keys [nodes blocks block-settings add-comment-on-line? add-block-id]}
-
             (assoc initial-state
                    :nodes (:children (try (p/parse-string-all s)
                                           (catch Exception e
@@ -471,8 +470,9 @@
                                     :settings (merge-settings next-block-settings (parse-local-block-settings form))
                                     :text nstring
                                     :form (add-loc opts loc form)
-                                    :loc loc}]
-                    (when (ns? form)
+                                    :loc loc}
+                        ns? (ns? form)]
+                    (when ns?
                       (eval form))
                     (cond-> (-> state
                                 (assoc :add-comment-on-line? true)
@@ -480,7 +480,8 @@
                                 (assoc :block-settings next-block-settings)
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
-                      (assoc :ns *ns*)))
+                      (assoc :ns *ns*)
+                      ns? (update :md-context merge (:nextjournal.clerk/markdown (meta *ns*)))))
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
                       (assoc :add-comment-on-line? (not (n/comment? node)))
