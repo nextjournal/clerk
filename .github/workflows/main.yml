@@ -144,7 +144,9 @@ jobs:
       - name: 🧪 Run tests
         shell: bash
         run: |
-          bb test:bb
+          # temporarily using dev build because of https://github.com/babashka/sci/issues/1011
+          bash <(curl https://raw.githubusercontent.com/babashka/babashka/master/install)  --dev-build --dir .
+          ./bb test:bb
 
   static-build:
     runs-on: ubuntu-latest
