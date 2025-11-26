@@ -296,7 +296,7 @@
          "w-full max-w-prose px-8")])))
 
 (defn render-result [{:nextjournal/keys [fetch-opts hash presented]} {:keys [id auto-expand-results?]}]
-  #?(:cljs [:div "TODO render-result"]
+  #?(:clj [:div "TODO render-result"]
      :cljs (let [!desc (hooks/use-state-with-deps presented [hash])
                  !expanded-at (hooks/use-state-with-deps (when (map? @!desc) (->expanded-at auto-expand-results? @!desc)) [hash])
                  fetch-fn (hooks/use-callback (when fetch-opts
