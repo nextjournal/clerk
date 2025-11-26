@@ -1,31 +1,32 @@
 (ns nextjournal.clerk.render
   (:refer-clojure :exclude [atom])
-  (:require #?@(:cljs
-                [["framer-motion" :refer [motion]]
-                 ["react" :as react]
-                 ["react-dom/client" :as react-client]
-                 [applied-science.js-interop :as j]
-                 [cljs.reader]
-                 [goog.events :as gevents]
-                 [goog.object]
-                 [goog.string :as gstring]
-
-                 [nextjournal.clerk.render.code :as code]
-                 [nextjournal.clerk.render.context :as view-context]
-                 [nextjournal.clerk.render.hooks :as hooks]
-                 [nextjournal.clerk.render.navbar :as navbar]
-                 [nextjournal.clerk.render.panel :as panel]
-                 [reagent.core :as r]
-                 [reagent.ratom :as ratom]
-                 [sci.core :as sci]
-                 [sci.ctx-store]
-                 [shadow.cljs.modern :refer [defclass]]])
-            [clojure.core :as core]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [editscript.core :as editscript]
-            [nextjournal.clerk.viewer :as viewer]
-            [nextjournal.clerk.walk :as w]))
+  (:require
+   [clojure.string :as str]
+   [nextjournal.clerk.viewer :as viewer]
+   #?@(:cljs
+       [["framer-motion" :refer [motion]]
+        ["react" :as react]
+        ["react-dom/client" :as react-client]
+        [applied-science.js-interop :as j]
+        [cljs.reader]
+        [clojure.set :as set]
+        [editscript.core :as editscript]
+        [goog.events :as gevents]
+        [goog.object]
+        [goog.string :as gstring]
+        [nextjournal.clerk.render.code :as code]
+        [nextjournal.clerk.render.context :as view-context]
+        [nextjournal.clerk.render.hooks :as hooks]
+        [nextjournal.clerk.render.navbar :as navbar]
+        [nextjournal.clerk.render.panel :as panel]
+        [nextjournal.clerk.walk :as w]
+        [reagent.core :as r]
+        [reagent.ratom :as ratom]
+        [sci.core :as sci]
+        [sci.ctx-store]
+        [shadow.cljs.modern :refer [defclass]]]
+       :clj
+       [[clojure.core :as core]])))
 
 #?(:cljs (r/set-default-compiler! (r/create-compiler {:function-components true})))
 
@@ -60,8 +61,8 @@
 (defonce !panels (cursor !state [:panels]))
 (defonce !render-errors (cursor !state [:render-errors]))
 
-#_(defn reagent-atom? [x]
-    (satisfies? ratom/IReactiveAtom x))
+#?(:cljs (defn reagent-atom? [x]
+           (satisfies? ratom/IReactiveAtom x)))
 
 (defn dark-mode-toggle []
   #?(:cljs
@@ -665,7 +666,7 @@
 
 (declare mount)
 
-(defonce ^:private ^:dynamic *sync* true)
+#?(:cljs (defonce ^:private ^:dynamic *sync* true))
 
 #?(:cljs (defn ws-send! [msg]
            (if (exists? js/ws_send)
