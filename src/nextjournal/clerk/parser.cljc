@@ -481,7 +481,7 @@
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
                       (assoc :ns *ns*)
-                      ns? (update :md-context merge (:nextjournal.clerk/markdown (meta *ns*)))))
+                      ns? (update-in [:md-context :opts] merge (:nextjournal.clerk/markdown (meta *ns*)))))
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
                       (assoc :add-comment-on-line? (not (n/comment? node)))
