@@ -861,9 +861,7 @@
       (let [path (.-pathname url)
             edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
         (.pushState js/history #js {:edn_path edn-path} ""
-                    (str (cond-> path
-                           (not (str/ends-with? path "/"))
-                           (str "/")) (.-hash url))) ;; a trailing slash is needed to make relative paths work
+                    (str path (.-hash url)))
         (fetch+set-state edn-path)))))
 
 (defn load->fetch [{:keys [current-path]} _e]
