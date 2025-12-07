@@ -9,6 +9,7 @@ Changes can be:
 ## Unreleased
 
 * 💫 Detect and throw on infinte loops during presentation
+* 🐜 Fix relative links by removing trailing slash, fixes [#783](https://github.com/nextjournal/clerk/issues/783)
 
 ## 0.18.1158 (2025-11-17)
 
