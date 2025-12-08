@@ -288,10 +288,10 @@
       (let [{:as analyzed-doc :keys [ns]}
             (cond
               no-cache
-              parsed-doc
+              (analyzer/analyze-doc parsed-doc)
 
               config/cache-disabled?
-              (assoc parsed-doc :no-cache true)
+              (assoc (analyzer/analyze-doc parsed-doc) :no-cache true)
 
               :else
               (do

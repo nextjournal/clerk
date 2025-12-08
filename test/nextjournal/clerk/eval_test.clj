@@ -322,3 +322,23 @@
   (is (match? {:blocks [{:type :code,
                          :result {:nextjournal/value "foo"}}]}
               (eval/eval-string "(re-find '#\"foo\" \"foobar\")"))))
+
+(deftest issue-781-var-snapshot-test
+  (let [notebook (fn [cache?]
+                   (format "(ns parsing-extensibility
+  {:nextjournal.clerk/toc :collapsed
+   :nextjournal.clerk/no-cache %s}
+  (:require [nextjournal.clerk :as clerk]))
+
+^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
+(def show-text
+  {:transform-fn (fn [x] (clerk/html [:pre (:nextjournal/value x)]))})
+
+^{::clerk/visibility {:code :hide} ::clerk/viewer show-text}
+(def x 1)"
+                           (not cache?)))]
+    (doseq [cache? [true false]]
+      (is (match? {:nextjournal.clerk/var-from-def var?
+                   :nextjournal.clerk/var-snapshot 1}
+                  (-> (eval/eval-string (notebook cache?))
+                      :blocks last :result :nextjournal/value))))))

@@ -713,7 +713,7 @@
 #_(->hash-str (range))
 
 (defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
-  (if (seq deref-deps)
+  (if (and graph (seq deref-deps))
     (let [topo-comp (dep/topo-comparator graph)
           deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]
