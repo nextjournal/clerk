@@ -337,7 +337,7 @@
 ^{::clerk/visibility {:code :hide} ::clerk/viewer show-text}
 (def x 1)"
                            (not cache?)))]
-    (doseq [cache? [true #_false]]
+    (doseq [cache? [true false]]
       (is (match? {:nextjournal.clerk/var-from-def var?
                    :nextjournal.clerk/var-snapshot 1}
                   (-> (eval/eval-string (notebook cache?))
