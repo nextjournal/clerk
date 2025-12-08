@@ -93,7 +93,8 @@
     :nextjournal.clerk/page-size
     :nextjournal.clerk/render-evaluator
     :nextjournal.clerk/visibility
-    :nextjournal.clerk/width})
+    :nextjournal.clerk/width
+    :nextjournal.clerk/markdown})
 
 (defn settings-marker? [form]
   (boolean (and (map? form)
@@ -466,6 +467,7 @@
                                                              {:nextjournal.clerk/visibility {:code :show :result :show}}
                                                              (parse-global-block-settings form)))
                                              (parse-global-block-settings form))
+                        md-settings (:nextjournal.clerk/markdown next-block-settings)
                         code-block {:type :code
                                     :settings (merge-settings next-block-settings (parse-local-block-settings form))
                                     :text nstring
@@ -481,7 +483,8 @@
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
                       (assoc :ns *ns*)
-                      ns? (update-in [:md-context :opts] merge (:nextjournal.clerk/markdown (meta *ns*)))))
+                      ns? (update-in [:md-context :opts] merge (:nextjournal.clerk/markdown (meta *ns*)))
+                      md-settings (update-in [:md-context :opts] merge md-settings)))
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
                       (assoc :add-comment-on-line? (not (n/comment? node)))

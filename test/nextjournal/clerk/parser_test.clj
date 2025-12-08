@@ -48,10 +48,25 @@ line\""}]
                        {:file string?}
                        (parser/parse-clojure-string {:doc? true :file "foo.clj"} "##boom"))))
   (testing "markdown settings"
-    (is (= "$1 + $2 = $3"
-           (-> (parser/parse-clojure-string "(ns foo {:nextjournal.clerk/markdown {:disable-inline-formulas true}})
+    (let [parsed (parser/parse-clojure-string "(ns scratch
+  {:nextjournal.clerk/markdown {:disable-inline-formulas true}}
+  (:require [nextjournal.clerk :as clerk]))
+
+;; $1 + $2 = $3
+
+{:nextjournal.clerk/markdown {:disable-inline-formulas false}}
+
+;; $1 + $2 = $3
+
+{:nextjournal.clerk/markdown {:disable-inline-formulas true}}
+
 ;; $1 + $2 = $3")
-               :blocks second :doc :content first :content first :text)))))
+          blocks (take-nth 2 (rest (:blocks parsed)))
+          contents (map #(-> % :doc :content first :content) blocks)]
+      (is (match? '([{:type :text, :text "$1 + $2 = $3"}]
+                    [{:type :formula, :text "1 + "} {:type :text, :text "2 = $3"}]
+                    [{:type :text, :text "$1 + $2 = $3"}])
+                  contents)))))
 
 (deftest parse-inline-comments
   (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}
