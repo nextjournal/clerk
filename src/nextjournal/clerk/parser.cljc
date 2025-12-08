@@ -472,9 +472,8 @@
                                     :settings (merge-settings next-block-settings (parse-local-block-settings form))
                                     :text nstring
                                     :form (add-loc opts loc form)
-                                    :loc loc}
-                        ns? (ns? form)]
-                    (when ns?
+                                    :loc loc}]
+                    (when (ns? form)
                       (eval form))
                     (cond-> (-> state
                                 (assoc :add-comment-on-line? true)
