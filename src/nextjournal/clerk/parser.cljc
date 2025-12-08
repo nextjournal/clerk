@@ -480,11 +480,10 @@
                                 (assoc :add-comment-on-line? true)
                                 (update :nodes rest)
                                 (assoc :block-settings next-block-settings)
+                                (assoc-in [:md-context :opts] md-settings)
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
-                      (assoc :ns *ns*)
-                      ns? (update-in [:md-context :opts] merge (:nextjournal.clerk/markdown (meta *ns*)))
-                      md-settings (update-in [:md-context :opts] merge md-settings)))
+                      (assoc :ns *ns*)))
                   (and add-comment-on-line? (whitespace-on-line-tags (n/tag node)))
                   (-> state
                       (assoc :add-comment-on-line? (not (n/comment? node)))
