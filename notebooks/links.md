@@ -63,4 +63,6 @@ The same functionality is available in the SCI context when building render func
 Links should work inside markdown as well.
 
 * [HTML](../notebooks/viewers/html) (relative link)
+* [HTML](./viewers/html) (relative link)
+* [HTML](viewers/html) (relative link)
 * [HTML](clerk/doc-url,"notebooks/viewers/html") (doc url, currently not functional)

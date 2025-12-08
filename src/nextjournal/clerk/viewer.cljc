@@ -793,7 +793,7 @@
    {:name :nextjournal.markdown/heading
     :transform-fn (into-markup
                    (fn [{:keys [attrs heading-level]}]
-                     [(str "h" heading-level) attrs]))}
+                     [(keyword (str "h" heading-level)) attrs]))}
    {:name :nextjournal.markdown/image
     :transform-fn (fn [{node :nextjournal/value}]
                     (with-viewer `html-viewer
