@@ -13,7 +13,7 @@
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.utils :as utils]
             [nextjournal.clerk.walk :as walk]
-            [weavejester.dependency :as dep]))
+            [nextjournal.clerk.analyzer.impl.dependency :as dep]))
 
 (when-not utils/bb?
   (require '[taoensso.nippy :as nippy]))

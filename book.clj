@@ -16,7 +16,7 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.viewer :as v]
-            [weavejester.dependency :as dep])
+            [nextjournal.clerk.analyzer.impl.dependency :as dep])
   (:import (javax.imageio ImageIO)
            (java.net URL)))
 
