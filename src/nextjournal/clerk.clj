@@ -72,11 +72,9 @@
                                                                (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))
              {presentation-ms :time-ms} (eval/time-ms (webserver/update-doc! result))]
          (println (format (if (:error result)
-                            "Clerk encountered an error showing '%s' after %dms%s."
-                            "Clerk showed '%s' in %dms%s.")
-                          file
-                          (long (+ parsing-ms eval-ms presentation-ms))
-                          (format " (parsing: %dms, eval: %dms, presentation: %dms)" (long parsing-ms) (long eval-ms) (long presentation-ms))))
+                            "Clerk encountered an error showing '%s' after %dms (parsing: %dms, eval: %dms, presentation: %dms)."
+                            "Clerk showed '%s' in %dms (parsing: %dms, eval: %dms, presentation: %dms).")
+                          file (long (+ parsing-ms eval-ms presentation-ms)) (long parsing-ms) (long eval-ms) (long presentation-ms)))
          (when-let [error (and (not (::skip-throw opts))
                                (:error result))]
            (throw error)))
