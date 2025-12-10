@@ -52,28 +52,31 @@
 
                     :else
                     file-or-ns)
-             doc (try (merge (webserver/get-build-opts)
-                             opts
-                             (when-let [path (paths/path-in-cwd file-or-ns)]
-                               {:file-path path})
-                             {:nav-path (webserver/->nav-path file-or-ns)}
-                             (parser/parse-file file))
-                      (catch java.io.FileNotFoundException e
-                        (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
-                                        {:file-or-ns file-or-ns}
-                                        e)))
-                      (catch Exception e
-                        (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
-                                        {:file file-or-ns}
-                                        e))))
+             {doc :result parsing-ms :time-ms} (try (eval/time-ms (merge (webserver/get-build-opts)
+                                                                         opts
+                                                                         (when-let [path (paths/path-in-cwd file-or-ns)]
+                                                                           {:file-path path})
+                                                                         {:nav-path (webserver/->nav-path file-or-ns)}
+                                                                         (parser/parse-file file)))
+                                                    (catch java.io.FileNotFoundException e
+                                                      (throw (ex-info (str "`nextjournal.clerk/show!` could not find the file: `" (pr-str file-or-ns) "`")
+                                                                      {:file-or-ns file-or-ns}
+                                                                      e)))
+                                                    (catch Exception e
+                                                      (throw (ex-info (str "`nextjournal.clerk/show!` could not not parse the file: `" (pr-str file-or-ns) "`")
+                                                                      {:file file-or-ns}
+                                                                      e))))
              _ (reset! !last-file file)
              {:keys [blob->result]} @webserver/!doc
-             {:keys [result time-ms]} (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
-                                                      (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))]
-         (if (:error result)
-           (println (str "Clerk encountered an error evaluating '" file "' after " time-ms "ms."))
-           (println (str "Clerk evaluated '" file "' in " time-ms "ms.")))
-         (webserver/update-doc! result)
+             {:keys [result] eval-ms :time-ms} (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
+                                                               (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))
+             {presentation-ms :time-ms} (eval/time-ms (webserver/update-doc! result))]
+         (println (format (if (:error result)
+                            "Clerk encountered an error showing '%s' after %dms%s."
+                            "Clerk showed '%s' in %dms%s.")
+                          file
+                          (long (+ parsing-ms eval-ms presentation-ms))
+                          (format " (parsing: %dms, eval: %dms, presentation: %dms)" (long parsing-ms) (long eval-ms) (long presentation-ms))))
          (when-let [error (and (not (::skip-throw opts))
                                (:error result))]
            (throw error)))
