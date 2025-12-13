@@ -7,10 +7,18 @@
 (def mermaid {:transform-fn clerk/mark-presented
               :render-fn '(fn [value]
                             (when value
-                              [nextjournal.clerk.render/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
-                               (fn [mermaid]
-                                 [:div {:ref (fn [el] (when el
-                                                        (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])]))})
+                              [nextjournal.clerk.render/with-d3-require {:package ["mermaid@11.3.0/dist/mermaid.min.js"]}
+                               (fn [_]
+                                 [:div {:ref (fn [el]
+                                               (when el
+                                                 (let [m js/mermaid
+                                                       id (str (gensym))]
+                                                   (.initialize m (js-obj :startOnLoad false))
+                                                   (-> (.render m id value)
+                                                       (.then (fn [result]
+                                                                (set! (.-innerHTML el) (.-svg result))))
+                                                       (.catch (fn [err]
+                                                                 (js/console.error "Mermaid render error:" err)))))))}])]))})
 
 ;; We can then use  the above viewer using `with-viewer`.
 (clerk/with-viewer mermaid
