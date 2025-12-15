@@ -66,7 +66,7 @@
 
 (def set-conj (fnil conj #{}))
 
-(defrecord MapDependencyGraph [dependencies transitive-dependencies dependents transitive-dependents]
+(defrecord MapDependencyGraph [dependencies transitive-deps dependents transitive-dependents]
   DependencyGraph
   (immediate-dependencies [graph node]
     (get dependencies node #{}))
@@ -85,36 +85,35 @@
                        (set (keys dependents))))
   DependencyGraphUpdate
   (depend [graph node dep]
-    (when (or (= node dep) (depends? graph dep node))
+    (when (= node dep)
+      (throw (ex-info (str "Self-dependency: " (pr-str node))
+                      {:reason ::circular-dependency
+                       :node node
+                       :dependency dep})))
+    ;; Check for circular dependency using cached transitive deps
+    (when (contains? (get transitive-deps dep #{}) node)
       (throw (ex-info (str "Circular dependency between "
                            (pr-str node) " and " (pr-str dep))
                       {:reason ::circular-dependency
                        :node node
                        :dependency dep})))
-    (let [dependencies (update-in dependencies [node] set-conj dep)
-          transitive-dependencies (update-in transitive-dependencies [node] set-conj dep)
-          dependents (update-in dependents [dep] set-conj node)
-          transitive-dependents (if-let [node-deps (get transitive-dependencies node)]
-                                  (reduce (fn [acc n]
-                                            (update-in acc [dep] set-conj n))
-                                          transitive-dependents
-                                          node-deps)
-                                  transitive-dependencies)
-          transitive-dependencies (do
-                                    (prn :node node :dependents (get dependents node))
-                                    (if-let [depends-on-node (get dependents node)]
-                                      (reduce (fn [acc n]
-                                                (prn :acc acc :n n :node node)
-                                                (update-in acc [n] set-conj dep))
-                                                transitive-dependencies
-                                                depends-on-node)
-                                        transitive-dependencies))
-          ]
+    ;; Calculate new transitive dependencies for node
+    ;; node now depends on: dep + all transitive deps of dep
+    (let [new-trans-for-node (conj (get transitive-deps dep #{}) dep)
+          ;; Find all nodes that transitively depend on node
+          ;; (we need to update all of them)
+          nodes-to-update (conj (transitive dependents #{node}) node)
+          ;; Update transitive deps for all affected nodes
+          updated-trans (reduce
+                         (fn [td n]
+                           (update td n set/union new-trans-for-node))
+                         transitive-deps
+                         nodes-to-update)]
       (MapDependencyGraph.
-       dependencies
-       transitive-dependencies
-       dependents
-       transitive-dependents)))
+       (update dependencies node set-conj dep)
+       updated-trans
+       (update dependents dep set-conj node)
+       nil)))
   (remove-edge [graph node dep]
     (MapDependencyGraph.
      (update-in dependencies [node] disj dep)
@@ -142,6 +141,50 @@
       (depend 2 3)
       (depend 3 4))
   )
+
+#_(defrecord MapDependencyGraph [dependencies dependents]
+  DependencyGraph
+  (immediate-dependencies [graph node]
+    (get dependencies node #{}))
+  (immediate-dependents [graph node]
+    (get dependents node #{}))
+  (transitive-dependencies [graph node]
+    (transitive dependencies #{node}))
+  (transitive-dependencies-set [graph node-set]
+    (transitive dependencies node-set))
+  (transitive-dependents [graph node]
+    (transitive dependents #{node}))
+  (transitive-dependents-set [graph node-set]
+    (transitive dependents node-set))
+  (nodes [graph]
+    (clojure.set/union (set (keys dependencies))
+                       (set (keys dependents))))
+  DependencyGraphUpdate
+  (depend [graph node dep]
+    (when (or (= node dep) (depends? graph dep node))
+      (throw (ex-info (str "Circular dependency between "
+                           (pr-str node) " and " (pr-str dep))
+                      {:reason ::circular-dependency
+                       :node node
+                       :dependency dep})))
+    (MapDependencyGraph.
+     (update-in dependencies [node] set-conj dep)
+     (update-in dependents [dep] set-conj node)))
+  (remove-edge [graph node dep]
+    (MapDependencyGraph.
+     (update-in dependencies [node] disj dep)
+     (update-in dependents [dep] disj node)))
+  (remove-all [graph node]
+    (MapDependencyGraph.
+     (remove-from-map dependencies node)
+     (remove-from-map dependents node)))
+  (remove-node [graph node]
+    (MapDependencyGraph.
+     (dissoc dependencies node)
+     dependents)))
+
+#_(defn graph "Returns a new, empty, dependency graph." []
+  (->MapDependencyGraph {} {}))
 
 (defn depends?
   "True if x is directly or transitively dependent on y."
