@@ -1,22 +1,23 @@
 (ns nextjournal.clerk.analyzer-test
-  (:require [babashka.fs :as fs]
-            [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]
-            [edamame.core :as e]
-            [matcher-combinators.matchers :as m]
-            [matcher-combinators.test :refer [match?]]
-            #_:clj-kondo/ignore
-            [nextjournal.clerk :as clerk :refer [defcached]]
-            [nextjournal.clerk.analyzer :as ana]
-            [nextjournal.clerk.config :as config]
-            [nextjournal.clerk.fixtures.dep-a]
-            [nextjournal.clerk.fixtures.dep-b]
-            [nextjournal.clerk.fixtures.issue-660-repro]
-            [nextjournal.clerk.parser :as parser]
-            [nextjournal.clerk.test-utils]
-            [nextjournal.clerk.utils :as utils]
-            [weavejester.dependency :as dep])
-  (:import (clojure.lang ExceptionInfo)))
+  (:require
+   [babashka.fs :as fs]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]
+   [edamame.core :as e]
+   [matcher-combinators.matchers :as m]
+   [matcher-combinators.test :refer [match?]]
+   [nextjournal.clerk :as clerk :refer [defcached]]
+   [nextjournal.clerk.analyzer :as ana]
+   [nextjournal.clerk.analyzer.impl.dependency :as dep]
+   [nextjournal.clerk.config :as config]
+   [nextjournal.clerk.fixtures.dep-a]
+   [nextjournal.clerk.fixtures.dep-b]
+   [nextjournal.clerk.fixtures.issue-660-repro]
+   [nextjournal.clerk.parser :as parser]
+   [nextjournal.clerk.test-utils]
+   [nextjournal.clerk.utils :as utils])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defmacro with-ns-binding [ns-sym & body]
   `(binding [*ns* (find-ns ~ns-sym)]

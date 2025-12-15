@@ -66,7 +66,7 @@
 
 (def set-conj (fnil conj #{}))
 
-(defrecord MapDependencyGraph [dependencies transitive-deps dependents transitive-dependents]
+(defrecord MapDependencyGraph [dependencies transitive-deps dependents]
   DependencyGraph
   (immediate-dependencies [graph node]
     (get dependencies node #{}))
@@ -85,13 +85,9 @@
                        (set (keys dependents))))
   DependencyGraphUpdate
   (depend [graph node dep]
-    (when (= node dep)
-      (throw (ex-info (str "Self-dependency: " (pr-str node))
-                      {:reason ::circular-dependency
-                       :node node
-                       :dependency dep})))
     ;; Check for circular dependency using cached transitive deps
-    (when (contains? (get transitive-deps dep #{}) node)
+    (when (or (= node dep)
+              (contains? (get transitive-deps dep #{}) node))
       (throw (ex-info (str "Circular dependency between "
                            (pr-str node) " and " (pr-str dep))
                       {:reason ::circular-dependency
@@ -112,34 +108,31 @@
       (MapDependencyGraph.
        (update dependencies node set-conj dep)
        updated-trans
-       (update dependents dep set-conj node)
-       nil)))
+       (update dependents dep set-conj node))))
   (remove-edge [graph node dep]
     (MapDependencyGraph.
      (update-in dependencies [node] disj dep)
-     nil
-     (update-in dependents [dep] disj node)
-     nil))
+     transitive-deps
+     (update-in dependents [dep] disj node)))
   (remove-all [graph node]
     (MapDependencyGraph.
      (remove-from-map dependencies node)
-     nil
-     (remove-from-map dependents node)
-     nil))
+     transitive-deps
+     (remove-from-map dependents node)))
   (remove-node [graph node]
     (MapDependencyGraph.
      (dissoc dependencies node)
-     nil
-     dependents
-     nil)))
+     transitive-deps
+     dependents)))
 
 (defn graph "Returns a new, empty, dependency graph." []
-  (->MapDependencyGraph {} {} {} {}))
+  (->MapDependencyGraph {} {} {}))
 
 (comment
   (-> (depend (graph) 1 2)
       (depend 2 3)
-      (depend 3 4))
+      (depend 3 4)
+      (depend 1 1))
   )
 
 #_(defrecord MapDependencyGraph [dependencies dependents]
