@@ -94,6 +94,12 @@
     (let [dependencies (update-in dependencies [node] set-conj dep)
           transitive-dependencies (update-in transitive-dependencies [node] set-conj dep)
           dependents (update-in dependents [dep] set-conj node)
+          transitive-dependents (if-let [node-deps (get transitive-dependencies node)]
+                                  (reduce (fn [acc n]
+                                            (update-in acc [dep] set-conj n))
+                                          transitive-dependents
+                                          node-deps)
+                                  transitive-dependencies)
           transitive-dependencies (do
                                     (prn :node node :dependents (get dependents node))
                                     (if-let [depends-on-node (get dependents node)]
@@ -108,7 +114,7 @@
        dependencies
        transitive-dependencies
        dependents
-       nil)))
+       transitive-dependents)))
   (remove-edge [graph node dep]
     (MapDependencyGraph.
      (update-in dependencies [node] disj dep)
