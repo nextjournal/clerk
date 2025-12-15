@@ -66,27 +66,29 @@
 
 (def set-conj (fnil conj #{}))
 
+;; TODO: make dep graph by id only, should be faster?
+
 (defrecord MapDependencyGraph [dependencies transitive-deps dependents]
   DependencyGraph
-  (immediate-dependencies [graph node]
+  (immediate-dependencies [_graph node]
     (get dependencies node #{}))
-  (immediate-dependents [graph node]
+  (immediate-dependents [_graph node]
     (get dependents node #{}))
-  (transitive-dependencies [graph node]
+  (transitive-dependencies [_graph node]
     (get transitive-deps node)
     #_(transitive dependencies #{node}))
-  (transitive-dependencies-set [graph node-set]
+  (transitive-dependencies-set [_graph node-set]
     (reduce set/union (map #(get transitive-deps %) node-set))
     #_(transitive dependencies node-set))
-  (transitive-dependents [graph node]
+  (transitive-dependents [_graph node]
     (transitive dependents #{node}))
-  (transitive-dependents-set [graph node-set]
+  (transitive-dependents-set [_graph node-set]
     (transitive dependents node-set))
-  (nodes [graph]
+  (nodes [_graph]
     (clojure.set/union (set (keys dependencies))
                        (set (keys dependents))))
   DependencyGraphUpdate
-  (depend [graph node dep]
+  (depend [_graph node dep]
     ;; Check for circular dependency using cached transitive deps
     (when (or (= node dep)
               (contains? (get transitive-deps dep #{}) node))
@@ -95,33 +97,36 @@
                       {:reason ::circular-dependency
                        :node node
                        :dependency dep})))
-    ;; Calculate new transitive dependencies for node
-    ;; node now depends on: dep + all transitive deps of dep
     (let [new-trans-for-node (conj (get transitive-deps dep #{}) dep)
           ;; Find all nodes that transitively depend on node
           ;; (we need to update all of them)
           nodes-to-update (conj (transitive dependents #{node}) node)
+          ;; minus the nodes that already have dep as a dependency maybe?
+          nodes-depending-on-dep (filter #(contains? (get transitive-deps %) dep) nodes-to-update)
+          #_#__ (when-let [x (seq nodes-depending-on-dep)]
+              (prn :nodes-depending-on-dep x))
+          ;; _ (prn :nodes-to-update nodes-to-update :one-deps (get transitive-deps 1))
           ;; Update transitive deps for all affected nodes
           updated-trans (reduce
                          (fn [td n]
                            (update td n set/union new-trans-for-node))
                          transitive-deps
-                         nodes-to-update)]
+                         (apply disj nodes-to-update nodes-depending-on-dep))]
       (MapDependencyGraph.
        (update dependencies node set-conj dep)
        updated-trans
        (update dependents dep set-conj node))))
-  (remove-edge [graph node dep]
+  (remove-edge [_graph node dep]
     (MapDependencyGraph.
      (update-in dependencies [node] disj dep)
      transitive-deps
      (update-in dependents [dep] disj node)))
-  (remove-all [graph node]
+  (remove-all [_graph node]
     (MapDependencyGraph.
      (remove-from-map dependencies node)
      transitive-deps
      (remove-from-map dependents node)))
-  (remove-node [graph node]
+  (remove-node [_graph node]
     (MapDependencyGraph.
      (dissoc dependencies node)
      transitive-deps
@@ -132,9 +137,10 @@
 
 (comment
   (-> (depend (graph) 1 2)
+      (depend 1 4)
       (depend 2 3)
       (depend 3 4)
-      (transitive-dependencies-set #{1 2}))
+      #_(transitive-dependencies-set #{1 2}))
   )
 
 #_(defrecord MapDependencyGraph [dependencies dependents]

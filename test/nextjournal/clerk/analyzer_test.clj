@@ -6,6 +6,7 @@
    [edamame.core :as e]
    [matcher-combinators.matchers :as m]
    [matcher-combinators.test :refer [match?]]
+   #_:clj-kondo/ignore
    [nextjournal.clerk :as clerk :refer [defcached]]
    [nextjournal.clerk.analyzer :as ana]
    [nextjournal.clerk.analyzer.impl.dependency :as dep]
