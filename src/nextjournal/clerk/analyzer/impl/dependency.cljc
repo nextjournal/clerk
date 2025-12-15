@@ -73,9 +73,11 @@
   (immediate-dependents [graph node]
     (get dependents node #{}))
   (transitive-dependencies [graph node]
-    (transitive dependencies #{node}))
+    (get transitive-deps node)
+    #_(transitive dependencies #{node}))
   (transitive-dependencies-set [graph node-set]
-    (transitive dependencies node-set))
+    (reduce set/union (map #(get transitive-deps %) node-set))
+    #_(transitive dependencies node-set))
   (transitive-dependents [graph node]
     (transitive dependents #{node}))
   (transitive-dependents-set [graph node-set]
@@ -132,7 +134,7 @@
   (-> (depend (graph) 1 2)
       (depend 2 3)
       (depend 3 4)
-      (depend 1 1))
+      (transitive-dependencies-set #{1 2}))
   )
 
 #_(defrecord MapDependencyGraph [dependencies dependents]
