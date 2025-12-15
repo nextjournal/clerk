@@ -102,6 +102,7 @@
           ;; (we need to update all of them)
           nodes-to-update (conj (transitive dependents #{node}) node)
           ;; minus the nodes that already have dep as a dependency maybe?
+          ;; not exactly helping perf
           nodes-depending-on-dep (filter #(contains? (get transitive-deps %) dep) nodes-to-update)
           #_#__ (when-let [x (seq nodes-depending-on-dep)]
               (prn :nodes-depending-on-dep x))
