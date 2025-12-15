@@ -66,7 +66,7 @@
 
 (def set-conj (fnil conj #{}))
 
-(defrecord MapDependencyGraph [dependencies dependents]
+(defrecord MapDependencyGraph [dependencies transitive-dependencies dependents transitive-dependents]
   DependencyGraph
   (immediate-dependencies [graph node]
     (get dependencies node #{}))
@@ -85,30 +85,57 @@
                        (set (keys dependents))))
   DependencyGraphUpdate
   (depend [graph node dep]
-    #_(when (or (= node dep) (depends? graph dep node))
+    (when (or (= node dep) (depends? graph dep node))
       (throw (ex-info (str "Circular dependency between "
                            (pr-str node) " and " (pr-str dep))
                       {:reason ::circular-dependency
                        :node node
                        :dependency dep})))
-    (MapDependencyGraph.
-     (update-in dependencies [node] set-conj dep)
-     (update-in dependents [dep] set-conj node)))
+    (let [dependencies (update-in dependencies [node] set-conj dep)
+          transitive-dependencies (update-in transitive-dependencies [node] set-conj dep)
+          dependents (update-in dependents [dep] set-conj node)
+          transitive-dependencies (do
+                                    (prn :node node :dependents (get dependents node))
+                                    (if-let [depends-on-node (get dependents node)]
+                                      (reduce (fn [acc n]
+                                                (prn :acc acc :n n :node node)
+                                                (update-in acc [n] set-conj dep))
+                                                transitive-dependencies
+                                                depends-on-node)
+                                        transitive-dependencies))
+          ]
+      (MapDependencyGraph.
+       dependencies
+       transitive-dependencies
+       dependents
+       nil)))
   (remove-edge [graph node dep]
     (MapDependencyGraph.
      (update-in dependencies [node] disj dep)
-     (update-in dependents [dep] disj node)))
+     nil
+     (update-in dependents [dep] disj node)
+     nil))
   (remove-all [graph node]
     (MapDependencyGraph.
      (remove-from-map dependencies node)
-     (remove-from-map dependents node)))
+     nil
+     (remove-from-map dependents node)
+     nil))
   (remove-node [graph node]
     (MapDependencyGraph.
      (dissoc dependencies node)
-     dependents)))
+     nil
+     dependents
+     nil)))
 
 (defn graph "Returns a new, empty, dependency graph." []
-  (->MapDependencyGraph {} {}))
+  (->MapDependencyGraph {} {} {} {}))
+
+(comment
+  (-> (depend (graph) 1 2)
+      (depend 2 3)
+      (depend 3 4))
+  )
 
 (defn depends?
   "True if x is directly or transitively dependent on y."
