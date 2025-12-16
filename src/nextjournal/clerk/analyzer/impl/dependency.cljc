@@ -103,7 +103,7 @@
           nodes-to-update (conj (transitive dependents #{node}) node)
           ;; minus the nodes that already have dep as a dependency maybe?
           ;; not exactly helping perf
-          nodes-depending-on-dep (filter #(contains? (get transitive-deps %) dep) nodes-to-update)
+          ;;; nodes-depending-on-dep (filter #(contains? (get transitive-deps %) dep) nodes-to-update)
           #_#__ (when-let [x (seq nodes-depending-on-dep)]
               (prn :nodes-depending-on-dep x))
           ;; _ (prn :nodes-to-update nodes-to-update :one-deps (get transitive-deps 1))
@@ -112,7 +112,7 @@
                          (fn [td n]
                            (update td n set/union new-trans-for-node))
                          transitive-deps
-                         (apply disj nodes-to-update nodes-depending-on-dep))]
+                         nodes-to-update #_(apply disj nodes-to-update nodes-depending-on-dep))]
       (MapDependencyGraph.
        (update dependencies node set-conj dep)
        updated-trans

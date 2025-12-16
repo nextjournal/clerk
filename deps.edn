@@ -43,6 +43,7 @@
                               cider/cider-nrepl {:mvn/version "0.58.0"}
                               nrepl/nrepl {:mvn/version "1.5.1"}
                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "1.3.0"}
+                              criterium/criterium {:mvn/version "0.4.6"}
                               io.github.nextjournal/cas-client {:git/sha "114d3d88d38a2068ec844b0e6c808eaaa6aa64ef"}
                               org.slf4j/slf4j-nop {:mvn/version "2.0.7"}
                               org.babashka/cli {:mvn/version "0.5.40"}
