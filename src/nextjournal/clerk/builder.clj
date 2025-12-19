@@ -261,7 +261,6 @@
           (spit out-html (view/->html (-> static-app-opts
                                           (assoc :current-path path)
                                           (cond-> ssr? ssr!)
-                                          (dissoc :path->doc)
                                           cleanup))))))
     (when browse?
       (browse/browse-url (if-let [server-url (and (= "public/build" out-path) (webserver/server-url))]

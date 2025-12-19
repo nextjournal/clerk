@@ -16,6 +16,8 @@ Changes can be:
 
 * 🐜 Fix relative links by removing trailing slash, fixes [#783](https://github.com/nextjournal/clerk/issues/783)
 
+* 🐞 Fix regression in generation of open graph meta tags, @elken, fixes [#782](https://github.com/nextjournal/clerk/issues/782).
+  
 * 🐞 Always analyze doc (but not deps) when no-cache is set, @borkdude, fixes [#781](https://github.com/nextjournal/clerk/issues/781).
 
 ## 0.18.1158 (2025-11-17)
