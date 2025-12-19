@@ -65,7 +65,6 @@
         (is (= "notebooks/hello.clj" (get backlink 2)))
         (is (= [:<> "@" [:span.tabular-nums "SHASHAS"]] (get backlink 3))))))
 
-  (builder/build-static-app! {:paths ["notebooks/open_graph.clj"]})
   (utils/when-not-bb
    (testing "open graph metadata is in html"
      (let [html-out (fs/with-temp-dir [temp-dir {}]
