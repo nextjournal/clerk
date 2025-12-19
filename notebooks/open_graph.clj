@@ -2,8 +2,8 @@
 (ns open-graph
   {:nextjournal.clerk/no-cache true
    :nextjournal.clerk/open-graph
-   {:url "https://clerk.vision"
-    :title "🔫 So OG"}}
+   {:url "https://clerk.vision/my-open-graph-url"
+    :title "🔫 My OG Title"}}
   (:require [babashka.fs :as fs]
             [clojure.string :as str]
             [clojure.java.shell :as shell]

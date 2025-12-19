@@ -65,6 +65,17 @@
         (is (= "notebooks/hello.clj" (get backlink 2)))
         (is (= [:<> "@" [:span.tabular-nums "SHASHAS"]] (get backlink 3))))))
 
+  (builder/build-static-app! {:paths ["notebooks/open_graph.clj"]})
+  (utils/when-not-bb
+   (testing "open graph metadata is in html"
+     (let [html-out (fs/with-temp-dir [temp-dir {}]
+                      (builder/build-static-app! {:paths ["notebooks/open_graph.clj"]
+                                                  :out-path temp-dir
+                                                  :report-fn identity})
+                      (slurp (fs/file temp-dir "index.html")))]
+       (is (str/includes? html-out "🔫 My OG Title"))
+       (is (str/includes? html-out "https://clerk.vision/my-open-graph-url")))))
+
   (utils/when-not-bb
    (testing "image is saved to _data dir"
      (is (fs/with-temp-dir [temp-dir {}]
