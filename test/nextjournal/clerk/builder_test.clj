@@ -73,7 +73,8 @@
                                                   :report-fn identity})
                       (slurp (fs/file temp-dir "index.html")))]
        (is (str/includes? html-out "<meta content=\"🔫 My OG Title\" property=\"og:title\">"))
-       (is (str/includes? html-out "<meta content=\"https://clerk.vision/my-open-graph-url\" property=\"og:url\">")))))
+       (is (str/includes? html-out "<meta content=\"https://clerk.vision/my-open-graph-url\" property=\"og:url\">"))
+       (is (not (str/includes? html-out ":path->doc"))))))
 
   (utils/when-not-bb
    (testing "image is saved to _data dir"
