@@ -18,6 +18,7 @@
             "katex" "^0.12.0"
             "react" "18.2.0"
             "react-dom" "18.2.0"
+            "snabbdom" "^3.6.3"
             "use-sync-external-store" "1.2.0"
             "vh-sticky-table-header" "1.2.1"
             "w3c-keyname" "^2.2.4"}}
