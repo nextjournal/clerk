@@ -311,7 +311,7 @@ int main() {
 ;; famous painting of a farmer sowing a field from Wiki Commons like
 ;; this:
 
-(clerk/image "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/The_Sower.jpg/1510px-The_Sower.jpg")
+(clerk/image "https://commons.wikimedia.org/w/thumb.php?f=The_Sower.jpg&w=1510")
 
 ;; We've put some effort into making the default image rendering
 ;; pleasing. The viewer uses the dimensions and aspect ratio of each
