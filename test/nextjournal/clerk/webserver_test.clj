@@ -77,13 +77,15 @@
 
 (deftest serve-file-test
   (testing "serving a file resource"
-    (is (= 200 (:status (webserver/serve-file "public/clerk_service_worker.js" "resources/public/clerk_service_worker.js")))
-        (= {"Content-Type" "text/javascript"} (:headers (webserver/serve-file "public/clerk_service_worker.js" "resources/public/clerk_service_worker.js"))))))
+    (is (= 200 (:status (webserver/serve-file "public/clerk_service_worker.js" "resources/public/clerk_service_worker.js"))))
+    (is (#{"application/javascript" "text/javascript"} (get (:headers (webserver/serve-file "public/clerk_service_worker.js" "resources/public/clerk_service_worker.js"))
+                                                            "Content-Type")))))
 
 (deftest serve-resource-test
   (testing "serving a file resource"
-    (is (= 200 (:status (webserver/serve-resource (io/resource "public/clerk_service_worker.js"))))
-        (= {"Content-Type" "text/javascript"} (:headers (webserver/serve-resource (io/resource "public/clerk_service_worker.js"))))))
+    (is (= 200 (:status (webserver/serve-resource (io/resource "public/clerk_service_worker.js")))))
+    (is (#{"application/javascript" "text/javascript"} (get (:headers (webserver/serve-resource (io/resource "public/clerk_service_worker.js")))
+                                                            "Content-Type"))))
 
   (testing "serving a resource from a jar"
     (is (= 200 (:status (webserver/serve-resource (io/resource "weavejester/dependency.cljc")))))))
