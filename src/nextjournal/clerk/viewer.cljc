@@ -968,29 +968,13 @@
                                                         (partial present-ex-data wrapped-value)
                                                         datafy/datafy))))})
 
-(def buffered-image-viewer #?(:bb {}
-                              :cljs nil
-                              :clj {:pred #(instance? BufferedImage %)
-                                    :transform-fn (fn [{image :nextjournal/value}]
-                                                    (let [w (.getWidth image)
-                                                          h (.getHeight image)
-                                                          r (float (/ w h))]
-                                                      (-> {:nextjournal/value (.. (PngEncoder.)
-                                                                                  (withBufferedImage image)
-                                                                                  (withCompressionLevel 1)
-                                                                                  (toBytes))
-                                                           :nextjournal/content-type "image/png"
-                                                           :nextjournal/width (if (and (< 2 r) (< 900 w)) :full :wide)}
-                                                          mark-presented)))
-                                    :render-fn '(fn [blob] (v/html [:figure.flex.flex-col.items-center.not-prose [:img {:src (v/url-for blob)}]]))}))
-
 #?(:bb nil
    :clj
-   (defn buffered-image->bytes [^BufferedImage image]
-     (.. (PngEncoder.)
-         (withBufferedImage image)
-         (withCompressionLevel 1)
-         (toBytes))))
+   (def buffered-image->bytes (memoize (fn [^BufferedImage image]
+                                         (.. (PngEncoder.)
+                                             (withBufferedImage image)
+                                             (withCompressionLevel 1)
+                                             (toBytes))))))
 
 (def image-viewer
   {#?@(:bb []
