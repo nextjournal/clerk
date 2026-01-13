@@ -7,6 +7,7 @@
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
+            [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.git :as git]
             [nextjournal.clerk.paths :as paths]
@@ -16,10 +17,6 @@
             [org.httpkit.server :as httpkit]
             [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
-
-(u/if-bb
- (require '[editscript.core :as-alias editscript])
- (require '[editscript.core :as editscript]))
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
@@ -158,11 +155,11 @@
     presented))
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (u/if-not-bb-and (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                               {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                               (cond-> {:type :set-state!
-                                        :doc (present+reset! doc)}
-                                 (and nav-path (not skip-history?))
+  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+                (cond-> {:type :set-state!
+                         :doc (present+reset! doc)}
+                  (and nav-path (not skip-history?))
                   (assoc :effects [(v/->render-eval (list 'nextjournal.clerk.render/history-push-state
                                                           (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
 
@@ -199,9 +196,7 @@
                        :sync! (if-let [var (resolve (:var-name msg))]
                                 (try
                                   (binding [*sender-ch* sender-ch]
-                                    (u/if-bb
-                                     (throw (ex-info "Not implemented" {}))
-                                     (swap! @var editscript/patch (editscript/edits->script (:patch msg)))))
+                                    (swap! @var editscript/patch (editscript/edits->script (:patch msg))))
                                   (catch Exception ex
                                     (throw (doto (ex-info (str "Clerk cannot update synced var `" (:var-name msg) "`.") msg ex)
                                              update-error!))))

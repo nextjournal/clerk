@@ -18,8 +18,7 @@
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
-            #?@(:bb []
-                :clj [[editscript.edit]])
+            #?@(:clj [[editscript.edit]])
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as w]
             [nextjournal.markdown :as md]
@@ -45,8 +44,7 @@
              (-invoke [_ x y] (@f x y))]))
 
 ;; Make sure `RenderFn` is changed atomically
-#?(:bb nil
-   :clj
+#?(:clj
    (extend-protocol editscript.edit/IType
      RenderFn
      (get-type [_] :val)))
