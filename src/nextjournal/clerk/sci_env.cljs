@@ -40,6 +40,7 @@
             [sci.configs.applied-science.js-interop :as sci.configs.js-interop]
             [sci.configs.cljs.pprint :as sci.configs.pprint]
             [sci.configs.reagent.reagent :as sci.configs.reagent]
+            [sci.configs.cjohansen.replicant :as sci.configs.replicant]
             [sci.core :as sci]
             [sci.ctx-store]
             [sci.nrepl.server :as nrepl]
@@ -195,6 +196,7 @@
 
                           sci.configs.js-interop/namespaces
                           sci.configs.reagent/namespaces
+                          sci.configs.replicant/namespaces
                           sci.configs.pprint/namespaces)
                    (assoc-in ['reagent.core 'unsafe-html] r/unsafe-html))})
 
