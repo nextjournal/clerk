@@ -1001,11 +1001,11 @@
              :transform-fn (fn [{image :nextjournal/value
                                  blob-id :nextjournal/blob-id
                                  :as wrapped-value}]
-                             (let [cache-key [blob-id (:path wrapped-value)]
-                                   bytes (or (get @!presentation-cache cache-key)
+                             (let [cache-path [blob-id (:path wrapped-value)]
+                                   bytes (or (get-in @!presentation-cache cache-path)
                                              (let [b (buffered-image->bytes image)]
                                                (when blob-id
-                                                 (swap! !presentation-cache assoc cache-key b))
+                                                 (swap! !presentation-cache assoc-in cache-path b))
                                                b))]
                                (-> {:nextjournal/value bytes
                                     :nextjournal/content-type "image/png"
