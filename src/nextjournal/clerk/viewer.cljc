@@ -552,7 +552,8 @@
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
-                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value)
+                                                                         (when blob-id {:nextjournal/blob-id blob-id}))
         presented-result (-> (present to-present)
                              (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
@@ -940,12 +941,12 @@
 
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
-                              :nextjournal/render-evaluator
+                              :nextjournal/render-evaluator :nextjournal/blob-id
                               :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path :nextjournal/blob-id]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
@@ -992,14 +993,24 @@
          (withCompressionLevel 1)
          (toBytes))))
 
+(defonce !presentation-cache (atom {}))
+
 (def image-viewer
   {#?@(:bb []
        :clj [:pred #(instance? BufferedImage %)
-             :transform-fn (fn [{image :nextjournal/value}]
-                             (-> {:nextjournal/value (buffered-image->bytes image)
-                                  :nextjournal/content-type "image/png"
-                                  :nextjournal/width (image-width image)}
-                                 mark-presented))])
+             :transform-fn (fn [{image :nextjournal/value
+                                 blob-id :nextjournal/blob-id
+                                 :as wrapped-value}]
+                             (let [cache-key [blob-id (:path wrapped-value)]
+                                   bytes (or (get @!presentation-cache cache-key)
+                                             (let [b (buffered-image->bytes image)]
+                                               (when blob-id
+                                                 (swap! !presentation-cache assoc cache-key b))
+                                               b))]
+                               (-> {:nextjournal/value bytes
+                                    :nextjournal/content-type "image/png"
+                                    :nextjournal/width (image-width image)}
+                                   mark-presented)))])
    :name `image-viewer
    :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
                                   [:img {:src #?(:clj  (nextjournal.clerk.render/url-for blob-or-url)
