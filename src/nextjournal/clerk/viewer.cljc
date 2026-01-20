@@ -445,20 +445,16 @@
   viewer opts out with a truthy `:nextjournal.clerk/var-from-def`."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [{unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer
-          viewer-fn? (or (var? viewer) (fn? viewer))
-          var-from-def-value? (var-from-def? value)
+    (let [viewer-fn? (or (var? viewer) (fn? viewer))
+          should-unwrap? (and (var-from-def? value)
+                              (or viewer-fn?
+                                  (-> viewer normalize-viewer :var-from-def? not)))
+          value' (if should-unwrap? (unwrap-var-value value) value)
           value+viewer (if viewer-fn?
-                         (viewer (if var-from-def-value?
-                                   (unwrap-var-value value)
-                                   value))
-                         {:nextjournal/value value
+                         (viewer value')
+                         {:nextjournal/value value'
                           :nextjournal/viewer (normalize-viewer viewer)})]
-      (assoc result :nextjournal/value (cond-> value+viewer
-                                         (and var-from-def-value?
-                                              (not viewer-fn?)
-                                              (-> value+viewer ->viewer :var-from-def? not))
-                                         unwrap-var)))
+      (assoc result :nextjournal/value value+viewer))
     result))
 
 #?(:clj
