@@ -227,10 +227,12 @@
       (is (= {:nextjournal.clerk/var-from-def #'my-test-var}
              (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var}
                                :nextjournal/viewer (assoc v/html-viewer :var-from-def? true)}))))
-    (testing "row viewer"
-      (is (= 1
-             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var2}
-                               :nextjournal/viewer v/row-viewer}))))))
+
+    (testing "function viewer with var-from-def"
+      (is (= [1]
+             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var2
+                                                   :nextjournal.clerk/var-snapshot 1}
+                               :nextjournal/viewer v/row}))))))
 
 
 (deftest resolve-aliases
