@@ -89,7 +89,6 @@
 
 ;; To make this performant enough to feel good, Clerk caches the computations it performs while evaluating each file. Likewise, to make sure it doesn't send too much data to the browser at once, Clerk paginates data structures within an interactive viewer.
 
-
 ;; ### 🔪 Editor Integration
 
 ;; A recommended alternative to the file watcher is setting up a hotkey in your editor to save & `clerk/show!` the active file.
@@ -157,7 +156,6 @@
 ;; In addition, there's a number of built-in viewers that can be
 ;; called explicity using functions.
 
-
 ;; ### 🌐 Hiccup, HTML & SVG
 
 ;; The `html` viewer interprets `hiccup` when passed a vector.
@@ -201,7 +199,6 @@
 (clerk/table {"odd numbers" [1 3]
               "even numbers" [2 4]}) ;; map of seqs
 
-
 ;; Internally the table viewer will normalize all of the above to a
 ;; map with `:rows` and an optional `:head` key, also giving you
 ;; control over the column order.
@@ -225,7 +222,6 @@
 
 ^{::clerk/viewer table-viewer-custom-missing-values}
 {:A [1 2 3] :B [1 3] :C [1 2]}
-
 
 ;; ### 🧮 TeX
 
@@ -337,7 +333,7 @@ int main() {
 (clerk/caption
  "Modern Symmetrical Unary(7) in [Solresol](https://wiki.xxiivv.com/site/solresol.html)"
  (clerk/table {:head ["Solfège" "French IPA" "English IPA" "Meaning"]
-               :rows [["Do"	"/do/" "/doʊ/" "no"]
+               :rows [["Do"  "/do/" "/doʊ/" "no"]
                       ["Re" "/ʁɛ/" "/ɹeɪ/" "and, also"]
                       ["Mi" "/mi/" "/miː/" "or"]
                       ["Fa" "/fa/" "/fɑː/" "at, to"]
@@ -371,7 +367,6 @@ int main() {
 
 ^{::clerk/visibility {:code :hide :result :hide}}
 (def image-3 (ImageIO/read (URL. "https://nextjournal.com/data/QmXALbNeDD6NSudgVfHE5SvY1Xjzbj7TSWnARqcZrvXsss?filename=c.gif&content-type=image/gif")))
-
 
 (clerk/row image-1 image-2 image-3)
 
@@ -482,7 +477,6 @@ int main() {
 ^{::clerk/viewer (assoc v/fallback-viewer :var-from-def? true)}
 (def raw-var :baz)
 
-
 ;; ### 👁 Writing Viewers
 
 ;; Let's explore how Clerk viewers work and how you create your own to
@@ -496,13 +490,11 @@ v/default-viewers
 
 ;; Each viewer is a simple Clojure map.
 
-
 (assoc (frequencies (mapcat keys v/default-viewers)) :total (count v/default-viewers))
 
 ;; We have a total of 43 viewers in the defaults. Let's start with a
 ;; simple example and explain the different extensions points in the
 ;; viewer api.
-
 
 ;; #### 🎪 Presentation
 
@@ -529,7 +521,6 @@ v/default-viewers
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
 (clerk/present #{1 2 3})
 
-
 ;; Here, we're giving it a set with 1, 2, 3 in it. In its generalized
 ;; form, `present` is a function that does a depth-first traversal of
 ;; a given tree, starting at the root node. It will select a viewer
@@ -549,12 +540,11 @@ v/default-viewers
 ;; select viewers based on Clojure and Java types, which cannot be
 ;; serialized and sent to the browser.
 
-
 ;; #### ⚙️ Transform
 
 ;; When writing your own viewer, the first extension point you should reach for is `:transform-fn`.
 
-#_ "exercise: wrap this in `clerk/present` and call it at the REPL"
+#_"exercise: wrap this in `clerk/present` and call it at the REPL"
 (v/with-viewer {:transform-fn v/inspect-wrapped-values}
   "Exploring the viewer api")
 
@@ -578,7 +568,6 @@ v/default-viewers
 ^{::clerk/viewer v/inspect-wrapped-values}
 (clerk/present (v/with-viewer greet-viewer
                  "James Clerk Maxwell"))
-
 
 ;; **Passing modified viewers down the tree**
 
@@ -619,7 +608,6 @@ v/table-viewer
 ^{::clerk/viewer v/inspect-wrapped-values ::clerk/auto-expand-results? true}
 (clerk/present (clerk/with-viewer {:transform-fn clerk/mark-preserve-keys}
                  {:hello 42}))
-
 
 ;; #### 🔬 Render
 
@@ -777,15 +765,23 @@ v/table-viewer
 ;; [d3-require](https://github.com/d3/d3-require) to load it at
 ;; runtime.
 
-
 (def mermaid-viewer
   {:transform-fn clerk/mark-presented
-   :render-fn '(fn [value]
-                 (when value
-                   [nextjournal.clerk.render/with-d3-require {:package ["mermaid@8.14/dist/mermaid.js"]}
-                    (fn [mermaid]
-                      [:div {:ref (fn [el] (when el
-                                             (.render mermaid (str (gensym)) value #(set! (.-innerHTML el) %))))}])]))})
+   :render-fn
+   '(fn [value]
+      (when value
+        [nextjournal.clerk.render/with-d3-require {:package ["mermaid@11.3.0/dist/mermaid.min.js"]}
+         (fn [_]
+           [:div {:ref (fn [el]
+                         (when el
+                           (let [m js/mermaid
+                                 id (str (gensym))]
+                             (.initialize m (js-obj :startOnLoad false))
+                             (-> (.render m id value)
+                                 (.then (fn [result]
+                                          (set! (.-innerHTML el) (.-svg result))))
+                                 (.catch (fn [err]
+                                           (js/console.error "Mermaid render error:" err)))))))}])]))})
 
 ;; We can then use  the above viewer using `with-viewer`.
 (clerk/with-viewer mermaid-viewer
@@ -944,18 +940,15 @@ v/table-viewer
                           :role (rand-nth [:admin :operator :manager :programmer :designer])
                           :dice (shuffle (range 1 7))}))))
 
-
 ^{::clerk/auto-expand-results? true} rows
 
 ;; This option might become the default in the future.
-
 
 ;; ### 🙅🏼‍♂️ Viewer Budget
 
 ;; In order to not send too much data to the browser, Clerk uses a per-result budget to limit. You can see this budget in action above. Use the `:nextjournal.clerk/budget` key to change its default value of `200` or disable it completely using `nil`.
 
 ^{::clerk/budget nil ::clerk/auto-expand-results? true} rows
-
 
 ;; ## ⚛️ Clerk Sync
 
@@ -1043,7 +1036,6 @@ v/table-viewer
 ;; 4. Select `nbb` repl type
 ;; 5. Open a ClojureScript buffer and run `M-x` `sesman-link-with-buffer` selecting the newly connected repl.
 
-
 ;; Calva
 
 ;;   1. Connect to a Running REPL Server, not in the Project
@@ -1066,7 +1058,6 @@ v/table-viewer
 
 (def analyzed
   (ana/build-graph parsed))
-
 
 ;; This analysis is done recursively, descending into all dependency symbols.
 
