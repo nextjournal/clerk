@@ -446,15 +446,16 @@
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
     (let [viewer-fn? (or (var? viewer) (fn? viewer))
-          unwrap? (and (var-from-def? value)
-                              (or viewer-fn?
-                                  (-> viewer normalize-viewer :var-from-def? not)))
-          value' (if unwrap? (unwrap-var-value value) value)
           value+viewer (if viewer-fn?
-                         (viewer value')
-                         {:nextjournal/value value'
-                          :nextjournal/viewer (normalize-viewer viewer)})]
-      (assoc result :nextjournal/value value+viewer))
+                         (viewer value)
+                         {:nextjournal/value value
+                          :nextjournal/viewer (normalize-viewer viewer)})
+          result-value (:nextjournal/value value+viewer)
+          unwrap? (and (var-from-def? result-value)
+                       (-> value+viewer ->viewer :var-from-def? not))]
+      (assoc result :nextjournal/value
+             (cond-> value+viewer
+               unwrap? (update :nextjournal/value unwrap-var-value))))
     result))
 
 #?(:clj
