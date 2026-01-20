@@ -212,7 +212,9 @@
     (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test.random-ns-name)))))
 
 (def my-test-var [:h1 "hi"])
+(def my-test-var2 1)
 
+(def apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value))
 (deftest apply-viewer-unwrapping-var-from-def
   (let [apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value)]
     (testing "unwraps var when viewer doens't opt out"
@@ -224,7 +226,11 @@
     (testing "leaves var wrapped when viewer opts out"
       (is (= {:nextjournal.clerk/var-from-def #'my-test-var}
              (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var}
-                               :nextjournal/viewer (assoc v/html-viewer :var-from-def? true)}))))))
+                               :nextjournal/viewer (assoc v/html-viewer :var-from-def? true)}))))
+    (testing "row viewer"
+      (is (= 1
+             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var2}
+                               :nextjournal/viewer v/row-viewer}))))))
 
 
 (deftest resolve-aliases
