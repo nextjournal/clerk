@@ -442,16 +442,19 @@
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. In case
   the `value` is a `var-from-def?` it will be unwrapped unless the
-  viewer opts out with a truthy `:var-from-def?`."
+  viewer opts out with a truthy `:nextjournal.clerk/var-from-def`."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
     (let [{unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer
           viewer-fn? (or (var? viewer) (fn? viewer))
           var-from-def-value? (var-from-def? value)
+          ;; Not all viewers expect a var from def value, or they transform the
+          ;; single var-from-def value into a list, like the row viewer. This is why we unwrap it here, before feeding it to the viewer
+          value-for-viewer (if (and viewer-fn? var-from-def-value?)
+                             (unwrap-var-value value)
+                             value)
           value+viewer (if viewer-fn?
-                         (viewer (if var-from-def-value?
-                                   (unwrap-var-value)
-                                   value))
+                         (viewer value-for-viewer)
                          {:nextjournal/value value
                           :nextjournal/viewer (normalize-viewer viewer)})]
       (assoc result :nextjournal/value (cond-> value+viewer
