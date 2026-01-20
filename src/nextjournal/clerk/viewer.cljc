@@ -441,12 +441,11 @@
 
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. In case
-  the `value` is a `var-from-def?` it will be unwrapped unless the
+  the return value is a `var-from-def?` it will be unwrapped unless the
   viewer opts out with a truthy `:var-from-def?`."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [viewer-fn? (or (var? viewer) (fn? viewer))
-          value+viewer (if viewer-fn?
+    (let [value+viewer (if (or (var? viewer) (fn? viewer))
                          (viewer value)
                          {:nextjournal/value value
                           :nextjournal/viewer (normalize-viewer viewer)})
