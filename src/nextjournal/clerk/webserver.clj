@@ -401,11 +401,13 @@
 (defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server (assoc opts
-                           :host host
-                           :port port
-                           :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})))
-    (println (format "Clerk webserver started on http://%s:%s ..." host port ))
+    (let [instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})
+          port (httpkit/server-port instance)]
+      (reset! !server (assoc opts
+                             :host host
+                             :port port
+                             :instance instance))
+      (println (format "Clerk webserver started on http://%s:%s ..." host  port)))
     (when-let [render-nrepl-opts (:render-nrepl opts)]
       (serve-sci-nrepl! render-nrepl-opts))
     (catch java.net.BindException e

@@ -20,6 +20,8 @@ Changes can be:
   
 * 🐞 Always analyze doc (but not deps) when no-cache is set, @borkdude, fixes [#781](https://github.com/nextjournal/clerk/issues/781).
 
+* 🐞 Fix browse when using random port by passing 0, fixes [#801](https://github.com/nextjournal/clerk/issues/801)
+
 ## 0.18.1158 (2025-11-17)
 
 * ⭐️ Support macros defined in notebooks, @borkdude, fixes [#746](https://github.com/nextjournal/clerk/issues/746)

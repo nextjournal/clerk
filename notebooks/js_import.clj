@@ -42,6 +42,6 @@
 ;; or use `js/import` directly:
 (nextjournal.clerk/with-viewer
   '(fn [_]
-     (let [confetti (nextjournal.clerk.render.hooks/use-promise (js/import "https://cdn.skypack.dev/canvas-confetti"))]
+     (let [confetti (nextjournal.clerk.render.hooks/use-promise (js/import "https://cdn.jsdelivr.net/npm/canvas-confetti/+esm"))]
        [:button.bg-teal-500.hover:bg-teal-700.text-white.font-bold.py-2.px-4.rounded.rounded-full.font-sans
         (if confetti {:on-click #(.default confetti)} {:class "bg-gray-200"}) "Peng 🎉!"])) {})
