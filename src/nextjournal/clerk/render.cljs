@@ -479,7 +479,10 @@
       [:div.font-bold.mt-1 (:message unhandled)]
       (when (:data unhandled)
         [:div.mt-1
-         [nextjournal.clerk.render/inspect (:data unhandled)]])]
+         [nextjournal.clerk.render/inspect (:data unhandled)]])
+      (when (ex-data unhandled)
+        [:div.mt-1
+         [nextjournal.clerk.render/inspect (ex-data unhandled)]])]
      (when-let [caused-by (not-empty (rest via))]
        [:div.border-t.border-red-200.text-xs.px-5.py-2.first:border-t-0
         [:div.text-xs.text-red-600.font-bold.hover:underline.cursor-pointer.flex.items-center.gap-2
