@@ -8,7 +8,24 @@ Changes can be:
 
 ## Unreleased
 
-...
+* 💫 Add option to disable inline formulas in markdown
+
+    Allow setting `{:nextjournal.clerk/markdown {:disable-inline-formulas true}}` as ns metadata to disable markdown parsing of $-delimited inline formulas. @borkdude, fixes [#775](https://github.com/nextjournal/clerk/issues/775).
+
+* 💫 Detect and throw on infinte loops during presentation
+
+* 🐜 Fix relative links by removing trailing slash, fixes [#783](https://github.com/nextjournal/clerk/issues/783)
+
+* 🐞 Fix regression in generation of open graph meta tags, @elken, fixes [#782](https://github.com/nextjournal/clerk/issues/782).
+  
+* 🐞 Always analyze doc (but not deps) when no-cache is set, @borkdude, fixes [#781](https://github.com/nextjournal/clerk/issues/781).
+
+## 0.18.1158 (2025-11-17)
+
+* ⭐️ Support macros defined in notebooks, @borkdude, fixes [#746](https://github.com/nextjournal/clerk/issues/746)
+* 💫 Server-Side-Rendering: Add Support for rendering KaTeX formulas, @borkdude fixes [#761](https://github.com/nextjournal/clerk/issues/761).
+* 🐞 Add viewers for html markdown nodes, @borkdude, fixes [#762](https://github.com/nextjournal/clerk/issues/762).
+* 🛠 Bump cherry to `v0.4.32`
 
 ## 0.18.1150 (2025-07-23)
 

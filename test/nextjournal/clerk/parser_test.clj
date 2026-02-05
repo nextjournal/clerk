@@ -46,7 +46,27 @@ line\""}]
   (testing "reading a bad block shows block and file info in raised exception"
     (is (thrown-match? clojure.lang.ExceptionInfo
                        {:file string?}
-                       (parser/parse-clojure-string {:doc? true :file "foo.clj"} "##boom")))))
+                       (parser/parse-clojure-string {:doc? true :file "foo.clj"} "##boom"))))
+  (testing "markdown settings"
+    (let [parsed (parser/parse-clojure-string "(ns scratch
+  {:nextjournal.clerk/markdown {:disable-inline-formulas true}}
+  (:require [nextjournal.clerk :as clerk]))
+
+;; $1 + $2 = $3
+
+{:nextjournal.clerk/markdown {:disable-inline-formulas false}}
+
+;; $1 + $2 = $3
+
+{:nextjournal.clerk/markdown {:disable-inline-formulas true}}
+
+;; $1 + $2 = $3")
+          blocks (take-nth 2 (rest (:blocks parsed)))
+          contents (map #(-> % :doc :content first :content) blocks)]
+      (is (match? '([{:type :text, :text "$1 + $2 = $3"}]
+                    [{:type :formula, :text "1 + "} {:type :text, :text "2 = $3"}]
+                    [{:type :text, :text "$1 + $2 = $3"}])
+                  contents)))))
 
 (deftest parse-inline-comments
   (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}

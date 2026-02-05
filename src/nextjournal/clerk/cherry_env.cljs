@@ -1,5 +1,4 @@
 (ns nextjournal.clerk.cherry-env
-  (:refer-clojure :exclude [time])
   (:require [applied-science.js-interop :as j]
             [cherry.embed :as cherry]
             [cljs.math]

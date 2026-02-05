@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.cljs-libs
-  (:refer-clojure :exclude [remove-ns all-ns])
+  (:refer-clojure :exclude [all-ns])
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

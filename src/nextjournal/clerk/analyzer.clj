@@ -408,7 +408,7 @@
 
 (defn normalize-filename [f]
   (if (fs/windows?)
-    (-> f fs/normalize fs/unixify)
+    (-> f fs/normalize utils/unixify)
     f))
 
 (defn ns->jar [ns]
@@ -451,12 +451,15 @@
               (when (fs/exists? file)
                 (fs/relativize (fs/cwd) (fs/file file)))
               (when-let [resource (io/resource file)]
-                (let [protocol (.getProtocol resource)]
-                  (or (and (= "jar" protocol)
-                           (second (re-find #"^file:(.*)!" (.getFile resource))))
-                      (and (= "file" protocol)
-                           (.getFile resource))))))
-            str)))
+                (let [protocol (.getProtocol resource)
+                      resource-file (case protocol
+                                      "jar" (first (str/split (.getPath resource) #"!"))
+                                      "file" (str resource))]
+                  (-> resource-file java.net.URI. io/file str))))
+            utils/unixify)))
+
+#_(var->location #'inc)
+#_(var->location #'var->location)
 
 (defn find-location [sym]
   (if (deref? sym)
@@ -501,33 +504,12 @@
                 (filter (comp #{:code} :type)
                         blocks))))
 
-(defn transitive-deps
-  ([id analysis-info]
-   (loop [seen #{}
-          deps #{id}
-          res #{}]
-     (if (seq deps)
-       (let [dep (first deps)]
-         (if (contains? seen dep)
-           (recur seen (rest deps) res)
-           (let [{new-deps :deps} (get analysis-info dep)
-                 seen (conj seen dep)
-                 deps (concat (rest deps) new-deps)
-                 res (into res deps)]
-             (recur seen deps res))))
-       res))))
-
-#_(transitive-deps id analysis-info)
-
-#_(transitive-deps :main {:main {:deps [:main :other]}
-                          :other {:deps [:another]}
-                          :another {:deps [:another-one :another :main]}})
-
 (defn run-macros [init-state]
-  (let [{:keys [blocks ->analysis-info]} init-state
+  (let [{:keys [blocks]} init-state
         macro-block-ids (keep #(when (:macro %)
                                  (:id %)) blocks)
-        deps (mapcat #(transitive-deps % ->analysis-info) macro-block-ids)
+        {:keys [graph]} (analyze-doc-deps init-state)
+        deps (mapcat (partial dep/transitive-dependencies graph) macro-block-ids)
         all-block-ids (into (set macro-block-ids) deps)
         all-blocks (filter #(contains? all-block-ids (:id %)) blocks)]
     (doseq [block all-blocks]
@@ -568,7 +550,7 @@
                                  (let [jar? (or (nil? source)
                                                 (str/ends-with? source ".jar"))
                                        gitlib-hash (and (not jar?)
-                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (fs/unixify source))))]
+                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (utils/unixify source))))]
                                    (if (or jar? gitlib-hash)
                                      (update g :->analysis-info merge (into {} (map (juxt identity
                                                                                           (constantly (if source
@@ -731,7 +713,7 @@
 #_(->hash-str (range))
 
 (defn hash-deref-deps [{:as analyzed-doc :keys [graph ->hash blocks visibility]} {:as cell :keys [deps deref-deps hash-fn var form]}]
-  (if (seq deref-deps)
+  (if (and graph (seq deref-deps))
     (let [topo-comp (dep/topo-comparator graph)
           deref-deps-to-eval (set/difference deref-deps (-> ->hash keys set))
           doc-with-deref-dep-hashes (reduce (fn [state deref-dep]

@@ -93,7 +93,8 @@
     :nextjournal.clerk/page-size
     :nextjournal.clerk/render-evaluator
     :nextjournal.clerk/visibility
-    :nextjournal.clerk/width})
+    :nextjournal.clerk/width
+    :nextjournal.clerk/markdown})
 
 (defn settings-marker? [form]
   (boolean (and (map? form)
@@ -435,7 +436,6 @@
   ([{:as opts :keys [skip-doc?]} initial-state s]
    (binding [*ns* (:ns initial-state *ns*)]
      (loop [{:as state :keys [nodes blocks block-settings add-comment-on-line? add-block-id]}
-
             (assoc initial-state
                    :nodes (:children (try (p/parse-string-all s)
                                           (catch Exception e
@@ -467,6 +467,7 @@
                                                              {:nextjournal.clerk/visibility {:code :show :result :show}}
                                                              (parse-global-block-settings form)))
                                              (parse-global-block-settings form))
+                        md-settings (:nextjournal.clerk/markdown next-block-settings)
                         code-block {:type :code
                                     :settings (merge-settings next-block-settings (parse-local-block-settings form))
                                     :text nstring
@@ -478,6 +479,7 @@
                                 (assoc :add-comment-on-line? true)
                                 (update :nodes rest)
                                 (assoc :block-settings next-block-settings)
+                                (assoc-in [:md-context :opts] md-settings)
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
                       (assoc :ns *ns*)))

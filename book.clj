@@ -61,7 +61,7 @@
 ;; To use Clerk in your project, add the following dependency to your `deps.edn`:
 
 ;; ```edn
-;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.18.1150"}}}
+;; {:deps {io.github.nextjournal/clerk {:mvn/version "0.18.1158"}}}
 ;; ```
 
 ;; Require and start Clerk as part of your system start, e.g. in `user.clj`:
@@ -311,7 +311,7 @@ int main() {
 ;; famous painting of a farmer sowing a field from Wiki Commons like
 ;; this:
 
-(clerk/image "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/The_Sower.jpg/1510px-The_Sower.jpg")
+(clerk/image "https://commons.wikimedia.org/w/thumb.php?f=The_Sower.jpg&w=1510")
 
 ;; We've put some effort into making the default image rendering
 ;; pleasing. The viewer uses the dimensions and aspect ratio of each

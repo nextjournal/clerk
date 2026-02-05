@@ -81,7 +81,7 @@
   (clerk/table
    {:rows (map (juxt identity dec) (range 1 100))
     :head [(read-image "https://upload.wikimedia.org/wikipedia/commons/1/17/Plus_img_364976.png")
-           (read-image "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/OCR-A_char_Hyphen-Minus.svg/543px-OCR-A_char_Hyphen-Minus.svg.png")]}))
+           (read-image "https://commons.wikimedia.org/w/thumb.php?f=OCR-A_char_Hyphen-Minus.svg&w=543")]}))
 
 ;; ## Custom Table Viewers
 ;; override single table components
