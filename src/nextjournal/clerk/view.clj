@@ -11,10 +11,8 @@
     :nextjournal.markdown/formula
     :nextjournal.markdown/block-formula})
 
-(defn- assoc-katex? [doc]
-  (assoc doc :katex?
-         (some katex-viewer-names
-               (-> doc :store!-viewer :viewer-names))))
+(defn- assoc-katex? [doc viewer-names]
+  (assoc doc :katex? (some katex-viewer-names viewer-names)))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
@@ -36,7 +34,7 @@
            v/present
            (assoc :store!-viewer store!-viewer)
            (cljs-libs/prepend-required-cljs opts)
-           (assoc-katex?)
+           (assoc-katex? (:viewer-names (store!-viewer)))
            (dissoc :store!-viewer))))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
