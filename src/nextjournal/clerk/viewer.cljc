@@ -571,7 +571,7 @@
                                      (-> form meta :nextjournal.clerk/open-graph :image)
                                      (assoc :nextjournal/open-graph-image-capture true)
 
-                                     #?@(:clj [(= :lazy-loadb blob-mode)
+                                     #?@(:clj [(= :lazy-load blob-mode)
                                                (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                                       :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-block]))]))}
                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)))))
@@ -1676,13 +1676,11 @@
                          (map (fn [[k v]]
                                 [k (if (preserve-keys-fn k)
                                      v
-                                     (let [v (inherit-opts wrapped-value v k)]
-                                       (present* v)))]))
+                                     (present* (inherit-opts wrapped-value v k)))]))
                          xs)
                    (into []
                          (comp (if paginate? (drop+take-xf fetch-opts') identity)
-                               (map-indexed (fn [i x] (present* (let [v (inherit-opts wrapped-value x (+ i (or offset 0)))]
-                                                                  v))))
+                               (map-indexed (fn [i x] (present* (inherit-opts wrapped-value x (+ i (or offset 0))))))
                                (remove nil?))
                          (ensure-sorted xs)))
         {:as elision :keys [total unbounded?]} (and paginate? (get-elision wrapped-value))

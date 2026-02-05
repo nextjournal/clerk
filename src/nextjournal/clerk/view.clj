@@ -8,19 +8,17 @@
   (:import (java.net URI)))
 
 (defn viewer-names [state]
-  (prn "viewer names")
-  (time
-   (let [!viewers (atom #{})]
-     (w/postwalk (fn [v]
-                       (if-let [viewer (v/get-safe v :nextjournal/viewer)]
-                         (do (swap! !viewers conj (:name viewer))
-                             v)
-                         v))
-                     state)
-         (let [viewers @!viewers]
-           (assoc state :katex? (some viewers #{'nextjournal.clerk.viewer/katex-viewer
-                                                :nextjournal.markdown/formula
-                                                :nextjournal.markdown/block-formula}))))))
+  (let [!viewers (atom #{})]
+    (w/postwalk (fn [v]
+                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
+                    (do (swap! !viewers conj (:name viewer))
+                        v)
+                    v))
+                state)
+    (let [viewers @!viewers]
+      (assoc state :katex? (some viewers #{'nextjournal.clerk.viewer/katex-viewer
+                                           :nextjournal.markdown/formula
+                                           :nextjournal.markdown/block-formula})))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
