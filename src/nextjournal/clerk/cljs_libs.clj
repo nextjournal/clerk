@@ -187,7 +187,7 @@
 
 (defn prepend-required-cljs [doc {:keys [dedupe-cljs]}]
   (let [state (new-cljs-state)
-        cljs-namespaces ((:store!-cljs-namespace doc))]
+        cljs-namespaces (:cljs-namespaces ((:store!-viewer doc)))]
     (run! #(require-cljs* state %) cljs-namespaces)
     (if-let [cljs-sources (not-empty
                            (filter #(or (not dedupe-cljs)

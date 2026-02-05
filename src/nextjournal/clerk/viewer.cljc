@@ -940,12 +940,12 @@
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :store!-cljs-namespace
+                              :!budget :store!-wrapped-value :store!-viewer
                               :present-elision-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :store!-cljs-namespace
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :store!-viewer
                                                   :present-elision-fn :nextjournal/budget :path]))
       (update :path (fnil conj []) path-segment)))
 
@@ -1722,7 +1722,7 @@
 (defn ^:private present* [{:as wrapped-value
                            :keys [path !budget
                                   store!-wrapped-value
-                                  store!-cljs-namespace]
+                                  store!-viewer]
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
@@ -1730,8 +1730,8 @@
     (store!-wrapped-value wrapped-value))
   (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
         xs (->value wrapped-value-applied)]
-    (when store!-cljs-namespace
-      (store!-cljs-namespace wrapped-value-applied))
+    (when store!-viewer
+      (store!-viewer wrapped-value-applied))
     (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))
     (-> (merge (->opts wrapped-value-applied)
