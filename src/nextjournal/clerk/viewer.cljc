@@ -993,8 +993,6 @@
          (withCompressionLevel 1)
          (toBytes))))
 
-(defonce !presentation-cache (atom {}))
-
 (def image-viewer
   {#?@(:bb []
        :clj [:pred #(instance? BufferedImage %)
@@ -1002,10 +1000,10 @@
                                  blob-id :nextjournal/blob-id
                                  :as wrapped-value}]
                              (let [cache-path [blob-id (:path wrapped-value)]
-                                   bytes (or (get-in @!presentation-cache cache-path)
+                                   bytes (or (get-in (:presentation-cache webserver/!doc) cache-path)
                                              (let [b (buffered-image->bytes image)]
                                                (when blob-id
-                                                 (swap! !presentation-cache assoc-in cache-path b))
+                                                 (swap! (:presentation-cache webserver/!doc) assoc-in cache-path b))
                                                b))]
                                (-> {:nextjournal/value bytes
                                     :nextjournal/content-type "image/png"

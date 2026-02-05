@@ -260,7 +260,7 @@
                     (assoc :blocks [] :blob-ids #{})
                     (update :->hash (fn [h] (apply dissoc h deref-forms))))
                 blocks)]
-    (swap! v/!presentation-cache select-keys blob-ids)
+    (swap! (:presentation-cache analyzed-doc) select-keys blob-ids)
     (doto (-> evaluated-doc
               (update :blob->result select-keys blob-ids)
               (dissoc :blob-ids)) analyzer/throw-if-dep-is-missing)))
