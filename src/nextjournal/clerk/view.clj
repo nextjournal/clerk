@@ -3,29 +3,39 @@
             [clojure.string :as str]
             [hiccup.page :as hiccup]
             [nextjournal.clerk.cljs-libs :as cljs-libs]
-            [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.walk :as w])
+            [nextjournal.clerk.viewer :as v])
   (:import (java.net URI)))
 
-(defn viewer-names [state]
-  (let [!viewers (atom #{})]
-    (w/postwalk (fn [v]
-                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
-                    (do (swap! !viewers conj (:name viewer))
-                        v)
-                    v))
-                state)
-    (let [viewers @!viewers]
-      (assoc state :katex? (some viewers #{'nextjournal.clerk.viewer/katex-viewer
-                                           :nextjournal.markdown/formula
-                                           :nextjournal.markdown/block-formula})))))
+(def ^:private katex-viewer-names
+  #{'nextjournal.clerk.viewer/katex-viewer
+    :nextjournal.markdown/formula
+    :nextjournal.markdown/block-formula})
+
+(defn- assoc-katex? [doc viewer-names]
+  (assoc doc :katex? (some katex-viewer-names viewer-names)))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
-         (viewer-names)))))
+     (let [!viewer-info (atom {:cljs-namespaces #{}
+                               :viewer-names #{}})
+           store!-viewer (fn ([] @!viewer-info)
+                           ([{:keys [nextjournal/viewer]}]
+                            (when-let [viewer-name (:name viewer)]
+                              (swap! !viewer-info update :viewer-names conj viewer-name))
+                            (when-let [r (:require-cljs viewer)]
+                              (let [cljs-ns (if (true? r)
+                                              (-> viewer :render-fn namespace symbol)
+                                              r)]
+                                (swap! !viewer-info update :cljs-namespaces conj cljs-ns)))))]
+       (-> (merge doc opts) v/notebook
+           (assoc :store!-viewer store!-viewer)
+           v/present
+           (assoc :store!-viewer store!-viewer)
+           (cljs-libs/prepend-required-cljs opts)
+           (assoc-katex? (:viewer-names (store!-viewer)))
+           (dissoc :store!-viewer))))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")
