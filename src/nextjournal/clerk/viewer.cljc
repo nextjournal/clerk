@@ -1825,15 +1825,26 @@
   [x]
   (let [opts (when (wrapped-value? x)
                (->opts (normalize-viewer-opts x)))
-        !path->wrapped-value (atom {})]
+        !path->wrapped-value (atom {})
+        !viewer-info (atom {:cljs-namespaces #{}
+                            :viewer-names #{}})]
     (-> (ensure-wrapped-with-viewers x)
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
+                :store!-viewer (fn [{:keys [nextjournal/viewer]}]
+                                 (when-let [viewer-name (:name viewer)]
+                                   (swap! !viewer-info update :viewer-names conj viewer-name))
+                                 (when-let [r (:require-cljs viewer)]
+                                   (let [cljs-ns (if (true? r)
+                                                   (-> viewer :render-fn namespace symbol)
+                                                   r)]
+                                     (swap! !viewer-info update :cljs-namespaces conj cljs-ns))))
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
                 :path (:path opts [])}
                (make-!budget-opts opts)
                opts)
         present*
+        (merge @!viewer-info)
         assign-closing-parens)))
 
 (comment
@@ -2023,3 +2034,5 @@
                   [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
                   (into [:div]
                         (nextjournal.clerk.render/inspect-children opts) examples)])})
+
+(present [1])
