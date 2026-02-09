@@ -546,6 +546,14 @@
                     (= :directory package) :file
                     blob-id :lazy-load)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
+        #?@(:clj [process-content-fn (when blob-mode
+                                       (fn [node]
+                                         (if-some [content-type (:nextjournal/content-type node)]
+                                           (case blob-mode
+                                             :lazy-load (assoc node :nextjournal/value {:blob-id blob-id :path (:path node)})
+                                             :inline (update node :nextjournal/value data-uri-base64-encode content-type)
+                                             :file (maybe-store-result-as-file blob-opts node))
+                                           node)))])
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
@@ -553,15 +561,15 @@
                                                                          (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
                                                                          (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value)
-                                                                         (when blob-id {:nextjournal/blob-id blob-id}))
+                                                                         (when blob-id {:nextjournal/blob-id blob-id})
+                                                                         #?(:clj (when process-content-fn {:process-content-fn process-content-fn})))
         presented-result (-> (present to-present)
                              (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
                                          fragment-item? (assoc :fragment-item? true)
-                                         (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
-                             #?(:clj (->> (process-blobs blob-opts))))
+                                         (not existing-id) (assoc :id (processed-block-id (str id "-result") path))))))
         render-eval-result? (-> presented-result :nextjournal/value render-eval?)]
     (-> wrapped-value
         mark-presented
@@ -942,12 +950,12 @@
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
                               :nextjournal/render-evaluator :nextjournal/blob-id
                               :!budget :store!-wrapped-value :store!-viewer :presentation-cache
-                              :present-elision-fn :path :offset]))
+                              :present-elision-fn :process-content-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
       (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :store!-viewer :presentation-cache
-                                                  :present-elision-fn :nextjournal/budget :path :nextjournal/blob-id]))
+                                                  :present-elision-fn :process-content-fn :nextjournal/budget :path :nextjournal/blob-id]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
@@ -1641,11 +1649,12 @@
   (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
         (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
 
-(defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path]}]
+(defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path process-content-fn]}]
   (cond-> (-> wrapped-value
               (select-keys processed-keys)
               (dissoc :nextjournal/budget)
-              (update :nextjournal/viewer process-viewer wrapped-value))
+              (update :nextjournal/viewer process-viewer wrapped-value)
+              (cond-> process-content-fn process-content-fn))
     present-elision-fn (vary-meta assoc :present-elision-fn present-elision-fn)))
 
 #_(process-wrapped-value (apply-viewers 42))
@@ -1738,7 +1747,7 @@
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
   (when store!-wrapped-value
-    (store!-wrapped-value wrapped-value))
+    (store!-wrapped-value (dissoc wrapped-value :process-content-fn)))
   (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
         xs (->value wrapped-value-applied)]
     (when store!-viewer
