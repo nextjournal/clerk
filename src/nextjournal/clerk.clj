@@ -596,7 +596,7 @@
   * a symbol representing the var name (qualified or not)
   * the form of an anonymous expression"
   ([]
-   (swap! webserver/!doc dissoc :blob->result)
+   (swap! webserver/!doc dissoc :blob->result ::webserver/presentation-cache)
    (if (fs/exists? config/cache-dir)
      (do (fs/delete-tree config/cache-dir)
          (prn :cache-dir/deleted config/cache-dir))

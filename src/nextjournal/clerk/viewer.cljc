@@ -491,14 +491,17 @@
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
 
 #?(:clj
-   (defn process-blobs [{:as doc+blob-opts :keys [blob-mode blob-id]} presented-result]
-     (w/postwalk #(if-some [content-type (get-safe % :nextjournal/content-type)]
-                    (case blob-mode
-                      :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
-                      :inline (update % :nextjournal/value data-uri-base64-encode content-type)
-                      :file (maybe-store-result-as-file doc+blob-opts %))
-                    %)
-                 presented-result)))
+   (defn process-content [{:as blob-opts :keys [blob-mode blob-id]} node]
+     (if-some [content-type (get-safe node :nextjournal/content-type)]
+       (case blob-mode
+         :lazy-load (assoc node :nextjournal/value {:blob-id blob-id :path (:path node)})
+         :inline (update node :nextjournal/value data-uri-base64-encode content-type)
+         :file (maybe-store-result-as-file blob-opts node))
+       node)))
+
+#?(:clj
+   (defn process-blobs [blob-opts presented-result]
+     (w/postwalk (partial process-content blob-opts) presented-result)))
 
 (defn get-default-viewers []
   (:default @!viewers default-viewers))
@@ -544,23 +547,24 @@
                     (= :directory package) :file
                     blob-id :lazy-load)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
+        #?@(:clj [process-content-fn (when blob-mode (partial process-content blob-opts))])
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
         {:as to-present :nextjournal/keys [auto-expand-results?]} (merge (dissoc (->opts wrapped-value) :!budget :nextjournal/budget)
                                                                          (dissoc cell :result ::doc) ;; TODO: reintroduce doc once we know why it OOMs the static build on CI (some walk issue probably)
                                                                          opts-from-block
-                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value))
+                                                                         (ensure-wrapped-with-viewers (or viewers (get-viewers (get-*ns*))) value)
+                                                                         (when blob-id {:nextjournal/blob-id blob-id})
+                                                                         #?(:clj (when process-content-fn {:process-content-fn process-content-fn})))
         presented-result (-> (present to-present)
                              (update :nextjournal/render-opts
                                      (fn [{:as opts existing-id :id}]
                                        (cond-> opts
                                          auto-expand-results? (assoc :auto-expand-results? auto-expand-results?)
                                          fragment-item? (assoc :fragment-item? true)
-                                         (not existing-id) (assoc :id (processed-block-id (str id "-result") path)))))
-                             #?(:clj (->> (process-blobs blob-opts))))
+                                         (not existing-id) (assoc :id (processed-block-id (str id "-result") path))))))
         render-eval-result? (-> presented-result :nextjournal/value render-eval?)]
-    #_(prn :presented-result render-eval? presented-result)
     (-> wrapped-value
         mark-presented
         (merge {:nextjournal/value (cond-> {:nextjournal/presented presented-result :nextjournal/blob-id blob-id}
@@ -570,7 +574,7 @@
                                      (-> form meta :nextjournal.clerk/open-graph :image)
                                      (assoc :nextjournal/open-graph-image-capture true)
 
-                                     #?@(:clj [(= blob-mode :lazy-load)
+                                     #?@(:clj [(= :lazy-load blob-mode)
                                                (assoc :nextjournal/fetch-opts {:blob-id blob-id}
                                                       :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-block]))]))}
                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)))))
@@ -938,12 +942,14 @@
 
 (defn ->opts [wrapped-value]
   (select-keys wrapped-value [:nextjournal/budget :nextjournal/css-class :nextjournal/width :nextjournal/render-opts
-                              :nextjournal/render-evaluator
-                              :!budget :store!-wrapped-value :present-elision-fn :path :offset]))
+                              :nextjournal/render-evaluator :nextjournal/blob-id
+                              :!budget :store!-wrapped-value :store!-viewer :presentation-cache
+                              :present-elision-fn :process-content-fn :path :offset]))
 
 (defn inherit-opts [{:as wrapped-value :nextjournal/keys [viewers]} value path-segment]
   (-> (ensure-wrapped-with-viewers viewers value)
-      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :present-elision-fn :nextjournal/budget :path]))
+      (merge (select-keys (->opts wrapped-value) [:!budget :store!-wrapped-value :store!-viewer :presentation-cache
+                                                  :present-elision-fn :process-content-fn :nextjournal/budget :path :nextjournal/blob-id]))
       (update :path (fnil conj []) path-segment)))
 
 (defn present-ex-data [parent throwable-map]
@@ -993,11 +999,21 @@
 (def image-viewer
   {#?@(:bb []
        :clj [:pred #(instance? BufferedImage %)
-             :transform-fn (fn [{image :nextjournal/value}]
-                             (-> {:nextjournal/value (buffered-image->bytes image)
-                                  :nextjournal/content-type "image/png"
-                                  :nextjournal/width (image-width image)}
-                                 mark-presented))])
+             :transform-fn (fn [{image :nextjournal/value
+                                 blob-id :nextjournal/blob-id
+                                 :keys [presentation-cache]
+                                 :as wrapped-value}]
+                             (let [cache-path [blob-id (:path wrapped-value)]
+                                   bytes (or (when presentation-cache
+                                               (get-in @presentation-cache cache-path))
+                                             (let [b (buffered-image->bytes image)]
+                                               (when (and presentation-cache blob-id)
+                                                 (swap! presentation-cache assoc-in cache-path b))
+                                               b))]
+                               (-> {:nextjournal/value bytes
+                                    :nextjournal/content-type "image/png"
+                                    :nextjournal/width (image-width image)}
+                                   mark-presented)))])
    :name `image-viewer
    :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
                                   [:img {:src #?(:clj  (nextjournal.clerk.render/url-for blob-or-url)
@@ -1308,39 +1324,44 @@
    :nextjournal/blob-id (str (gensym "error"))})
 
 (defn process-blocks [viewers {:as doc :keys [ns]}]
-  (-> doc
-      (assoc :atom-var-name->state (atom-var-name->state doc))
-      (assoc :ns (->render-eval (list 'ns (if ns (ns-name ns) 'user))))
-      (update :blocks (partial into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
-                                             (map (comp present (partial ensure-wrapped-with-viewers viewers))))))
-      (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
-      #_(assoc :footer (present (footer doc)))
+  (let [opts (->opts doc)]
+    (-> doc
+        (assoc :atom-var-name->state (atom-var-name->state doc))
+        (assoc :ns (->render-eval (list 'ns (if ns (ns-name ns) 'user))))
+        (update :blocks
+                (fn [blocks]
+                  (into [] (comp (mapcat (partial with-block-viewer (dissoc doc :error)))
+                                 (map (comp #(present (merge opts %)) (partial ensure-wrapped-with-viewers viewers))))
+                        blocks)))
+        (assoc :header (present (with-viewers viewers (with-viewer `header-viewer doc))))
+        #_(assoc :footer (present (footer doc)))
 
-      (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
-      (update :file str)
+        (assoc :toc (present (with-viewers viewers (with-viewer `toc-viewer doc))))
+        (update :file str)
 
-      (select-keys [:atom-var-name->state
-                    :blocks :package
-                    :doc-css-class
-                    :error
-                    :file
-                    :open-graph
-                    :ns
-                    :title
-                    :toc
-                    :toc-visibility
-                    :header
-                    :footer])
-      (update-if :error present-error)
-      (assoc :sidenotes? (boolean (seq (:footnotes doc))))
-      #?(:clj (cond-> ns (assoc :scope (datafy-scope ns))))))
+        (select-keys [:atom-var-name->state
+                      :blocks :package
+                      :doc-css-class
+                      :error
+                      :file
+                      :open-graph
+                      :ns
+                      :title
+                      :toc
+                      :toc-visibility
+                      :header
+                      :footer])
+        (update-if :error present-error)
+        (assoc :sidenotes? (boolean (seq (:footnotes doc))))
+        #?(:clj (cond-> ns (assoc :scope (datafy-scope ns)))))))
 
 (def notebook-viewer
   {:name `notebook-viewer
    :render-fn 'nextjournal.clerk.render/render-notebook
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                    (-> wrapped-value
-                       (update :nextjournal/value (partial process-blocks viewers))
+                       (update :nextjournal/value (fn [value]
+                                                    (process-blocks viewers (merge (->opts wrapped-value) value))))
                        mark-presented))})
 
 (def render-eval-viewer
@@ -1622,11 +1643,12 @@
   (into [:path :offset :n :nextjournal/content-type :nextjournal/value]
         (-> viewer-opts-normalization vals set (disj :nextjournal/viewers))))
 
-(defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path]}]
+(defn process-wrapped-value [{:as wrapped-value :keys [present-elision-fn path process-content-fn]}]
   (cond-> (-> wrapped-value
               (select-keys processed-keys)
               (dissoc :nextjournal/budget)
-              (update :nextjournal/viewer process-viewer wrapped-value))
+              (update :nextjournal/viewer process-viewer wrapped-value)
+              (cond-> process-content-fn process-content-fn))
     present-elision-fn (vary-meta assoc :present-elision-fn present-elision-fn)))
 
 #_(process-wrapped-value (apply-viewers 42))
@@ -1711,17 +1733,19 @@
     (present* (merge wrapped-value (make-!budget-opts wrapped-value) fetch-opts))
     (throw (ex-info "could not find wrapped-value at path" {:!path->wrapped-value !path->wrapped-value :fetch-otps fetch-opts}))))
 
-
 (defn ^:private present* [{:as wrapped-value
-                           :keys [path !budget store!-wrapped-value]
+                           :keys [path !budget
+                                  store!-wrapped-value
+                                  store!-viewer]
                            :nextjournal/keys [viewers]}]
   (when (empty? viewers)
     (throw (ex-info "cannot present* with empty viewers" {:wrapped-value wrapped-value})))
   (when store!-wrapped-value
-    (store!-wrapped-value wrapped-value))
+    (store!-wrapped-value (dissoc wrapped-value :process-content-fn)))
   (let [{:as wrapped-value-applied :nextjournal/keys [presented?]} (apply-viewers* wrapped-value)
         xs (->value wrapped-value-applied)]
-    #_(prn :xs xs :type (type xs) :path path)
+    (when store!-viewer
+      (store!-viewer wrapped-value-applied))
     (when (and !budget (not presented?))
       (swap! !budget #(max (dec %) 0)))
     (-> (merge (->opts wrapped-value-applied)
@@ -1808,7 +1832,6 @@
   ;; Check for elisions as well
   (assign-content-lengths (present {:foo (vec (repeat 2 {:baz (range 30) :fooze (range 40)})) :bar (range 20)})))
 
-
 (defn present
   "Presents the given value `x`.
 
@@ -1816,15 +1839,26 @@
   [x]
   (let [opts (when (wrapped-value? x)
                (->opts (normalize-viewer-opts x)))
-        !path->wrapped-value (atom {})]
+        !path->wrapped-value (atom {})
+        !viewer-info (atom {:cljs-namespaces #{}
+                            :viewer-names #{}})]
     (-> (ensure-wrapped-with-viewers x)
         (merge {:store!-wrapped-value (fn [{:as wrapped-value :keys [path]}]
                                         (swap! !path->wrapped-value assoc path wrapped-value))
+                :store!-viewer (fn [{:keys [nextjournal/viewer]}]
+                                 (when-let [viewer-name (:name viewer)]
+                                   (swap! !viewer-info update :viewer-names conj viewer-name))
+                                 (when-let [r (:require-cljs viewer)]
+                                   (let [cljs-ns (if (true? r)
+                                                   (-> viewer :render-fn namespace symbol)
+                                                   r)]
+                                     (swap! !viewer-info update :cljs-namespaces conj cljs-ns))))
                 :present-elision-fn (partial present-elision* !path->wrapped-value)
                 :path (:path opts [])}
                (make-!budget-opts opts)
                opts)
         present*
+        (merge @!viewer-info)
         assign-closing-parens)))
 
 (comment
