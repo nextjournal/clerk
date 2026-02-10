@@ -1,7 +1,7 @@
 (ns nextjournal.clerk.analyzer.impl
   "This code is largely borrowed from https://github.com/hyperfiddle/rcf"
   (:require [clojure.string :as str])
-    (:refer-clojure :exclude [macroexpand-1 macroexpand update-vals])
+    (:refer-clojure :exclude [update-vals])
     (:import (clojure.lang IObj)))
 
 (def ^:dynamic *deps* nil)
