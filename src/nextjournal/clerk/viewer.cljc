@@ -493,14 +493,17 @@
 #_(nextjournal.clerk.builder/build-static-app! {:paths ["image.clj" "notebooks/image.clj" "notebooks/viewers/image.clj"] :browse? false})
 
 #?(:clj
-   (defn process-blobs [{:as doc+blob-opts :keys [blob-mode blob-id]} presented-result]
-     (w/postwalk #(if-some [content-type (get-safe % :nextjournal/content-type)]
-                    (case blob-mode
-                      :lazy-load (assoc % :nextjournal/value {:blob-id blob-id :path (:path %)})
-                      :inline (update % :nextjournal/value data-uri-base64-encode content-type)
-                      :file (maybe-store-result-as-file doc+blob-opts %))
-                    %)
-                 presented-result)))
+   (defn process-content [{:as blob-opts :keys [blob-mode blob-id]} node]
+     (if-some [content-type (get-safe node :nextjournal/content-type)]
+       (case blob-mode
+         :lazy-load (assoc node :nextjournal/value {:blob-id blob-id :path (:path node)})
+         :inline (update node :nextjournal/value data-uri-base64-encode content-type)
+         :file (maybe-store-result-as-file blob-opts node))
+       node)))
+
+#?(:clj
+   (defn process-blobs [blob-opts presented-result]
+     (w/postwalk (partial process-content blob-opts) presented-result)))
 
 (defn get-default-viewers []
   (:default @!viewers default-viewers))
@@ -546,14 +549,7 @@
                     (= :directory package) :file
                     blob-id :lazy-load)
         #?(:clj blob-opts :cljs _) (assoc doc :blob-mode blob-mode :blob-id blob-id)
-        #?@(:clj [process-content-fn (when blob-mode
-                                       (fn [node]
-                                         (if-some [content-type (:nextjournal/content-type node)]
-                                           (case blob-mode
-                                             :lazy-load (assoc node :nextjournal/value {:blob-id blob-id :path (:path node)})
-                                             :inline (update node :nextjournal/value data-uri-base64-encode content-type)
-                                             :file (maybe-store-result-as-file blob-opts node))
-                                           node)))])
+        #?@(:clj [process-content-fn (when blob-mode (partial process-content blob-opts))])
         opts-from-block (-> settings
                             (select-keys (keys viewer-opts-normalization))
                             (set/rename-keys viewer-opts-normalization))
