@@ -2050,4 +2050,3 @@
                   [:div.uppercase.tracking-wider.text-xs.font-sans.font-bold.text-slate-500.dark:text-white.mb-2.mt-3 "Examples"]
                   (into [:div]
                         (nextjournal.clerk.render/inspect-children opts) examples)])})
-
