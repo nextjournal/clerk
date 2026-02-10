@@ -2055,4 +2055,3 @@
                   (into [:div]
                         (nextjournal.clerk.render/inspect-children opts) examples)])})
 
-(present [1])
