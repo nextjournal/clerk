@@ -1,7 +1,6 @@
 (ns nextjournal.clerk.always-array-map
   "A persistent data structure that is based on array-map, but doesn't turn into a hash-map by using assoc etc.
-   Prints like a normal Clojure map in the order of insertion."
-  (:require [nextjournal.clerk.utils :as utils]))
+   Prints like a normal Clojure map in the order of insertion.")
 
 (set! *warn-on-reflection* true)
 
