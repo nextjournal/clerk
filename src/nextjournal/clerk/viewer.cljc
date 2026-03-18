@@ -5,7 +5,7 @@
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
-            [flatland.ordered.map :as omap :refer [ordered-map]]
+            [flatland.ordered.map :as omap]
             #?@(:clj [[babashka.fs :as fs]
                       [clojure.repl :refer [demunge]]
                       [clojure.tools.reader :as tools.reader]
@@ -18,8 +18,7 @@
                        [sci.impl.vars]
                        [sci.lang]
                        [applied-science.js-interop :as j]])
-            #?@(:bb []
-                :clj [[editscript.edit]])
+            #?@(:clj [[editscript.edit]])
             [nextjournal.clerk.parser :as parser]
             [nextjournal.clerk.walk :as w]
             [nextjournal.markdown :as md]
@@ -45,8 +44,7 @@
              (-invoke [_ x y] (@f x y))]))
 
 ;; Make sure `RenderFn` is changed atomically
-#?(:bb nil
-   :clj
+#?(:clj
    (extend-protocol editscript.edit/IType
      RenderFn
      (get-type [_] :val)))
@@ -739,7 +737,7 @@
 #_(update-viewers default-viewers {:page-size #(dissoc % :page-size)})
 
 (defn ^:private ->ordered-map-by-name [viewers]
-  (into (ordered-map)
+  (into (omap/ordered-map)
         (map (juxt :name identity))
         viewers))
 
@@ -747,7 +745,7 @@
   (into (apply dissoc m2 (keys m1))
         (into m1 m2)))
 
-#_(merge-prepending (ordered-map :bar 1 :baz 2) (ordered-map {:baz 3 :a 1}))
+#_(merge-prepending (omap/ordered-map :bar 1 :baz 2) (ordered-map {:baz 3 :a 1}))
 
 (defn ^:private merge-viewers [viewers added-viewers]
   (when-let [unnamed-viewers (not-empty (filter (complement :name) (concat viewers added-viewers)))]
