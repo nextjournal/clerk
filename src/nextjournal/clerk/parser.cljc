@@ -479,7 +479,7 @@
                                 (assoc :add-comment-on-line? true)
                                 (update :nodes rest)
                                 (assoc :block-settings next-block-settings)
-                                (assoc-in [:md-context :opts] md-settings)
+                                (update-in [:md-context :opts] merge md-settings)
                                 (update :blocks conj (add-block-id code-block)))
                       (not (contains? state :ns))
                       (assoc :ns *ns*)))
