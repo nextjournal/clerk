@@ -143,15 +143,17 @@
     (future-cancel scheduled-send-status-future)))
 
 (defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)
+  (let [!presentation-cache (or (::presentation-cache @!doc) (atom {}))
+        presented (view/doc->viewer {:presentation-cache !presentation-cache} doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
         sync-vars (v/extract-sync-atom-vars doc)]
+    (swap! !presentation-cache select-keys (keys (:blob->result doc)))
     (doseq [sync-var (set/difference sync-vars sync-vars-old)]
       (add-watch @sync-var (symbol sync-var) sync-atom-changed))
     (doseq [sync-var (set/difference sync-vars-old sync-vars)]
       (remove-watch @sync-var (symbol sync-var)))
     (maybe-cancel-send-status-future @!doc)
-    (reset! !doc (with-meta doc presented))
+    (reset! !doc (with-meta (assoc doc ::presentation-cache !presentation-cache) presented))
     presented))
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
@@ -322,7 +324,7 @@
                    nil)))
           {:status 200
            :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-           :body (view/->html {:doc (view/doc->viewer @!doc)
+           :body (view/->html {:doc (view/doc->viewer {:presentation-cache (::presentation-cache @!doc)} @!doc)
                                :resource->url @config/!resource->url
                                :render-router :serve
                                :conn-ws? true})})

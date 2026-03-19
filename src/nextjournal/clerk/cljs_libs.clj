@@ -7,7 +7,6 @@
    [nextjournal.clerk.always-array-map :as aam]
    [nextjournal.clerk.analyzer :refer [valuehash]]
    [nextjournal.clerk.viewer :as v]
-   [nextjournal.clerk.walk :as w]
    [rewrite-clj.node :as rnode]
    [rewrite-clj.parser :as rparse]
    [weavejester.dependency :as tnsd]))
@@ -187,18 +186,9 @@
     (slurp resource)))
 
 (defn prepend-required-cljs [doc {:keys [dedupe-cljs]}]
-  (let [state (new-cljs-state)]
-    (w/postwalk (fn [v]
-                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
-                    (if-let [r (:require-cljs viewer)]
-                      (let [cljs-ns (if (true? r)
-                                      ;; at this point, the render-fn has been transformed to a `ViewerFn`, which contains a :form
-                                      (-> viewer :render-fn :form namespace symbol)
-                                      r)]
-                        (require-cljs* state cljs-ns))
-                      v)
-                    v))
-                doc)
+  (let [state (new-cljs-state)
+        cljs-namespaces (:cljs-namespaces doc)]
+    (run! #(require-cljs* state %) cljs-namespaces)
     (if-let [cljs-sources (not-empty
                            (filter #(or (not dedupe-cljs)
                                         (when-not (contains? @dedupe-cljs %)
