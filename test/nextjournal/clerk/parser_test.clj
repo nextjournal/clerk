@@ -66,7 +66,16 @@ line\""}]
       (is (match? '([{:type :text, :text "$1 + $2 = $3"}]
                     [{:type :formula, :text "1 + "} {:type :text, :text "2 = $3"}]
                     [{:type :text, :text "$1 + $2 = $3"}])
-                  contents)))))
+                  contents))))
+
+  (testing "heading ids are preserved in toc (#804)"
+    (let [parsed (parser/parse-clojure-string "^:nextjournal.clerk/toc (ns example)
+
+;; # Workload Analysis
+
+;; some text")]
+      (is (match? {:toc {:children [{:type :toc :attrs {:id "workload-analysis"}}]}}
+                  parsed)))))
 
 (deftest parse-inline-comments
   (is (match? {:blocks [{:doc {:content [{:content [{:text "text before"}]}]}}

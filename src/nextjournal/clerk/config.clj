@@ -45,4 +45,4 @@
           (some-> limit not-empty Integer/parseInt)
           (catch Exception _
             (throw (ex-info "Invalid value for property `clerk.bounded-count-limit`, must be integer." {:value limit})))))
-      1000000))
+      1000))

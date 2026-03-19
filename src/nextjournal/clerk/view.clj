@@ -3,29 +3,26 @@
             [clojure.string :as str]
             [hiccup.page :as hiccup]
             [nextjournal.clerk.cljs-libs :as cljs-libs]
-            [nextjournal.clerk.viewer :as v]
-            [nextjournal.clerk.walk :as w])
+            [nextjournal.clerk.viewer :as v])
   (:import (java.net URI)))
 
-(defn viewer-names [state]
-  (let [!viewers (atom #{})]
-    (w/postwalk (fn [v]
-                  (if-let [viewer (v/get-safe v :nextjournal/viewer)]
-                    (do (swap! !viewers conj (:name viewer))
-                        v)
-                    v))
-                state)
-    (let [viewers @!viewers]
-      (assoc state :katex? (some viewers #{'nextjournal.clerk.viewer/katex-viewer
-                                           :nextjournal.markdown/formula
-                                           :nextjournal.markdown/block-formula})))))
+(def ^:private katex-viewer-names
+  #{'nextjournal.clerk.viewer/katex-viewer
+    :nextjournal.markdown/formula
+    :nextjournal.markdown/block-formula})
+
+(defn ^:private assoc-katex? [{:as doc :keys [viewer-names]}]
+  (assoc doc :katex? (boolean (some katex-viewer-names viewer-names))))
 
 (defn doc->viewer
   ([doc] (doc->viewer {} doc))
   ([opts {:as doc :keys [ns file]}]
    (binding [*ns* ns]
-     (-> (merge doc opts) v/notebook v/present (cljs-libs/prepend-required-cljs opts)
-         (viewer-names)))))
+     (-> (merge doc opts)
+         v/notebook
+         v/present
+         (cljs-libs/prepend-required-cljs opts)
+         assoc-katex?))))
 
 #_(doc->viewer (nextjournal.clerk/eval-file "notebooks/hello.clj"))
 #_(nextjournal.clerk/show! "notebooks/test.clj")

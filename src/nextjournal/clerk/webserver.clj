@@ -7,6 +7,7 @@
             [clojure.pprint :as pprint]
             [clojure.set :as set]
             [clojure.string :as str]
+            [editscript.core :as editscript]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.git :as git]
             [nextjournal.clerk.paths :as paths]
@@ -16,10 +17,6 @@
             [org.httpkit.server :as httpkit]
             [sci.nrepl.browser-server :as sci.nrepl])
   (:import (java.nio.file Files)))
-
-(u/if-bb
- (require '[editscript.core :as-alias editscript])
- (require '[editscript.core :as editscript]))
 
 (defonce !clients (atom #{}))
 (defonce !doc (atom nil))
@@ -146,23 +143,25 @@
     (future-cancel scheduled-send-status-future)))
 
 (defn present+reset! [doc]
-  (let [presented (view/doc->viewer doc)
+  (let [!presentation-cache (or (::presentation-cache @!doc) (atom {}))
+        presented (view/doc->viewer {:presentation-cache !presentation-cache} doc)
         sync-vars-old (v/extract-sync-atom-vars @!doc)
         sync-vars (v/extract-sync-atom-vars doc)]
+    (swap! !presentation-cache select-keys (keys (:blob->result doc)))
     (doseq [sync-var (set/difference sync-vars sync-vars-old)]
       (add-watch @sync-var (symbol sync-var) sync-atom-changed))
     (doseq [sync-var (set/difference sync-vars-old sync-vars)]
       (remove-watch @sync-var (symbol sync-var)))
     (maybe-cancel-send-status-future @!doc)
-    (reset! !doc (with-meta doc presented))
+    (reset! !doc (with-meta (assoc doc ::presentation-cache !presentation-cache) presented))
     presented))
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (u/if-not-bb-and (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                               {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
-                               (cond-> {:type :set-state!
-                                        :doc (present+reset! doc)}
-                                 (and nav-path (not skip-history?))
+  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+                (cond-> {:type :set-state!
+                         :doc (present+reset! doc)}
+                  (and nav-path (not skip-history?))
                   (assoc :effects [(v/->render-eval (list 'nextjournal.clerk.render/history-push-state
                                                           (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
 
@@ -199,9 +198,7 @@
                        :sync! (if-let [var (resolve (:var-name msg))]
                                 (try
                                   (binding [*sender-ch* sender-ch]
-                                    (u/if-bb
-                                     (throw (ex-info "Not implemented" {}))
-                                     (swap! @var editscript/patch (editscript/edits->script (:patch msg)))))
+                                    (swap! @var editscript/patch (editscript/edits->script (:patch msg))))
                                   (catch Exception ex
                                     (throw (doto (ex-info (str "Clerk cannot update synced var `" (:var-name msg) "`.") msg ex)
                                              update-error!))))
@@ -327,7 +324,7 @@
                    nil)))
           {:status 200
            :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-           :body (view/->html {:doc (view/doc->viewer @!doc)
+           :body (view/->html {:doc (view/doc->viewer {:presentation-cache (::presentation-cache @!doc)} @!doc)
                                :resource->url @config/!resource->url
                                :render-router :serve
                                :conn-ws? true})})
@@ -401,11 +398,13 @@
 (defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
   (halt!)
   (try
-    (reset! !server (assoc opts
-                           :host host
-                           :port port
-                           :instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})))
-    (println (format "Clerk webserver started on http://%s:%s ..." host port ))
+    (let [instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})
+          port (httpkit/server-port instance)]
+      (reset! !server (assoc opts
+                             :host host
+                             :port port
+                             :instance instance))
+      (println (format "Clerk webserver started on http://%s:%s ..." host  port)))
     (when-let [render-nrepl-opts (:render-nrepl opts)]
       (serve-sci-nrepl! render-nrepl-opts))
     (catch java.net.BindException e
