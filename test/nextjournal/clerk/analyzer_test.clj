@@ -222,8 +222,8 @@
   (testing "The hash of weavejester/dependency is the same across OSes"
     (is (match?
          {:jar
-          #"repository/weavejester/dependency/0.2.1/dependency-0.2.1.jar",
-          :hash "5dsZiMRBpbMfWTafMoHEaNdGfEYxpx"}
+          #"repository/weavejester/dependency/1.0.1/dependency-1.0.1.jar",
+          :hash "5dsNERm1mA4nuRvcSovwvX6HPmieCf"}
          (ana/hash-jar (ana/find-location 'weavejester.dependency/graph)))))
 
   (testing "an edge-case with a particular sorting of the graph nodes"
