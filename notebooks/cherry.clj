@@ -98,7 +98,7 @@
  '(defn emoji-picker
    {:async true}
    []
-   (js/await (js/import "https://cdn.skypack.dev/emoji-picker-element"))
+   (js/await (js/import "https://esm.sh/emoji-picker-element"))
    (nextjournal.clerk.viewer/html [:div
                                    [:p "My cool emoji picker:"]
                                    [:emoji-picker]])))
