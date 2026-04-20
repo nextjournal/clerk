@@ -213,8 +213,6 @@
     (apply swap! nextjournal.clerk.atom/my-state (eval '[update :counter inc]))
     (eval '(nextjournal.clerk/recompute!)))
 
-(declare present+reset!)
-
 (defn get-build-opts
   ([] (get-build-opts @!server))
   ([{:as opts :keys [paths paths-fn index]}]
