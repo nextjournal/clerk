@@ -550,8 +550,11 @@
                                  (let [jar? (or (nil? source)
                                                 (str/ends-with? source ".jar"))
                                        gitlib-hash (and (not jar?)
-                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (utils/unixify source))))]
-                                   (if (or jar? gitlib-hash)
+                                                        (second (re-find #".gitlibs/libs/.*/(\b[0-9a-f]{5,40}\b)/" (utils/unixify source))))
+                                       clojure-source? (and source
+                                                            (some #(str/ends-with? source %)
+                                                                  [".clj" ".cljc" ".cljs" ".bb"]))]
+                                   (if (or jar? gitlib-hash (not clojure-source?))
                                      (update g :->analysis-info merge (into {} (map (juxt identity
                                                                                           (constantly (if source
                                                                                                         (or (when gitlib-hash {:hash gitlib-hash})

@@ -390,7 +390,15 @@ my-uuid")]
       (is (match? {:jar string?} (->analysis-info 'weavejester.dependency/graph)))))
   (testing "should establish dependencies across files"
     (let [{:keys [graph]} (analyze-string (slurp "src/nextjournal/clerk.clj"))]
-      (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash)))))
+      (is (dep/depends? graph 'nextjournal.clerk/show! 'nextjournal.clerk.analyzer/hash))))
+  (testing "does not try to parse non-Clojure source files (issue #531)"
+    ;; Mimic libpython-clj: a var whose :file meta points to a Python file.
+    (def issue-531-py-var 1)
+    ;; Absolute path, matching how libpython-clj writes :file meta — also forces
+    ;; `var->location` down its on-disk branch so the bad code path is exercised.
+    (alter-meta! #'issue-531-py-var assoc :file
+                 (str (fs/absolutize (fs/file "test" "nextjournal" "clerk" "fixtures" "issue_531_not_clojure.py"))))
+    (is (analyze-string "(ns consumer) (def use-py (nextjournal.clerk.analyzer-test/issue-531-py-var))"))))
 
 (deftest graph-nodes-with-anonymous-ids
   (testing "nodes with \"anonymous ids\" from dependencies in foreign files respect graph dependencies"
