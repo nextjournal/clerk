@@ -448,23 +448,23 @@
   (if viewer
     (let [fn-viewer? (or (var? viewer) (fn? viewer))
           is-var? (var-from-def? value)
-          map-opts-out? (and (map? viewer) (:var-from-def? viewer))
+          keep-wrapped? (and (map? viewer) (:var-from-def? viewer))
           apply-vw (fn [v]
                      (if fn-viewer?
                        (viewer v)
                        {:nextjournal/value v
                         :nextjournal/viewer (normalize-viewer viewer)}))
           first-try (apply-vw (cond-> value
-                                (and is-var? fn-viewer? (not map-opts-out?))
+                                (and is-var? fn-viewer? (not keep-wrapped?))
                                 unwrap-var-value))
-          return-opts-out? (boolean (-> first-try ->viewer :var-from-def?))
+          return-keep-wrapped? (boolean (-> first-try ->viewer :var-from-def?))
           value+viewer (cond
                          ;; map viewer w/ var-from-def, no opt-out → unwrap
-                         (and is-var? (not fn-viewer?) (not map-opts-out?))
+                         (and is-var? (not fn-viewer?) (not keep-wrapped?))
                          (update first-try :nextjournal/value unwrap-var-value)
 
                          ;; fn viewer whose return opts out → re-run with raw wrapper
-                         (and is-var? fn-viewer? return-opts-out?)
+                         (and is-var? fn-viewer? return-keep-wrapped?)
                          (apply-vw value)
 
                          :else first-try)]
