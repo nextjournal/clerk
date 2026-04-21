@@ -213,18 +213,32 @@
 
 (def my-test-var [:h1 "hi"])
 
-(deftest apply-viewer-unwrapping-var-from-def
-  (let [apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value)]
-    (testing "unwraps var when viewer doens't opt out"
-      (is (= my-test-var
-             (apply+get-value {:nextjournal/value [:h1 "hi"]                                      :nextjournal/viewer v/html})
-             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html})
-             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html-viewer}))))
+(deftest apply-viewer-to-result
+  (let [apply+get-value #(-> % v/apply-viewer-to-result :nextjournal/value :nextjournal/value)]
+    (testing "viewer receives the value directly (no var-from-def wrapper)"
+      (is (= [:h1 "hi"]
+             (apply+get-value {:nextjournal/value [:h1 "hi"] :nextjournal/viewer v/html})
+             (apply+get-value {:nextjournal/value [:h1 "hi"]
+                               :nextjournal.clerk/var-from-def #'my-test-var
+                               :nextjournal/viewer v/html})
+             (apply+get-value {:nextjournal/value [:h1 "hi"]
+                               :nextjournal.clerk/var-from-def #'my-test-var
+                               :nextjournal/viewer v/html-viewer}))))
 
-    (testing "leaves var wrapped when viewer opts out"
-      (is (= {:nextjournal.clerk/var-from-def #'my-test-var}
-             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var}
-                               :nextjournal/viewer (assoc v/html-viewer :var-from-def? true)}))))))
+    (testing "provenance (`:var-from-def` sidecar) is copied onto the returned wrapped value"
+      (is (= #'my-test-var
+             (-> {:nextjournal/value [:h1 "hi"]
+                  :nextjournal.clerk/var-from-def #'my-test-var
+                  :nextjournal/viewer v/html}
+                 v/apply-viewer-to-result
+                 :nextjournal/value
+                 :nextjournal.clerk/var-from-def))))
+
+    (testing "function viewer receives raw value (e.g. clerk/row on a def produces 3 cells)"
+      (is (= [1 2 3]
+             (apply+get-value {:nextjournal/value [1 2 3]
+                               :nextjournal.clerk/var-from-def #'my-test-var
+                               :nextjournal/viewer v/row}))))))
 
 
 (deftest resolve-aliases

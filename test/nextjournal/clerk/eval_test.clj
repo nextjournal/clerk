@@ -53,7 +53,8 @@
       (let [{:keys [blocks]} (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-test-ns) (def some-var 99)")]
         (is (match? [map?
                      {:type :code,
-                      :result {:nextjournal/value {:nextjournal.clerk/var-from-def var?}}}]
+                      :result {:nextjournal/value 99
+                               :nextjournal.clerk/var-from-def var?}}]
                     blocks))
         (is (= 99 @(find-var 'my-test-ns/some-var))))))
 
@@ -74,7 +75,7 @@
 
   (testing "var gets cached in cas"
     (let [code-str (format "(ns nextjournal.clerk.eval-test-%s) (def my-uuid (java.util.UUID/randomUUID))" (rand-int 100000))
-          get-uuid #(-> % :blocks peek :result :nextjournal/value :nextjournal.clerk/var-from-def deref)]
+          get-uuid #(-> % :blocks peek :result :nextjournal/value)]
       (is (= (get-uuid (eval/eval-string code-str))
              (get-uuid (eval/eval-string code-str))))))
 
@@ -109,7 +110,7 @@
 
   (testing "defonce returns correct result on subsequent evals (when defonce would eval to nil)"
     (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))")
-    (is (match? {:blocks [map? {:result {:nextjournal/value {:nextjournal.clerk/var-from-def var?}}}]}
+    (is (match? {:blocks [map? {:result {:nextjournal.clerk/var-from-def var?}}]}
                 (eval/eval-string "(ns ^:nextjournal.clerk/no-cache my-defonce-test-ns) (defonce state (atom {}))"))))
 
   (testing "assigning viewers from form meta"
@@ -119,7 +120,7 @@
                 (eval/eval-string "^{:nextjournal.clerk/viewer 'nextjournal.clerk.viewer/html} (def markup [:h1 \"hi\"])"))))
 
   (testing "var result that's not from a def should stay untouched"
-    (is (match? {:blocks [{:result {:nextjournal/value {:nextjournal.clerk/var-from-def var?}}}
+    (is (match? {:blocks [{:result {:nextjournal.clerk/var-from-def var?}}
                           {:result {:nextjournal/value var?}}]}
                 (eval/eval-string "(def foo :bar) (var foo)"))))
 
@@ -338,7 +339,7 @@
 (def x 1)"
                            (not cache?)))]
     (doseq [cache? [true false]]
-      (is (match? {:nextjournal.clerk/var-from-def var?
-                   :nextjournal.clerk/var-snapshot 1}
+      (is (match? {:nextjournal/value 1
+                   :nextjournal.clerk/var-from-def var?}
                   (-> (eval/eval-string (notebook cache?))
-                      :blocks last :result :nextjournal/value))))))
+                      :blocks last :result))))))

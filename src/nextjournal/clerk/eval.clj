@@ -74,17 +74,10 @@
      {:result ret#
       :time-ms (elapsed-ms start#)}))
 
-(defn ^:private var-from-def [var]
-  (let [resolved-var (cond (var? var)
-                           var
-
-                           (symbol? var)
-                           (find-var var)
-
-                           :else
-                           (throw (ex-info "Unable to resolve into a variable" {:data var})))]
-    {:nextjournal.clerk/var-from-def resolved-var
-     :nextjournal.clerk/var-snapshot @resolved-var}))
+(defn ^:private resolve-var [var]
+  (cond (var? var) var
+        (symbol? var) (find-var var)
+        :else (throw (ex-info "Unable to resolve into a variable" {:data var}))))
 
 (defn ^:private lookup-cached-result [introduced-var hash cas-hash]
   (when-let [cached-value (try (thaw-from-cas cas-hash)
@@ -92,12 +85,12 @@
                                  ;; TODO better report this error, anything that can't be read shouldn't be cached in the first place
                                  #_(prn :thaw-error e)
                                  nil))]
-    (wrapped-with-metadata (if introduced-var
-                             (var-from-def (intern (-> introduced-var namespace symbol)
-                                                   (-> introduced-var name symbol)
-                                                   cached-value))
-                             cached-value)
-                           hash)))
+    (cond-> (wrapped-with-metadata cached-value hash)
+      introduced-var
+      (assoc :nextjournal.clerk/var-from-def
+             (resolve-var (intern (-> introduced-var namespace symbol)
+                                  (-> introduced-var name symbol)
+                                  cached-value))))))
 
 
 (defn cachable? [value]
@@ -158,10 +151,11 @@
       (let [blob-id (cond no-cache? (analyzer/->hash-str var-value)
                           (fn? var-value) nil
                           :else hash)
-            result (if var-from-def?
-                     (var-from-def var)
-                     result)]
-        (cond-> (wrapped-with-metadata result blob-id)
+            wrapped-value (if var-from-def?
+                            (-> (wrapped-with-metadata var-value blob-id)
+                                (assoc :nextjournal.clerk/var-from-def (resolve-var var)))
+                            (wrapped-with-metadata result blob-id))]
+        (cond-> wrapped-value
           (seq @!interned-vars)
           (assoc :nextjournal/interned @!interned-vars))))
     (catch Throwable t

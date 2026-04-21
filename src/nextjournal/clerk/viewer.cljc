@@ -426,30 +426,20 @@
   (or (clojure.core/var? x)
       #?(:cljs (instance? sci.lang.Var x))))
 
-(defn var-from-def? [x]
-  (var? (get-safe x :nextjournal.clerk/var-from-def)))
-
-(def var-from-def-viewer
-  {:name `var-from-def-viewer
-   :pred var-from-def?
-   :transform-fn (update-val (some-fn :nextjournal.clerk/var-snapshot
-                                      (comp deref :nextjournal.clerk/var-from-def)))})
-
-(defn apply-viewer-unwrapping-var-from-def
-  "Applies the `viewer` (if set) to the given result `result`. In case
-  the `value` is a `var-from-def?` it will be unwrapped unless the
-  viewer opts out with a truthy `:nextjournal.clerk/var-from-def`."
+(defn apply-viewer-to-result
+  "Applies the `viewer` (if set) to `result`. The value is passed through
+  unchanged; provenance (the `:nextjournal.clerk/var-from-def` sidecar)
+  is preserved on the new wrapped value so downstream viewers like
+  `render-eval-viewer` can read it."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [value+viewer (if (or (var? viewer) (fn? viewer))
+    (let [sidecar (when-let [v (:nextjournal.clerk/var-from-def result)]
+                    {:nextjournal.clerk/var-from-def v})
+          value+viewer (if (or (var? viewer) (fn? viewer))
                          (viewer value)
                          {:nextjournal/value value
-                          :nextjournal/viewer (normalize-viewer viewer)})
-          {unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer]
-      (assoc result :nextjournal/value (cond-> value+viewer
-                                         (and (var-from-def? value)
-                                              (-> value+viewer ->viewer :var-from-def? not))
-                                         unwrap-var)))
+                          :nextjournal/viewer (normalize-viewer viewer)})]
+      (assoc result :nextjournal/value (merge value+viewer sidecar)))
     result))
 
 #?(:clj
@@ -652,10 +642,13 @@
     {:nextjournal/render-opts (-> cell (select-keys [:loc]) (assoc :id (processed-block-id (str id "-code"))))}
     (dissoc cell ::doc :result)))
 
-(defn maybe-wrap-var-from-def [val form]
-  (cond->> val
-    (and (var? val) (parser/deflike? form))
-    (hash-map :nextjournal.clerk/var-from-def)))
+(defn ^:private promote-var-from-def [{:as cell :keys [result]} form]
+  (let [val (:nextjournal/value result)]
+    (if (and (var? val) (parser/deflike? form))
+      (-> cell
+          (assoc-in [:result :nextjournal/value] @val)
+          (assoc-in [:result :nextjournal.clerk/var-from-def] val))
+      cell)))
 
 (defn fragment-seq
   ([cell] (fragment-seq (:form cell) cell))
@@ -668,11 +661,11 @@
                     (assoc ::fragment-item? true)
                     (assoc-in [:result :nextjournal/value] r))))
              fragment (range (count fragment)))
-     (list (update-in cell [:result :nextjournal/value] maybe-wrap-var-from-def form)))))
+     (list (promote-var-from-def cell form)))))
 
 (defn cell->result-viewer [cell]
   (-> cell
-      (update-if :result apply-viewer-unwrapping-var-from-def)
+      (update-if :result apply-viewer-to-result)
       fragment-seq
       (->> (mapv (partial with-viewer
                           (cond-> result-viewer
@@ -1234,7 +1227,7 @@
 (defn extract-sync-atom-vars [{:as _doc :keys [blocks]}]
   (into #{}
         (keep (fn [{:keys [result form]}]
-                (when-let [var (-> result :nextjournal/value (get-safe :nextjournal.clerk/var-from-def))]
+                (when-let [var (:nextjournal.clerk/var-from-def result)]
                   (when (contains? (meta form) :nextjournal.clerk/sync)
                     #?(:clj (throw-if-sync-var-is-invalid var))
                     var))))
@@ -1367,15 +1360,17 @@
 (def render-eval-viewer
   {:name `render-eval-viewer
    :pred render-eval?
-   :var-from-def? true
    :transform-fn (comp mark-presented
-                       (update-val
-                        (fn [x]
-                          (cond (render-eval? x) x
-                                (seq? x) (->render-eval x)
-                                (symbol? x) (->render-eval x)
-                                (var? x) (->render-eval (list 'resolve (list 'quote (symbol x))))
-                                (var-from-def? x) (recur (-> x :nextjournal.clerk/var-from-def symbol))))))
+                       (fn [wrapped-value]
+                         (let [x (:nextjournal/value wrapped-value)
+                               v (:nextjournal.clerk/var-from-def wrapped-value)]
+                           (assoc wrapped-value :nextjournal/value
+                                  (cond (render-eval? x) x
+                                        (seq? x) (->render-eval x)
+                                        (symbol? x) (->render-eval x)
+                                        v (->render-eval (list 'resolve (list 'quote (symbol v))))
+                                        (var? x) (->render-eval (list 'resolve (list 'quote (symbol x))))
+                                        :else x)))))
    :render-fn '(fn [x opts]
                  (if (nextjournal.clerk.render/reagent-atom? x)
                    ;; special atoms handling to support reactivity
@@ -1402,7 +1397,6 @@
    nil-viewer
    boolean-viewer
    map-entry-viewer
-   var-from-def-viewer
    read+inspect-viewer
    vector-viewer
    set-viewer
@@ -2036,7 +2030,6 @@
                                                                    (nextjournal.clerk.render/inspect-presented opts form)]
                                                                   [:div.pt-2.px-4.border-l-2.border-transparent
                                                                    (nextjournal.clerk.render/inspect-presented opts val)]])})
-                       (update-in [:nextjournal/value :val] maybe-wrap-var-from-def (get-in wrapped-value [:nextjournal/value :form]))
                        (update-in [:nextjournal/value :form] code)))})
 
 (def examples-viewer
