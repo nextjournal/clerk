@@ -1368,7 +1368,7 @@
                                   (cond (render-eval? x) x
                                         (seq? x) (->render-eval x)
                                         (symbol? x) (->render-eval x)
-                                        v (->render-eval (list 'resolve (list 'quote (symbol v))))
+                                        v (->render-eval (symbol v))
                                         (var? x) (->render-eval (list 'resolve (list 'quote (symbol x))))
                                         :else x)))))
    :render-fn '(fn [x opts]
