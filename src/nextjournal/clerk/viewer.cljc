@@ -440,10 +440,10 @@
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. By default
   the `value` of a `var-from-def?` is unwrapped so that the viewer
-  operates on the def's value. A viewer can opt out by setting
-  `:var-from-def? true` — on a viewer map directly, or on the viewer
-  map that a fn viewer returns (the fn will be called a second time
-  with the raw `var-from-def?` value in that case)."
+  operates on the def's value. A viewer that wants the raw wrapper
+  sets `:var-from-def? true` — on the viewer map directly, or on the
+  viewer map that a fn viewer returns (the fn will be called a second
+  time with the raw `var-from-def?` value in that case)."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
     (let [fn-viewer? (or (var? viewer) (fn? viewer))
@@ -459,11 +459,11 @@
                                 unwrap-var-value))
           return-keep-wrapped? (boolean (-> first-try ->viewer :var-from-def?))
           value+viewer (cond
-                         ;; map viewer w/ var-from-def, no opt-out → unwrap
+                         ;; map viewer that doesn't want the wrapper -> unwrap
                          (and is-var? (not fn-viewer?) (not keep-wrapped?))
                          (update first-try :nextjournal/value unwrap-var-value)
 
-                         ;; fn viewer whose return opts out → re-run with raw wrapper
+                         ;; fn viewer returned a viewer that wants the wrapper -> re-run with it
                          (and is-var? fn-viewer? return-keep-wrapped?)
                          (apply-vw value)
 
