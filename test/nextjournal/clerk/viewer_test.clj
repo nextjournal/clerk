@@ -212,19 +212,41 @@
     (is (= [{:render-fn 'foo}] (v/get-viewers 'nextjournal.clerk.viewer-test.random-ns-name)))))
 
 (def my-test-var [:h1 "hi"])
+(def my-test-var2 1)
+
+(def apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value))
 
 (deftest apply-viewer-unwrapping-var-from-def
-  (let [apply+get-value #(-> % v/apply-viewer-unwrapping-var-from-def :nextjournal/value :nextjournal/value)]
-    (testing "unwraps var when viewer doens't opt out"
-      (is (= my-test-var
-             (apply+get-value {:nextjournal/value [:h1 "hi"]                                      :nextjournal/viewer v/html})
-             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html})
-             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html-viewer}))))
+  (testing "unwraps var when viewer doens't opt out"
+    (is (= my-test-var
+           (apply+get-value {:nextjournal/value [:h1 "hi"]                                      :nextjournal/viewer v/html})
+           (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html})
+           (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var} :nextjournal/viewer v/html-viewer}))))
 
-    (testing "leaves var wrapped when viewer opts out"
-      (is (= {:nextjournal.clerk/var-from-def #'my-test-var}
-             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var}
-                               :nextjournal/viewer (assoc v/html-viewer :var-from-def? true)}))))))
+  (testing "leaves var wrapped when viewer opts out"
+    (is (= {:nextjournal.clerk/var-from-def #'my-test-var}
+           (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var}
+                             :nextjournal/viewer (assoc v/html-viewer :var-from-def? true)}))))
+
+  (testing "function viewer receives the deref'd value, not the var-from-def wrapper (fixes #770)"
+    (is (= [my-test-var2]
+           (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var2
+                                                 :nextjournal.clerk/var-snapshot my-test-var2}
+                             :nextjournal/viewer v/row}))))
+
+  (testing "function viewer on a seq-valued def spreads across row cells"
+    (is (= [1 2 3]
+           (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var
+                                                 :nextjournal.clerk/var-snapshot [1 2 3]}
+                             :nextjournal/viewer v/row}))))
+
+  (testing "function viewer whose returned viewer opts out keeps the raw var-from-def (e.g. cx/slider via render-eval-viewer)"
+    (let [viewer-fn (fn [v] (v/with-viewer (assoc v/html-viewer :var-from-def? true) v))]
+      (is (= {:nextjournal.clerk/var-from-def #'my-test-var
+              :nextjournal.clerk/var-snapshot [:h1 "hi"]}
+             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var
+                                                   :nextjournal.clerk/var-snapshot [:h1 "hi"]}
+                               :nextjournal/viewer viewer-fn}))))))
 
 
 (deftest resolve-aliases
