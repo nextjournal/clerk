@@ -238,7 +238,16 @@
     (is (= [1 2 3]
            (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var
                                                  :nextjournal.clerk/var-snapshot [1 2 3]}
-                             :nextjournal/viewer v/row})))))
+                             :nextjournal/viewer v/row}))))
+
+  (testing "function viewer tagged with `:var-from-def? true` metadata receives the raw var-from-def (e.g. cx/slider)"
+    (let [viewer-fn (with-meta (fn [v] (v/with-viewer v/html-viewer v))
+                               {:var-from-def? true})]
+      (is (= {:nextjournal.clerk/var-from-def #'my-test-var
+              :nextjournal.clerk/var-snapshot [:h1 "hi"]}
+             (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var
+                                                   :nextjournal.clerk/var-snapshot [:h1 "hi"]}
+                               :nextjournal/viewer viewer-fn}))))))
 
 
 (deftest resolve-aliases

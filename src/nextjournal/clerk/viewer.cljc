@@ -438,13 +438,15 @@
    :transform-fn (update-val unwrap-var-value)})
 
 (defn apply-viewer-unwrapping-var-from-def
-  "Applies the `viewer` (if set) to the given result `result`. In case
-  the `value` is a `var-from-def?` it will be unwrapped (so that the
-  viewer operates on the def's value) unless the viewer map opts out
-  with a truthy `:var-from-def?`."
+  "Applies the `viewer` (if set) to the given result `result`. By default
+  the `value` of a `var-from-def?` is unwrapped so that the viewer
+  operates on the def's value. To opt out, a viewer map must carry
+  `:var-from-def? true`, or a viewer fn must have `:var-from-def? true`
+  in its metadata (use `with-meta` / `alter-var-root`)."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [opts-out? (and (map? viewer) (:var-from-def? viewer))
+    (let [opts-out? (or (and (map? viewer) (:var-from-def? viewer))
+                        (and (ifn? viewer) (:var-from-def? (meta viewer))))
           value' (cond-> value
                    (and (var-from-def? value) (not opts-out?))
                    unwrap-var-value)
