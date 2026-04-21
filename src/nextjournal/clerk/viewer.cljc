@@ -433,13 +433,12 @@
   `render-eval-viewer` can read it."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [sidecar (when-let [v (:nextjournal.clerk/var-from-def result)]
-                    {:nextjournal.clerk/var-from-def v})
-          value+viewer (if (or (var? viewer) (fn? viewer))
+    (let [value+viewer (if (or (var? viewer) (fn? viewer))
                          (viewer value)
                          {:nextjournal/value value
                           :nextjournal/viewer (normalize-viewer viewer)})]
-      (assoc result :nextjournal/value (merge value+viewer sidecar)))
+      (assoc result :nextjournal/value
+             (merge value+viewer (select-keys result [:nextjournal.clerk/var-from-def]))))
     result))
 
 #?(:clj
