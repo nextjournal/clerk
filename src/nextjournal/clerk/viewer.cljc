@@ -440,20 +440,34 @@
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. By default
   the `value` of a `var-from-def?` is unwrapped so that the viewer
-  operates on the def's value. To opt out, a viewer map must carry
-  `:var-from-def? true`, or a viewer fn must have `:var-from-def? true`
-  in its metadata (use `with-meta` / `alter-var-root`)."
+  operates on the def's value. A viewer can opt out by setting
+  `:var-from-def? true` — on a viewer map directly, or on the viewer
+  map that a fn viewer returns (the fn will be called a second time
+  with the raw `var-from-def?` value in that case)."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [opts-out? (or (and (map? viewer) (:var-from-def? viewer))
-                        (and (ifn? viewer) (:var-from-def? (meta viewer))))
-          value' (cond-> value
-                   (and (var-from-def? value) (not opts-out?))
-                   unwrap-var-value)
-          value+viewer (if (or (var? viewer) (fn? viewer))
-                         (viewer value')
-                         {:nextjournal/value value'
-                          :nextjournal/viewer (normalize-viewer viewer)})]
+    (let [fn-viewer? (or (var? viewer) (fn? viewer))
+          is-var? (var-from-def? value)
+          map-opts-out? (and (map? viewer) (:var-from-def? viewer))
+          apply-vw (fn [v]
+                     (if fn-viewer?
+                       (viewer v)
+                       {:nextjournal/value v
+                        :nextjournal/viewer (normalize-viewer viewer)}))
+          first-try (apply-vw (cond-> value
+                                (and is-var? fn-viewer? (not map-opts-out?))
+                                unwrap-var-value))
+          return-opts-out? (boolean (-> first-try ->viewer :var-from-def?))
+          value+viewer (cond
+                         ;; map viewer w/ var-from-def, no opt-out → unwrap
+                         (and is-var? (not fn-viewer?) (not map-opts-out?))
+                         (update first-try :nextjournal/value unwrap-var-value)
+
+                         ;; fn viewer whose return opts out → re-run with raw wrapper
+                         (and is-var? fn-viewer? return-opts-out?)
+                         (apply-vw value)
+
+                         :else first-try)]
       (assoc result :nextjournal/value value+viewer))
     result))
 

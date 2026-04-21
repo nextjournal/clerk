@@ -240,9 +240,8 @@
                                                  :nextjournal.clerk/var-snapshot [1 2 3]}
                              :nextjournal/viewer v/row}))))
 
-  (testing "function viewer tagged with `:var-from-def? true` metadata receives the raw var-from-def (e.g. cx/slider)"
-    (let [viewer-fn (with-meta (fn [v] (v/with-viewer v/html-viewer v))
-                               {:var-from-def? true})]
+  (testing "function viewer whose returned viewer opts out keeps the raw var-from-def (e.g. cx/slider via render-eval-viewer)"
+    (let [viewer-fn (fn [v] (v/with-viewer (assoc v/html-viewer :var-from-def? true) v))]
       (is (= {:nextjournal.clerk/var-from-def #'my-test-var
               :nextjournal.clerk/var-snapshot [:h1 "hi"]}
              (apply+get-value {:nextjournal/value {:nextjournal.clerk/var-from-def #'my-test-var

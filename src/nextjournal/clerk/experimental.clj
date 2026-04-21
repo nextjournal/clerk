@@ -33,8 +33,6 @@
   ([!state] (slider {} !state))
   ([opts !state] (viewer/with-viewer (assoc viewer/render-eval-viewer :render-fn (render-slider opts)) !state)))
 
-(alter-var-root #'slider with-meta {:var-from-def? true})
-
 
 (defn render-text-input
   ([] (render-slider {}))
@@ -50,6 +48,4 @@
 (defn text-input
   ([!state] (text-input {} !state))
   ([opts !state] (viewer/with-viewer (assoc viewer/render-eval-viewer :render-fn (render-text-input opts)) !state)))
-
-(alter-var-root #'text-input with-meta {:var-from-def? true})
 
