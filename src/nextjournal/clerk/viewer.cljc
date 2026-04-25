@@ -1361,7 +1361,7 @@
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                    (-> wrapped-value
                        (update :nextjournal/value (fn [value]
-                                                    (process-blocks viewers (merge (->opts wrapped-value) value))))
+                                                    (process-blocks viewers (merge (select-keys wrapped-value [:store!-viewer]) value))))
                        mark-presented))})
 
 (def render-eval-viewer
