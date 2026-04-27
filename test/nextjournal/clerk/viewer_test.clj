@@ -110,12 +110,12 @@
                 (clerk/table {:row (mapv #(str \"t1-\" %) (range 30))})
                 (clerk/table {:row (mapv #(str \"t2-\" %) (range 30))})"
           table-results (->> (eval/eval-string code)
-               view/doc->viewer
-               :nextjournal/value
-               :blocks
-               (mapcat :nextjournal/value)
-               (keep #(get-in % [:nextjournal/value :nextjournal/presented]))
-               (filter v/find-elision))
+                             view/doc->viewer
+                             :nextjournal/value
+                             :blocks
+                             (mapcat :nextjournal/value)
+                             (keep #(get-in % [:nextjournal/value :nextjournal/presented]))
+                             (filter v/find-elision))
           table-strs (fn [presented]
                        (->>
                         ;; expands elided values
