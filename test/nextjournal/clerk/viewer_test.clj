@@ -103,7 +103,31 @@
        ;; see also n.c.render/url-for
        (is (bytes? (:nextjournal/value
                     ((:present-elision-fn (meta presented))
-                     (select-keys (:nextjournal/value presented) [:path])))))))))
+                     (select-keys (:nextjournal/value presented) [:path]))))))))
+  (testing "elision is scoped by block, see #813"
+    (let [code "(ns nextjournal.clerk.test.elision
+                  (:require [nextjournal.clerk :as clerk]))
+                (clerk/table {:row (mapv #(str \"t1-\" %) (range 30))})
+                (clerk/table {:row (mapv #(str \"t2-\" %) (range 30))})"
+          table-results (->> (eval/eval-string code)
+                             view/doc->viewer
+                             :nextjournal/value
+                             :blocks
+                             (mapcat :nextjournal/value)
+                             (keep #(get-in % [:nextjournal/value :nextjournal/presented]))
+                             (filter v/find-elision))
+          table-strs (fn [presented]
+                       (->>
+                        ;; expands elided values
+                        (resolve-elision presented)
+                        v/desc->values
+                        rest
+                        first
+                        (mapv first)))
+          [t1-strs t2-strs] (map table-strs table-results)]
+      (is (= 30 (count t1-strs) (count t2-strs)))
+      (is (every? #(str/starts-with? % "t1") t1-strs))
+      (is (every? #(str/starts-with? % "t2") t2-strs)))))
 
 (deftest default-viewers
   (testing "viewers have names matching vars"
