@@ -244,11 +244,11 @@
 ;; bind the results to `chaotic-data` and `regular-data` for exploration.
 
 (def chaotic-data
-  (doall
+  (vec
    (transform-data raw-chaotic-data)))
 
 (def regular-data
-  (doall
+  (vec
    (transform-data raw-regular-data)))
 
 ;; Here's the final, transformed chaotic state:

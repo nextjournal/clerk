@@ -132,7 +132,7 @@
                 0 form)]
        (if (number? res)
          form
-         (with-meta (doall res) (meta form)))))
+         (with-meta (seq (vec res)) (meta form)))))
 
     (coll? form)
     (outer
