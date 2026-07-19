@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.render.hashing-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [nextjournal.clerk.render.hashing :as hashing]))
 
 (deftest front-end-hash
@@ -7,6 +8,6 @@
     (let [debug-dejavu (System/getProperty "nextjournal.dejavu.debug")]
       (when-not debug-dejavu
         (System/setProperty "nextjournal.dejavu.debug" "1"))
-      (is (hashing/front-end-hash))
+      (is (not (str/blank? (hashing/front-end-hash))))
       (when-not debug-dejavu
         (System/clearProperty "nextjournal.dejavu.debug")))))
