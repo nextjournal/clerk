@@ -273,8 +273,8 @@
           blocks))
 
 (defn cljs? [doc]
-  (boolean (and (string? (:file doc))
-                (str/ends-with? (:file doc) ".cljs"))))
+  (and (string? (:file doc))
+       (str/ends-with? (:file doc) ".cljs")))
 
 ;; TODO: used in builder to drop analyzer dependency, cfr. below
 (defn analyze-doc [doc] (-> doc analyzer/build-graph analyzer/hash))

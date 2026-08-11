@@ -38,7 +38,7 @@
   [:figure
    [:img
     {:class "w-full"
-     :src "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"}]
+     :src "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?w=1200&h=800&fit=crop"}]
    [:figcaption.max-w-prose.text-sm.text-slate-500.sans-serif.mt-2
     "Content width, height based on aspect ratio"]])
 
@@ -46,7 +46,7 @@
   [:figure
    [:img
     {:class "w-full object-cover h-[300px]"
-     :src "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"}]
+     :src "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?w=1200&h=800&fit=crop"}]
    [:figcaption.text-sm.text-slate-500.sans-serif.mt-2
     "Content width, fixed height"]])
 

@@ -11,7 +11,7 @@
 
 ;; ## Images
 (c/card
- (v/image "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg"))
+ (v/image "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?w=1200&h=800&fit=crop"))
 
 ;; ## $\LaTeX$
 (c/card
