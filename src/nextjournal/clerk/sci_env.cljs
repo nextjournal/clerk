@@ -149,7 +149,8 @@
     val))
 
 (def initial-sci-opts
-  {:classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
+  {:unrestricted true
+   :classes {'js (j/assoc! goog/global "import" shadow.esm/dynamic-import)
              'framer-motion framer-motion
              :allow :all}
    :js-libs {"@codemirror/lang-markdown" lang-markdown
@@ -258,8 +259,6 @@
     (set! (.-ws_send ^js goog/global) (fn [msg] (.send ws msg)))))
 
 (sci.ctx-store/reset-ctx! (sci/init initial-sci-opts))
-
-(sci/enable-unrestricted-access!)
 
 (sci/alter-var-root sci/print-fn (constantly *print-fn*))
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
