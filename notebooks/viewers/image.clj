@@ -12,13 +12,13 @@
 ;; For convenience, you can use the `clerk/image` function to create a buffered image from a string or anything `java.awt.image.BufferedImage/read` takes. You can also use `clerk/figure` to show the image with a descriptive caption below it.
 
 ;; A large image with an aspect ratio smaller 2 is shown wider.
-(clerk/image "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
+(clerk/image "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?w=1200&h=800&fit=crop")
 
 ;; Smaller images are centered and shown using their intrinsic dimensions. Here, we're using `clerk/figure`:
 (clerk/image "https://nextjournal.com/data/QmeyvaR3Q5XSwe14ZS6D5WBQGg1zaBaeG3SeyyuUURE2pq?filename=thermos.gif&content-type=image/gif")
 
 ;; Layout options are also available. For example, `{::clerk/width :full}` renders the image in full width.
-(clerk/image {::clerk/width :full} "https://images.freeimages.com/images/large-previews/773/koldalen-4-1384902.jpg")
+(clerk/image {::clerk/width :full} "https://images.unsplash.com/photo-1532879311112-62b7188d28ce?w=1200&h=800&fit=crop")
 
 ;; We also support local files for `clerk/image`:
 (clerk/image "trees.png")
