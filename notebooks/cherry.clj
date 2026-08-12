@@ -10,24 +10,30 @@
 #_(clerk/serve! {:port 7777})
 
 ;; Since we set `:nextjournal.clerk/render-evaluator :cherry` on the ns meta, evaluation happens through cherry by default
-;; in all codeblocks below. As a test for checking that Cherry is actually being picked up, we drop some `this-as` expressions
-;; in the code, since that will throw an exceptions when evaluated by SCI.
+;; in all codeblocks below.
 
 (clerk/with-viewer
   '(fn [value]
-     [:pre (time (do (dotimes [_ 100000]
-                       (js/Math.sin 100))
-                     (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))])
+     (let [result (atom nil)
+           out (with-out-str
+                 (reset! result (time (do (loop [i 0 acc 0.0]
+                                            (if (< i 8000000)
+                                              (recur (inc i) (+ acc (js/Math.sin i)))
+                                              acc))))))]
+       [:pre "SCI: " (.trim out) "\n" @result]))
   {:nextjournal.clerk/render-evaluator :sci} nil)
 
 ;; ## ⏱️ Better performance:
 
 (clerk/with-viewer
   '(fn [value]
-     [:pre
-      (time (do (dotimes [_ 100000]
-                  (js/Math.sin 100))
-                (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))]) nil)
+     (let [result (atom nil)
+           out (with-out-str
+                 (reset! result (time (do (loop [i 0 acc 0.0]
+                                            (if (< i 8000000)
+                                              (recur (inc i) (+ acc (js/Math.sin i)))
+                                              acc))))))]
+       [:pre "cherry: " (.trim out) "\n" @result])) nil)
 
 (clerk/with-viewer
   {:render-fn
@@ -98,7 +104,7 @@
  '(defn emoji-picker
    {:async true}
    []
-   (js/await (js/import "https://esm.sh/emoji-picker-element"))
+   (await (js/import "https://esm.sh/emoji-picker-element"))
    (nextjournal.clerk.viewer/html [:div
                                    [:p "My cool emoji picker:"]
                                    [:emoji-picker]])))
@@ -109,6 +115,27 @@
   '(fn [_]
      [nextjournal.clerk.render/render-promise
       (emoji-picker)])
+  nil)
+
+;; Async also works with `:sci`. Return hiccup instead of calling
+;; `nextjournal.clerk.viewer/html`, which for `:sci` returns a React element
+;; once the promise has resolved, and mount it with the render hooks.
+
+(clerk/eval-cljs
+ {:nextjournal.clerk/render-evaluator :sci}
+ '(defn emoji-picker-sci
+   {:async true}
+   []
+   (await (js/import "https://esm.sh/emoji-picker-element"))
+   [:div [:p "My other emoji picker:"] [:emoji-picker]]))
+
+(clerk/with-viewer
+  '(fn [_]
+     (let [!picker (nextjournal.clerk.render.hooks/use-state nil)]
+       (nextjournal.clerk.render.hooks/use-effect
+        (fn [] (.then (emoji-picker-sci) (fn [hiccup] (reset! !picker hiccup)))))
+       (or @!picker [:span "Loading..."])))
+  {:nextjournal.clerk/render-evaluator :sci}
   nil)
 
 ;; ## 🧩 Macros
