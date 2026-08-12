@@ -117,6 +117,27 @@
       (emoji-picker)])
   nil)
 
+;; Async also works with `:sci`. Return hiccup instead of calling
+;; `nextjournal.clerk.viewer/html`, which for `:sci` returns a React element
+;; once the promise has resolved, and mount it with the render hooks.
+
+(clerk/eval-cljs
+ {:nextjournal.clerk/render-evaluator :sci}
+ '(defn emoji-picker-sci
+   {:async true}
+   []
+   (await (js/import "https://esm.sh/emoji-picker-element"))
+   [:div [:p "My other emoji picker:"] [:emoji-picker]]))
+
+(clerk/with-viewer
+  '(fn [_]
+     (let [!picker (nextjournal.clerk.render.hooks/use-state nil)]
+       (nextjournal.clerk.render.hooks/use-effect
+        (fn [] (.then (emoji-picker-sci) (fn [hiccup] (reset! !picker hiccup)))))
+       (or @!picker [:span "Loading..."])))
+  {:nextjournal.clerk/render-evaluator :sci}
+  nil)
+
 ;; ## 🧩 Macros
 
 (clerk/eval-cljs
