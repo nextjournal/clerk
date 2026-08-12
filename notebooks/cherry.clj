@@ -16,10 +16,11 @@
   '(fn [value]
      (let [result (atom nil)
            out (with-out-str
-                 (reset! result (time (do (dotimes [_ 100000]
-                                            (js/Math.sin 100))
-                                          (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))))]
-       [:pre "SCI: " out @result]))
+                 (reset! result (time (do (loop [i 0 acc 0.0]
+                                            (if (< i 8000000)
+                                              (recur (inc i) (+ acc (js/Math.sin i)))
+                                              acc))))))]
+       [:pre "SCI: " (.trim out) "\n" @result]))
   {:nextjournal.clerk/render-evaluator :sci} nil)
 
 ;; ## ⏱️ Better performance:
@@ -28,10 +29,11 @@
   '(fn [value]
      (let [result (atom nil)
            out (with-out-str
-                 (reset! result (time (do (dotimes [_ 100000]
-                                            (js/Math.sin 100))
-                                          (pr-str (interleave (cycle [1]) (frequencies [1 2 3 1 2 3])))))))]
-       [:pre "cherry: " out @result])) nil)
+                 (reset! result (time (do (loop [i 0 acc 0.0]
+                                            (if (< i 8000000)
+                                              (recur (inc i) (+ acc (js/Math.sin i)))
+                                              acc))))))]
+       [:pre "cherry: " (.trim out) "\n" @result])) nil)
 
 (clerk/with-viewer
   {:render-fn
