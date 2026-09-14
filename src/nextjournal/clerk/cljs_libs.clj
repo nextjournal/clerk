@@ -57,9 +57,9 @@
 
 (defn- read-ns-decl
   ([rdr]
-   (let [opts {:eof ::eof
-               :read-cond :allow
-               :features #{:cljs}}]
+   (let [opts (e/normalize-opts {:eof ::eof
+                                 :read-cond :allow
+                                 :features #{:cljs}})]
      (loop []
        (let [form (e/parse-next rdr opts)]
          (cond

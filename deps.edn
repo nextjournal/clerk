@@ -3,7 +3,7 @@
         org.clojure/java.classpath {:mvn/version "1.0.0"}
         babashka/fs {:mvn/version "0.5.28"}
         org.babashka/http-client {:mvn/version "0.4.23"}
-        borkdude/edamame {:mvn/version "1.4.28"}
+        borkdude/edamame {:mvn/version "1.6.44"}
         weavejester/dependency {:mvn/version "1.0.1"}
         com.nextjournal/beholder {:mvn/version "1.0.3"}
         org.flatland/ordered {:mvn/version "1.15.12"}
