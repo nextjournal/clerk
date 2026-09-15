@@ -429,27 +429,30 @@
 (defn var-from-def? [x]
   (var? (get-safe x :nextjournal.clerk/var-from-def)))
 
+(def unwrap-var-value (some-fn :nextjournal.clerk/var-snapshot
+                               (comp deref :nextjournal.clerk/var-from-def)))
+
 (def var-from-def-viewer
   {:name `var-from-def-viewer
    :pred var-from-def?
-   :transform-fn (update-val (some-fn :nextjournal.clerk/var-snapshot
-                                      (comp deref :nextjournal.clerk/var-from-def)))})
+   :transform-fn (update-val unwrap-var-value)})
 
 (defn apply-viewer-unwrapping-var-from-def
   "Applies the `viewer` (if set) to the given result `result`. In case
-  the `value` is a `var-from-def?` it will be unwrapped unless the
-  viewer opts out with a truthy `:nextjournal.clerk/var-from-def`."
+  the return value is a `var-from-def?` it will be unwrapped unless the
+  viewer opts out with a truthy `:var-from-def?`."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
     (let [value+viewer (if (or (var? viewer) (fn? viewer))
                          (viewer value)
                          {:nextjournal/value value
                           :nextjournal/viewer (normalize-viewer viewer)})
-          {unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer]
-      (assoc result :nextjournal/value (cond-> value+viewer
-                                         (and (var-from-def? value)
-                                              (-> value+viewer ->viewer :var-from-def? not))
-                                         unwrap-var)))
+          result-value (:nextjournal/value value+viewer)
+          unwrap? (and (var-from-def? result-value)
+                       (-> value+viewer ->viewer :var-from-def? not))]
+      (assoc result :nextjournal/value
+             (cond-> value+viewer
+               unwrap? (update :nextjournal/value unwrap-var-value))))
     result))
 
 #?(:clj
