@@ -187,6 +187,12 @@
       tmp)
     url))
 
+(defn- fix-path-for-esm-loader
+  [s]
+  (if (fs/windows?)
+    (str "file:///" (str/escape s {\\ "/"}))
+    s))
+
 (defn- node-ssr!
   [{:keys [viewer-js state]
     :or {viewer-js
@@ -197,7 +203,7 @@
         [viewer-js katex-js] [(local-js viewer-js tmp-dir)
                               (when katex?
                                 (local-js (str/replace viewer-js "viewer.js" "katex.js") tmp-dir))]
-        in (str "import '" viewer-js "';"
+        in (str "import '" (fix-path-for-esm-loader viewer-js) "';"
                 (when katex?
                   (format (str "import * as katex from \"%s\";"
                                "globalThis.clerk$katex = katex;")
