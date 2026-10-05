@@ -12,6 +12,10 @@
 ;; Since we set `:nextjournal.clerk/render-evaluator :cherry` on the ns meta, evaluation happens through cherry by default
 ;; in all codeblocks below.
 
+;; ## ⏱️ Performance
+
+;; SCI compiles function bodies to JavaScript, so this loop runs about as fast under SCI as under cherry.
+
 (clerk/with-viewer
   '(fn [value]
      (let [result (atom nil)
@@ -22,8 +26,6 @@
                                               acc))))))]
        [:pre "SCI: " (.trim out) "\n" @result]))
   {:nextjournal.clerk/render-evaluator :sci} nil)
-
-;; ## ⏱️ Better performance:
 
 (clerk/with-viewer
   '(fn [value]
