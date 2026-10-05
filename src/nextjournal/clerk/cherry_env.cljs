@@ -16,6 +16,7 @@
             [nextjournal.clojure-mode.extensions.eval-region]
             [nextjournal.clojure-mode.keymap]
             [reagent.core :as reagent]
+            [reagent.debug :as debug]
             [reagent.ratom :as ratom]
             [sci.configs.reagent.reagent :as sci.configs.reagent]))
 
@@ -32,10 +33,19 @@
   #js {:with-let-values ratom/with-let-values
        :reactive? ratom/reactive?
        :-ratom-context sci.configs.reagent/-ratom-context
+       :-generation sci.configs.reagent/-generation
+       :-ratom-generation sci.configs.reagent/-ratom-generation
+       :-set-ratom-generation! sci.configs.reagent/-set-ratom-generation!
+       :-destroy sci.configs.reagent/-destroy
+       :-destroy! sci.configs.reagent/-destroy!
        :atom reagent.ratom/atom
        :make-reaction reagent.ratom/make-reaction
        :make-track reagent.ratom/make-track
        :track! reagent.ratom/track!})
+
+(def reagent-debug-namespace
+  #js {:-tracking? sci.configs.reagent/-tracking?
+       :track-console debug/track-console})
 
 (defn munge-ns-obj [m]
   (.forEach (js/Object.keys m)
@@ -45,10 +55,12 @@
   m)
 
 (j/update-in! js/globalThis [:reagent :ratom] j/extend! (munge-ns-obj reagent-ratom-namespace))
+(j/update-in! js/globalThis [:reagent :debug] j/extend! (munge-ns-obj reagent-debug-namespace))
 (j/assoc! js/globalThis :global_eval (fn [x]
                                        (js/eval.apply js/globalThis #js [x])))
 
-(def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}})
+(def cherry-macros {'reagent.core {'with-let sci.configs.reagent/with-let}
+                    'reagent.debug {'error sci.configs.reagent/error}})
 
 (defn ^:export cherry-compile-string [s]
   (cherry/compile-string
