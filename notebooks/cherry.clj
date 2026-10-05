@@ -14,7 +14,7 @@
 
 ;; ## ⏱️ Performance
 
-;; SCI compiles function bodies to JavaScript, so this loop runs about as fast under SCI as under cherry.
+;; Since SCI v0.15.56, SCI compiles function bodies to JavaScript, so this loop runs about as fast under SCI as under cherry.
 
 (clerk/with-viewer
   '(fn [value]
