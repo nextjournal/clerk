@@ -854,26 +854,54 @@
                                   :nextjournal/value {:error (viewer/present e)}}})
                {:ok false :error e}))))
 
+(defn strip-index-html [path]
+  (str/replace path #"/(index\.html)?$" ""))
+
+(defn build-root
+  "Returns the root url path of the static build with a trailing slash, or nil if the location does not end in current-path.
+  current-path is the doc path of the current page."
+  [current-path]
+  (let [path (strip-index-html (js/decodeURI (.-pathname js/location)))]
+    (cond (empty? current-path) (str path "/")
+          (str/ends-with? path (str "/" current-path)) (subs path 0 (- (count path) (count current-path))))))
+
+(defn url->doc-path
+  "Returns the doc path of url, or nil if url is not a doc of this build."
+  [{:keys [root paths]} ^js url]
+  (let [path (str (strip-index-html (js/decodeURI (.-pathname url))) "/")]
+    (when (and root (str/starts-with? path root))
+      (let [doc-path (str/replace (subs path (count root)) #"/$" "")]
+        (when (or (nil? paths) (contains? paths doc-path))
+          doc-path)))))
+
+(defn doc-path->edn-path [root doc-path]
+  (str root (if (empty? doc-path) "index" doc-path) ".edn"))
+
+(defn doc-path->url-path [root doc-path]
+  ;; relative links in a static build assume the trailing slash
+  (str root doc-path (when (seq doc-path) "/")))
+
 (defn click->fetch [e]
   (when-some [url (some-> ^js e .-target closest-anchor-parent .-href not-empty ->URL)]
     (when-not (ignore-anchor-click? e url)
-      (.preventDefault e)
-      (let [path (.-pathname url)
-            edn-path (str path (when (str/ends-with? path "/") "index") ".edn")]
-        (.pushState js/history #js {:edn_path edn-path} ""
-                    (str path (.-hash url)))
-        (fetch+set-state edn-path)))))
+      (let [{:as router :keys [root]} @!router]
+        (when-some [doc-path (url->doc-path router url)]
+          (let [edn-path (doc-path->edn-path root doc-path)]
+            (.preventDefault e)
+            (.pushState js/history #js {:edn_path edn-path} ""
+                        (str (doc-path->url-path root doc-path) (.-hash url)))
+            (fetch+set-state edn-path)))))))
 
 (defn load->fetch [{:keys [current-path]} _e]
   ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
-  (let [edn-path (-> (.-pathname js/document.location)
-                     (str/replace #"/(index.html)?$" "")
-                     (cond->
-                       (empty? current-path)
-                       (str "/index.edn")
-                       (seq current-path)
-                       (str ".edn")))]
-    (.pushState js/history #js {:edn_path edn-path} "" nil)
+  (let [{:keys [root]} @!router
+        edn-path (if root
+                   (doc-path->edn-path root current-path)
+                   (-> (strip-index-html (.-pathname js/document.location))
+                       (str (if (empty? current-path) "/index" "") ".edn")))]
+    (.replaceState js/history #js {:edn_path edn-path} ""
+                   (when root
+                     (str (doc-path->url-path root current-path) (.-search js/location) (.-hash js/location))))
     (fetch+set-state edn-path)))
 
 (defn popstate->fetch [^js e]
@@ -887,7 +915,11 @@
       (gevents/unlistenByKey listener))
     (reset! !router
             (when render-router
-              (assoc state :listeners
+              (assoc (cond-> state
+                       (= :fetch-edn render-router)
+                       (assoc :root (build-root (:current-path state))
+                              :paths (some-> (:paths state) set)))
+                     :listeners
                      (case render-router
                        :bundle
                        [(gevents/listen js/window gevents/EventType.HASHCHANGE (partial handle-hashchange state) false)]
