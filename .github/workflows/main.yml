@@ -325,6 +325,7 @@ jobs:
         run: |
           bb test:static-app :sha ${{ github.sha }} :skip-install true
           bb test:static-app :skip-install true :url https://snapshots.nextjournal.com/clerk/book/${{ github.sha }}/book/index.html :index false :selector "h1:has-text(\"Book of Clerk\")"
+          bb test:static-app :skip-install true :url https://snapshots.nextjournal.com/clerk/book/${{ github.sha }}/index.html
           bb test:static-app :skip-install true :url https://snapshots.nextjournal.com/clerk-ssr/build/${{ github.sha }}/index.html :index true
 
   deploy:

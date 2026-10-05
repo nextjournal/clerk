@@ -128,8 +128,8 @@
                                             (when (= "error" (.type msg))
                                               (swap! errors conj (.text msg)))))
                     _ (goto page url)
-                    js? (.evaluate page "typeof nextjournal !== 'undefined'")]
-              (when js?
+                    fetch-edn? (.evaluate page "Boolean(history.state && history.state.edn_path)")]
+              (when fetch-edn?
                 (p/let [root (str/replace url #"index\.html$" "")
                         _ (is (= root (.url page)) "load replaces index.html with the build root")
                         link (.first (.locator page "text=/.*\\.clj$/i"))
