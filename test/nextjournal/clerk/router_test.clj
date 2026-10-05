@@ -1,5 +1,7 @@
 (ns nextjournal.clerk.router-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
+            [clojure.test :refer [deftest is testing]]
             [nextjournal.clerk.builder :as builder]
             [nextjournal.clerk.router :as router]
             [nextjournal.clerk.viewer :as viewer])
@@ -75,6 +77,27 @@
         (is (= root (resolve-path page-url href)))))
     (testing (str "stored file path from " file)
       (is (= (str root "_data/abc.png")
-             (resolve-path page-url (str (viewer/relative-root-prefix-from file) "_data/abc.png")))))
-    (testing (str "router url of " file " is the directory of its index.html")
-      (is (= page-url (router/doc-path->url-path (router/build-root (str page-url "index.html") doc-path) doc-path))))))
+             (resolve-path page-url (str (viewer/relative-root-prefix-from file) "_data/abc.png")))))))
+
+(defn page-state [html-file]
+  (let [state-literal (second (re-find #"(?s)let state = (\".*?\")\.replaceAll" (slurp html-file)))]
+    (edn/read-string {:default tagged-literal :readers viewer/data-readers}
+                     (read-string state-literal))))
+
+(deftest static-build-matches-router-paths
+  (fs/with-temp-dir [out-path {}]
+    (builder/build-static-app! {:paths ["notebooks/hello.clj" "notebooks/viewers/html.clj"]
+                                :out-path out-path
+                                :report-fn identity})
+    (let [html-files (map str (fs/glob out-path "**index.html"))
+          states (map page-state html-files)
+          paths (set (:paths (first states)))]
+      (is (= #{"" "notebooks/hello" "notebooks/viewers/html"} paths))
+      (doseq [[html-file {:keys [current-path] :as state}] (map vector html-files states)
+              :let [url-path (router/doc-path->url-path "/" current-path)]]
+        (testing html-file
+          (is (= paths (set (:paths state))))
+          (is (= :fetch-edn (:render-router state)))
+          (is (= (str (fs/path out-path (subs url-path 1) "index.html")) html-file))
+          (is (= "/" (router/build-root url-path current-path)))
+          (is (fs/exists? (fs/path out-path (subs (router/doc-path->edn-path "/" current-path) 1)))))))))

@@ -110,6 +110,61 @@
                   (is false)))
         (.finally done))))
 
+(defn index-link-href [page]
+  (p/let [_ (.waitFor (.first (.locator page "a:text-is(\"Index\")")) #js {:timeout 10000})]
+    (.evaluate page "[...document.querySelectorAll('a')].find(a => a.textContent.trim() === 'Index').href")))
+
+(defn router-marker [page]
+  (.evaluate page "window.routerMarker === true"))
+
+(deftest router-navigation-test
+  (async done
+    (-> (p/let [{:keys [index url]} @!opts]
+          (when-not (false? index)
+            (p/let [page (.newPage @browser)
+                    errors (atom [])
+                    _ (.on page "pageerror" #(swap! errors conj %))
+                    _ (.on page "console" (fn [msg]
+                                            (when (= "error" (.type msg))
+                                              (swap! errors conj (.text msg)))))
+                    _ (goto page url)
+                    js? (.evaluate page "typeof nextjournal !== 'undefined'")]
+              (when js?
+                (p/let [root (str/replace url #"index\.html$" "")
+                        _ (is (= root (.url page)) "load replaces index.html with the build root")
+                        link (.first (.locator page "text=/.*\\.clj$/i"))
+                        link-text (.innerText link)
+                        doc-path (str/replace link-text #"\.cljc?$" "")
+                        page-url (str root doc-path "/")
+                        _ (.evaluate page "window.routerMarker = true")
+                        _ (.click link)
+                        _ (.waitForURL page page-url #js {:timeout 10000})
+                        routed? (router-marker page)
+                        _ (is routed? "left-click inside the build uses the router")
+                        href (index-link-href page)
+                        _ (is (= root href) "Index link after left-click points to the build root")
+                        _ (.goBack page)
+                        _ (.waitForURL page root #js {:timeout 10000})
+                        _ (.waitFor (.first (.locator page "h1:has-text(\"Clerk\")")) #js {:timeout 10000})
+                        _ (goto page page-url)
+                        href (index-link-href page)
+                        _ (is (= root href) "Index link after reload points to the build root")
+                        _ (is (empty? @errors) (str/join "\n" @errors))
+                        outside-url (.-href (js/URL. "../" root))
+                        _ (.evaluate page (str "window.routerMarker = true;"
+                                               "var a = document.createElement('a');"
+                                               "a.id = 'outside-link'; a.textContent = 'outside';"
+                                               "a.href = '" outside-url "';"
+                                               "document.body.appendChild(a)"))
+                        _ (.click (.locator page "#outside-link"))
+                        _ (.waitForURL page outside-url #js {:timeout 10000})
+                        routed? (router-marker page)]
+                  (is (not routed?) "link outside the build loads a new page"))))))
+        (.catch (fn [err]
+                  (js/console.log err)
+                  (is false)))
+        (.finally done))))
+
 (defmethod t/report [:cljs.test/default :begin-test-var] [m]
   (println "===" (-> m :var meta :name))
   (println))
