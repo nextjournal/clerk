@@ -49,12 +49,12 @@
   (is (= "/aoc2025/" (router/doc-path->url-path "/aoc2025/" "")))
   (is (= "/aoc2025/src/day04/" (router/doc-path->url-path "/aoc2025/" "src/day04"))))
 
-(defn- resolve-path [url-path href]
+(defn resolve-path [url-path href]
   (.getPath (.resolve (URI. (str "https://example.com" url-path)) href)))
 
-(def ^:private root "/aoc2025/")
+(def root "/aoc2025/")
 
-(def ^:private files
+(def files
   {"index.clj" ""
    "README.md" "README"
    "src/day04.clj" "src/day04"
