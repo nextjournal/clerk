@@ -854,10 +854,10 @@
                                   :nextjournal/value {:error (viewer/present e)}}})
                {:ok false :error e}))))
 
-(defn strip-index-html [path]
+(defn- strip-index-html [path]
   (str/replace path #"/(index\.html)?$" ""))
 
-(defn build-root
+(defn- build-root
   "Returns the root url path of the static build with a trailing slash, or nil if the location does not end in current-path.
   current-path is the doc path of the current page."
   [current-path]
@@ -865,7 +865,7 @@
     (cond (empty? current-path) (str path "/")
           (str/ends-with? path (str "/" current-path)) (subs path 0 (- (count path) (count current-path))))))
 
-(defn url->doc-path
+(defn- url->doc-path
   "Returns the doc path of url, or nil if url is not a doc of this build."
   [{:keys [root paths]} ^js url]
   (let [path (str (strip-index-html (js/decodeURI (.-pathname url))) "/")]
@@ -874,10 +874,10 @@
         (when (or (nil? paths) (contains? paths doc-path))
           doc-path)))))
 
-(defn doc-path->edn-path [root doc-path]
+(defn- doc-path->edn-path [root doc-path]
   (str root (if (empty? doc-path) "index" doc-path) ".edn"))
 
-(defn doc-path->url-path [root doc-path]
+(defn- doc-path->url-path [root doc-path]
   ;; relative links in a static build assume the trailing slash
   (str root doc-path (when (seq doc-path) "/")))
 
