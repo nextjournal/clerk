@@ -21,7 +21,8 @@
   [{:keys [root paths]} pathname]
   (let [path (str (strip-index-html pathname) "/")]
     (when (and root (str/starts-with? path root))
-      (get paths (str/replace (subs path (count root)) #"/$" "")))))
+      (let [doc-path (str/replace (subs path (count root)) #"/$" "")]
+        (get paths doc-path)))))
 
 (defn doc-path->edn-path [root doc-path]
   (str root (if (empty? doc-path) "index" doc-path) ".edn"))
