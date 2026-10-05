@@ -36,8 +36,8 @@
     (testing "non-doc url under the root returns nil"
       (is (nil? (router/url-path->doc-path router-state "/aoc2025/_data/abc.png")))
       (is (nil? (router/url-path->doc-path router-state "/aoc2025/src/day05/")))))
-  (testing "nil paths accepts every url under the root"
-    (is (= "src/day05" (router/url-path->doc-path {:root "/aoc2025/"} "/aoc2025/src/day05/"))))
+  (testing "nil paths returns nil"
+    (is (nil? (router/url-path->doc-path {:root "/aoc2025/"} "/aoc2025/src/day05/"))))
   (testing "nil root returns nil"
     (is (nil? (router/url-path->doc-path {:root nil} "/aoc2025/src/day03")))))
 

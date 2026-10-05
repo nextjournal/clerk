@@ -892,7 +892,7 @@
               (assoc (cond-> state
                        (= :fetch-edn render-router)
                        (assoc :root (router/build-root (js/decodeURI (.-pathname js/location)) (:current-path state))
-                              :paths (some-> (:paths state) set)))
+                              :paths (set (:paths state))))
                      :listeners
                      (case render-router
                        :bundle
