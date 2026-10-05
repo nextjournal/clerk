@@ -1,5 +1,7 @@
 (ns nextjournal.clerk.router
-  "Url paths of a static build for the `:fetch-edn` router."
+  "Url paths of a static build for the `:fetch-edn` router.
+  The router runs in the browser only.
+  This namespace is cljc so JVM tests can check its paths against the links the builder writes."
   (:require [clojure.string :as str]))
 
 (defn strip-index-html [path]
