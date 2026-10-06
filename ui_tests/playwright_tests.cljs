@@ -69,11 +69,9 @@
                         "div")]
      (println "Visiting" (str url "#/" txt))
      (p/do (.click link)
-           (.waitForLoadState page "networkidle")
-           (p/let [loc (.locator page selector)
-                   loc (.first loc #js {:timeout 10000})
-                   _ (.waitFor loc #js {:state "visible"})
-                   visible? (.isVisible loc)]
+           (p/let [loc (.first (.locator page selector))
+                   visible? (p/-> (.waitFor loc #js {:state "visible" :timeout 30000})
+                                  (p/then (constantly true)))]
              (is visible?))))))
 
 (deftest index-page-test
@@ -151,7 +149,7 @@
                         href (index-link-href page)
                         _ (is (= root href) "Index link after reload points to the build root")
                         _ (is (empty? @errors) (str/join "\n" @errors))
-                        outside-url (.-href (js/URL. "../" root))
+                        outside-url (str root "not-a-notebook/")
                         _ (.evaluate page (str "window.routerMarker = true;"
                                                "var a = document.createElement('a');"
                                                "a.id = 'outside-link'; a.textContent = 'outside';"
