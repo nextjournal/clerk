@@ -825,13 +825,9 @@
 (defn utf8-decode [bytes]
   (.decode (js/TextDecoder. "utf-8") bytes))
 
-(defn delay-resolve [v] (new js/Promise (fn [res] (js/setTimeout #(res v) 100))))
-
 (defn read-response+show-progress [{:as state :keys [reader buffer content-length]}]
   (swap! !doc assoc :status {:progress (if (zero? (count buffer)) 0.2 (/ (count buffer) content-length))})
   (.. reader read
-      ;; delay a bit for progress bar to be visible
-      (then delay-resolve)
       (then (fn [ret]
               (if (.-done ret)
                 buffer
