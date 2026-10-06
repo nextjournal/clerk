@@ -69,6 +69,7 @@
                         "div")]
      (println "Visiting" (str url "#/" txt))
      (p/do (.click link)
+           (.waitForLoadState page "networkidle")
            (p/let [loc (.locator page selector)
                    loc (.first loc #js {:timeout 10000})
                    _ (.waitFor loc #js {:state "visible"})
