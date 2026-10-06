@@ -877,10 +877,9 @@
 (defn load->fetch [{:keys [current-path]} _e]
   ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
   (let [{:keys [root]} @!router
-        edn-path (if root
-                   (router/doc-path->edn-path root current-path)
-                   (-> (router/strip-index-html (.-pathname js/document.location))
-                       (str (if (empty? current-path) "/index" "") ".edn")))]
+        edn-path (str (router/strip-index-html (.-pathname js/document.location))
+                      (when (empty? current-path) "/index")
+                      ".edn")]
     (.replaceState js/history #js {:edn_path edn-path} ""
                    (when root
                      (str (router/doc-path->url-path root current-path) (.-search js/location) (.-hash js/location))))
@@ -899,8 +898,7 @@
             (when render-router
               (assoc (cond-> state
                        (= :fetch-edn render-router)
-                       (assoc :root (router/build-root (js/decodeURI (.-pathname js/location)) (:current-path state))
-                              :paths (set (:paths state))))
+                       (assoc :root (router/build-root (js/decodeURI (.-pathname js/location)) (:current-path state))))
                      :listeners
                      (case render-router
                        :bundle

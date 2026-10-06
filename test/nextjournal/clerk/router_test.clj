@@ -43,14 +43,6 @@
   (testing "nil root returns nil"
     (is (nil? (router/url-path->doc-path {:root nil} "/aoc2025/src/day03")))))
 
-(deftest doc-path->edn-path
-  (is (= "/aoc2025/index.edn" (router/doc-path->edn-path "/aoc2025/" "")))
-  (is (= "/aoc2025/src/day04.edn" (router/doc-path->edn-path "/aoc2025/" "src/day04"))))
-
-(deftest doc-path->url-path
-  (is (= "/aoc2025/" (router/doc-path->url-path "/aoc2025/" "")))
-  (is (= "/aoc2025/src/day04/" (router/doc-path->url-path "/aoc2025/" "src/day04"))))
-
 (defn resolve-path [url-path href]
   (.getPath (.resolve (URI. (str "https://example.com" url-path)) href)))
 

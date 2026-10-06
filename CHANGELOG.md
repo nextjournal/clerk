@@ -14,12 +14,10 @@ Changes can be:
 
 * 💫 Detect and throw on infinte loops during presentation
 
-* 🐜 Keep the trailing slash on link navigation in static builds so relative links match a direct page load, fixes [#783](https://github.com/nextjournal/clerk/issues/783)
-
-* 🐜 Load links outside the static build as regular pages instead of fetching their EDN
+* 🐜 Fix relative links by removing trailing slash, fixes [#783](https://github.com/nextjournal/clerk/issues/783)
 
 * 🐞 Fix regression in generation of open graph meta tags, @elken, fixes [#782](https://github.com/nextjournal/clerk/issues/782).
-
+  
 * 🐞 Always analyze doc (but not deps) when no-cache is set, @borkdude, fixes [#781](https://github.com/nextjournal/clerk/issues/781).
 
 * 🐞 Fix browse when using random port by passing 0, fixes [#801](https://github.com/nextjournal/clerk/issues/801)

@@ -69,12 +69,12 @@
   ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
   (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
 
-(defn- ->browser-state [{:as state :keys [current-path render-router]}]
+(defn- ->browser-state [{:as state :keys [render-router]}]
   (if (= render-router :fetch-edn)
-    (cond-> (-> state
-                (dissoc :path->doc)
-                (update :paths #(mapv fs/unixify %)))
-      current-path (update :current-path fs/unixify))
+    (-> state
+        (dissoc :path->doc)
+        (update :paths #(set (map fs/unixify %)))
+        (update :current-path fs/unixify))
     state))
 
 (defn ->html [{:as state :keys [conn-ws? current-path html exclude-js? render-router]}]
