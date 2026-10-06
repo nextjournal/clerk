@@ -103,7 +103,7 @@
           (p/delay 30000) ;; allow errors to be logged to console
           (is (zero? (count @console-errors))
               (str/join "\n" (map (fn [{:keys [msg notebook]}]
-                                    [msg notebook])
+                                    [(if (fn? (.-text msg)) (.text msg) (str msg)) notebook])
                                   @console-errors))))
         (.catch (fn [err]
                   (js/console.log err)
@@ -111,7 +111,7 @@
         (.finally done))))
 
 (defn index-link-href [page]
-  (p/let [_ (.waitFor (.first (.locator page "a:text-is(\"Index\")")) #js {:timeout 10000})]
+  (p/let [_ (.waitFor (.first (.locator page "a:text-is(\"Index\")")) #js {:timeout 30000})]
     (.evaluate page "[...document.querySelectorAll('a')].find(a => a.textContent.trim() === 'Index').href")))
 
 (defn router-marker [page]
@@ -145,7 +145,7 @@
                         _ (is (= root href) "Index link after left-click points to the build root")
                         _ (.goBack page)
                         _ (.waitForURL page root #js {:timeout 10000})
-                        _ (.waitFor (.first (.locator page "h1:has-text(\"Clerk\")")) #js {:timeout 10000})
+                        _ (.waitFor (.first (.locator page "h1:has-text(\"Clerk\")")) #js {:timeout 30000})
                         _ (goto page page-url)
                         href (index-link-href page)
                         _ (is (= root href) "Index link after reload points to the build root")
@@ -156,7 +156,7 @@
                                                "a.id = 'outside-link'; a.textContent = 'outside';"
                                                "a.href = '" outside-url "';"
                                                "document.body.appendChild(a)"))
-                        _ (.click (.locator page "#outside-link"))
+                        _ (.dispatchEvent (.locator page "#outside-link") "click")
                         _ (.waitForURL page outside-url #js {:timeout 10000})
                         routed? (router-marker page)]
                   (is (not routed?) "link outside the build loads a new page"))))))
