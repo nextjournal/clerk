@@ -164,7 +164,7 @@
                                "notebooks/markdown.md"] :expand-paths? true})
 
 (defn build-static-app-opts [opts docs]
-  (let [path->doc (into {} (map (juxt (comp str fs/strip-ext strip-index (partial viewer/map-index opts) :file) :viewer)) docs)]
+  (let [path->doc (into {} (map (juxt (comp path-to-url-canonicalize str fs/strip-ext strip-index (partial viewer/map-index opts) :file) :viewer)) docs)]
     (assoc opts
            :path->doc path->doc
            :paths (vec (keys path->doc)))))
