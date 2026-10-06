@@ -1,5 +1,6 @@
 (ns nextjournal.clerk.view
-  (:require [clojure.java.io :as io]
+  (:require [babashka.fs :as fs]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.page :as hiccup]
             [nextjournal.clerk.cljs-libs :as cljs-libs]
@@ -68,6 +69,14 @@
   ;; https://html.spec.whatwg.org/multipage/syntax.html#cdata-rcdata-restrictions
   (str/replace s "</script>" "</nextjournal.clerk.view/escape-closing-script-tag>"))
 
+(defn- ->browser-state [{:as state :keys [render-router]}]
+  (if (= render-router :fetch-edn)
+    (-> state
+        (dissoc :path->doc)
+        (update :paths #(set (map fs/unixify %)))
+        (update :current-path fs/unixify))
+    state))
+
 (defn ->html [{:as state :keys [conn-ws? current-path html exclude-js? render-router]}]
   (hiccup/html5
    [:head
@@ -90,7 +99,7 @@
     [:div#clerk html]
     (when-not exclude-js?
       [:script {:type "module"} "let viewer = nextjournal.clerk.sci_env
-let state = " (-> (if (= render-router :fetch-edn) (dissoc state :path->doc) state) v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
+let state = " (-> state ->browser-state v/->edn escape-closing-script-tag pr-str) ".replaceAll('nextjournal.clerk.view/escape-closing-script-tag', 'script')
 viewer.init(viewer.read_string(state))\n"
        (when conn-ws?
          "viewer.connect(document.location.origin.replace(/^http/, 'ws') + '/_ws')\n")])]))
