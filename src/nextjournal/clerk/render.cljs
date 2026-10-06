@@ -837,23 +837,35 @@
                 buffer
                 (read-response+show-progress (update state :buffer str (utf8-decode (.-value ret)))))))))
 
+(defonce ^:private !fetch-count (atom 0))
+
 (defn fetch+set-state [edn-path]
-  (.. ^js (js/fetch edn-path)
-      (then (fn handle-response [r]
-              (if (.-ok r)
-                {:buffer ""
-                 :reader (.. r -body getReader)
-                 :content-length (js/Number. (.. r -headers (get "content-length")))}
-                (throw (ex-info (.-statusText r) {:url (.-url r)
-                                                  :status (.-status r)
-                                                  :headers (.-headers r)})))))
-      (then read-response+show-progress)
-      (then (fn [edn]
-              (set-state! {:doc (read-string edn)}) {:ok true}))
-      (catch (fn [e] (js/console.error "Fetch failed" e)
-               (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])} ;; FIXME: make :error top level on state
-                                  :nextjournal/value {:error (viewer/present e)}}})
-               {:ok false :error e}))))
+  (let [fetch-id (swap! !fetch-count inc)
+        latest? #(= fetch-id @!fetch-count)]
+    (.. ^js (js/fetch edn-path)
+        (then (fn handle-response [r]
+                (if (.-ok r)
+                  {:buffer ""
+                   :reader (.. r -body getReader)
+                   :content-length (js/Number. (.. r -headers (get "content-length")))}
+                  (throw (ex-info (.-statusText r) {:url (.-url r)
+                                                    :status (.-status r)
+                                                    :headers (.-headers r)})))))
+        (then read-response+show-progress)
+        (then (fn [edn]
+                (when (latest?)
+                  (set-state! {:doc (read-string edn)}))
+                {:ok true}))
+        (catch (fn [e] (js/console.error "Fetch failed" e)
+                 (when (latest?)
+                   (set-state! {:doc {:nextjournal/viewer {:render-fn (constantly [:<>])} ;; FIXME: make :error top level on state
+                                      :nextjournal/value {:error (viewer/present e)}}}))
+                 {:ok false :error e})))))
+
+(defn- navigate->fetch [edn-path]
+  ;; the previous page must not resolve its relative urls against the new url
+  (reset! !doc {})
+  (fetch+set-state edn-path))
 
 (defn click->fetch [e]
   (when-some [url (some-> ^js e .-target closest-anchor-parent .-href not-empty ->URL)]
@@ -864,7 +876,7 @@
             (.preventDefault e)
             (.pushState js/history #js {:edn_path edn-path} ""
                         (str (router/doc-path->url-path root doc-path) (.-hash url)))
-            (fetch+set-state edn-path)))))))
+            (navigate->fetch edn-path)))))))
 
 (defn load->fetch [{:keys [current-path]} _e]
   ;; TODO: consider fixing this discrepancy via writing EDN one step deeper in directory
@@ -881,7 +893,7 @@
 (defn popstate->fetch [^js e]
   (when-some [edn-path (when (.-state e) (.. e -state -edn_path))]
     (.preventDefault e)
-    (fetch+set-state edn-path)))
+    (navigate->fetch edn-path)))
 
 (defn setup-router! [{:as state :keys [render-router]}]
   (when (and (exists? js/document) (exists? js/window))
