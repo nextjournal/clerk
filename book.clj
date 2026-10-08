@@ -477,9 +477,13 @@ int main() {
    {:temperature 29.0 :date (java.time.LocalDate/parse "2022-08-01")}])
 
 ;; As you can see above, the table viewer is being applied to the
-;; value of the `my-dataset` var, not the var itself. If you want your viewer to access the raw var, you can opt out of this with a truthy `:var-from-def?` key on the viewer.
+;; value of the `my-dataset` var, not the var itself. If your viewer
+;; needs to know which var produced the value (e.g. for reactive atoms
+;; or source linking), the wrapped value's
+;; `:nextjournal.clerk/var-from-def` sidecar carries the var reference,
+;; which your `:transform-fn` can read.
 
-^{::clerk/viewer (assoc v/fallback-viewer :var-from-def? true)}
+^{::clerk/viewer v/fallback-viewer}
 (def raw-var :baz)
 
 
