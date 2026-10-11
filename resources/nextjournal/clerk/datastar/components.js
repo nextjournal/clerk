@@ -136,3 +136,42 @@ customElements.define('clerk-island', class extends ClerkComponent {
     })
   }
 })
+
+// ## Table of contents & dark mode
+// Per browser ui state kept in localStorage (same keys as the cljs viewer)
+// and on the <html> element which morphing never touches.
+
+const TOC_KEY = 'clerk-navbar'
+const DARK_MODE_KEY = 'clerk-darkmode'
+
+const storedBoolean = (key) => {
+  const value = localStorage.getItem(key)
+  return value === 'true' ? true : value === 'false' ? false : null
+}
+
+const setTocOpen = (open) => {
+  document.documentElement.dataset.clerkToc = open ? 'open' : 'closed'
+}
+
+window.clerkToggleToc = (open) => {
+  localStorage.setItem(TOC_KEY, String(open))
+  setTocOpen(open)
+}
+
+window.clerkToggleDarkMode = () => {
+  const dark = document.documentElement.classList.toggle('dark')
+  localStorage.setItem(DARK_MODE_KEY, String(dark))
+}
+
+customElements.define('clerk-toc', class extends HTMLElement {
+  connectedCallback () {
+    setTocOpen(storedBoolean(TOC_KEY) ?? this.dataset.default === 'open')
+  }
+
+  disconnectedCallback () {
+    // morphing may move the element, only reset when it's really gone
+    setTimeout(() => {
+      if (!document.querySelector('clerk-toc')) delete document.documentElement.dataset.clerkToc
+    })
+  }
+})

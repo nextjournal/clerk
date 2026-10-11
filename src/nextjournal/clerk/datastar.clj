@@ -186,7 +186,27 @@
        "{ evt.preventDefault(); " (navigate-expr "decodeURIComponent(a.pathname).slice(1)") " }"))
 
 (def page-css
-  ".cm-line { padding: 0; line-height: 1.6; font-size: 15px; font-family: \"Fira Mono\", monospace; }")
+  ".cm-line { padding: 0; line-height: 1.6; font-size: 15px; font-family: \"Fira Mono\", monospace; }
+#clerk-toc-panel { display: none; position: fixed; top: 0; left: 0; z-index: 10; width: 220px; height: 100vh; }
+html[data-clerk-toc=open] #clerk-toc-panel { display: block; }
+html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
+@media (min-width: 768px) { html[data-clerk-toc=open] .notebook-viewer { margin-left: 220px; } }
+@media (max-width: 767px) { #clerk-toc-panel { box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); } }")
+
+(defn early-js
+  "Applies dark mode and the toc state before the first paint to avoid flashes."
+  [toc-default]
+  (str "if (localStorage.getItem('clerk-darkmode') === 'true') document.documentElement.classList.add('dark');"
+       (when toc-default
+         (str "{const t = localStorage.getItem('clerk-navbar');"
+              " document.documentElement.dataset.clerkToc = t === null ? " (js-str toc-default) " : t === 'true' ? 'open' : 'closed'}"))))
+
+(defn toc-default
+  "The initial toc state of a presented doc, nil when it has no toc."
+  [presented]
+  (let [{:keys [toc-visibility toc]} (:nextjournal/value presented)]
+    (when (and toc-visibility (seq (:nextjournal/value toc)))
+      (if (= :collapsed toc-visibility) "closed" "open"))))
 
 (def fonts-css-url
   "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")
@@ -197,7 +217,7 @@
 (defn page-html*
   "Page shell shared by the live and static pages. `opts` are like `view/->html`
   state (`:resource->url`, `:current-path` for relative urls of directory builds)."
-  [{:as opts :keys [resource->url]} {:keys [title open-graph head body-attrs body]}]
+  [{:as opts :keys [resource->url]} {:keys [title open-graph toc-default head body-attrs body]}]
   (str "<!DOCTYPE html>\n"
        (h/html {:mode :html}
                [:html
@@ -209,6 +229,7 @@
                  (h/raw (hiccup1/html (view/include-viewer-css opts)))
                  (h/raw (hiccup1/html (hiccup.page/include-css fonts-css-url katex-css-url)))
                  [:style (h/raw page-css)]
+                 [:script (h/raw (early-js toc-default))]
                  [:meta {:name "clerk-viewer-js" :content (view/adjust-relative-path opts (get resource->url "/js/viewer.js"))}]
                  head]
                 (into [:body.dark:bg-gray-900 body-attrs] body)])))
@@ -216,6 +237,7 @@
 (defn page-html [{:as state :keys [presented]} tab-id {:keys [replace-url?]}]
   (page-html* {:resource->url @config/!resource->url}
               {:title (-> presented :nextjournal/value :title)
+               :toc-default (toc-default presented)
                :head (list [:script {:type "module" :src datastar-url}]
                            [:script {:type "module" :src "/_clerk/components.js"}]
                            ;; where islands send their messages, absent in static builds
@@ -234,9 +256,16 @@
 (defn render-static-doc [presented]
   (html/inspect {:islands? true} presented))
 
+(defn static-doc-html
+  "The html of a presented doc in a static build, also used to compile its css."
+  [presented]
+  (html/->html-str (render-static-doc presented)))
+
 (def single-file-router-js
   ;; shows the section for the `#/path` written by `doc-url` for single file builds
   "const show = () => {
+  // leave in-page anchors like toc links to the browser
+  if (location.hash && !location.hash.startsWith('#/')) return
   const path = decodeURIComponent(location.hash.replace(/^#\\/?/, '').split(':')[0])
   const sections = [...document.querySelectorAll('section[data-clerk-path]')]
   const section = sections.find(s => s.dataset.clerkPath === path) || sections.find(s => s.dataset.clerkPath === '')
@@ -271,6 +300,7 @@ show()")
     (page-html* opts
                 {:title (-> presented :nextjournal/value :title)
                  :open-graph (-> presented :nextjournal/value :open-graph)
+                 :toc-default (toc-default presented)
                  :head [:script {:type "module"} (h/raw (components-js))]
                  :body [[:main#clerk-datastar
                          (island-env presented)

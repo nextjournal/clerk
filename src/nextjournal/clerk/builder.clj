@@ -294,7 +294,14 @@
       (spit (let [path (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".edn"))]
               (fs/create-dirs (fs/parent path))
               (str path))
-            (pr-str viewer)))
+            (pr-str viewer))
+      (when (webserver/datastar? opts)
+        ;; the datastar frontend renders html on the server with its own classes
+        (spit (str (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".html")))
+              ((requiring-resolve 'nextjournal.clerk.datastar/static-doc-html) viewer))))
+    (when (webserver/datastar? opts)
+      (spit (str (fs/path tw-folder "components.html"))
+            ((requiring-resolve 'nextjournal.clerk.datastar/components-js))))
     (let [{:as ret :keys [out err exit]}
           (try (sh "tailwindcss"
                    "--input"  tw-input

@@ -330,9 +330,13 @@
         [:div.overflow-x-auto
          (inspect ctx' presented)]]])))
 
+(declare dark-mode-toggle)
+
 (defmethod render-viewer 'nextjournal.clerk.render/render-notebook [ctx {:nextjournal/keys [value]}]
-  (let [{:keys [blocks header footer doc-css-class sidenotes? error]} value]
+  (let [{:keys [blocks header footer doc-css-class sidenotes? error toc]} value]
     [:div.flex
+     dark-mode-toggle
+     (inspect ctx toc)
      [:div.flex-auto.w-screen.scroll-container
       (into [:div {:class (class->str (cond-> (or doc-css-class [:flex :flex-col :items-center :notebook-viewer :flex-auto])
                                         sidenotes? (conj :sidenotes-layout)))}]
@@ -660,8 +664,52 @@
 (defmethod render-viewer :nextjournal.markdown/formula [ctx {:as x :nextjournal/keys [value]}]
   (component :clerk-katex ctx x {:tex value :inline true} value))
 
-(defmethod render-viewer `v/toc-viewer [_ctx _x]
-  nil)
+;; ### Table of contents & dark mode
+;; Whether the toc is open and dark mode are per browser ui state kept in
+;; localStorage by `<clerk-toc>` and `clerkToggleDarkMode` in components.js.
+
+(defn render-toc-items [items]
+  (into [:div]
+        (map (fn [{:keys [emoji path title items]}]
+               [:div.text-base.leading-normal.dark:text-white {:class "md:text-[14px]"}
+                [:a.flex.flex-auto.gap-1.py-1.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.hover:text-indigo-700.dark:hover:text-white.hover:underline.decoration-indigo-300.dark:decoration-slate-400.underline-offset-2.transition
+                 {:class "px-[6px] ml-[8px] mr-[4px]" :href path}
+                 (when emoji [:span.flex-shrink-0 emoji])
+                 [:span (or title (str/capitalize (last (str/split path #"/"))))]]
+                (when (seq items)
+                  [:div.relative {:class "ml-[19px]"} (render-toc-items items)])]))
+        items))
+
+(defmethod render-viewer 'nextjournal.clerk.render.navbar/render-items [_ctx {:nextjournal/keys [value render-opts]}]
+  (let [{:keys [toc-visibility]} render-opts]
+    (when (and toc-visibility (seq value))
+      [:clerk-toc {:data-default (if (= :collapsed toc-visibility) "closed" "open")}
+       [:div#clerk-toc-open-button.toc-toggle
+        {:class "z-10 fixed right-2 top-2 md:right-auto md:left-3 md:top-[7px] text-slate-400 font-sans text-xs hover:underline cursor-pointer flex items-center bg-white dark:bg-gray-900 py-1 px-3 md:p-0 rounded-full md:rounded-none border md:border-0 border-slate-200 dark:border-gray-500 shadow md:shadow-none dark:text-slate-400 dark:hover:text-white"
+         :onclick "clerkToggleToc(true)"}
+        [:svg {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :width 20 :height 20}
+         [:path {:stroke-linecap "round" :stroke-linejoin "round" :stroke-width "2" :d "M4 6h16M4 12h16M4 18h16"}]]
+        [:span.uppercase.tracking-wider.ml-1.font-bold {:class "text-[12px]"} "ToC"]]
+       [:div#clerk-toc-panel.bg-slate-100.dark:bg-gray-800.font-sans.border-r.dark:border-slate-900
+        [:div.toc-toggle.rounded.hover:bg-slate-200.dark:hover:bg-slate-900.p-1.text-slate-500.hover:text-slate-600.dark:hover:text-white.absolute.right-2.cursor-pointer.z-10
+         {:class "top-[11px] -mt-1 -mr-1" :onclick "clerkToggleToc(false)"}
+         [:svg.w-4.h-4 {:xmlns "http://www.w3.org/2000/svg" :fill "none" :viewBox "0 0 24 24" :stroke "currentColor" :stroke-width "2"}
+          [:path {:stroke-linecap "round" :stroke-linejoin "round" :d "M15 19l-7-7 7-7"}]]]
+        [:div.absolute.left-0.top-0.w-full.h-full.overflow-x-hidden.overflow-y-auto.py-3
+         [:div.px-3.mb-1.mt-1.md:mt-0.text-xs.uppercase.tracking-wider.text-slate-500.dark:text-slate-400.font-medium.leading-none
+          {:class "md:text-[12px]"} "TOC"]
+         (render-toc-items value)]]])))
+
+(def dark-mode-toggle
+  [:div.fixed.top-2.left-2.md:left-auto.md:right-2.z-10
+   [:button.text-slate-400.hover:text-slate-600.dark:hover:text-white.cursor-pointer
+    {:onclick "clerkToggleDarkMode()" :title "Toggle dark mode"}
+    [:svg.w-5.h-5.md:w-4.md:h-4.dark:hidden {:viewBox "0 0 50 50" :xmlns "http://www.w3.org/2000/svg"}
+     [:path {:fill "currentColor" :d "M 43.81 29.354 C 43.688 28.958 43.413 28.626 43.046 28.432 C 42.679 28.238 42.251 28.198 41.854 28.321 C 36.161 29.886 30.067 28.272 25.894 24.096 C 21.722 19.92 20.113 13.824 21.683 8.133 C 21.848 7.582 21.697 6.985 21.29 6.578 C 20.884 6.172 20.287 6.022 19.736 6.187 C 10.659 8.728 4.691 17.389 5.55 26.776 C 6.408 36.163 13.847 43.598 23.235 44.451 C 32.622 45.304 41.28 39.332 43.816 30.253 C 43.902 29.96 43.9 29.647 43.81 29.354 Z"}]]
+    [:svg.w-5.h-5.md:w-4.md:h-4.hidden.dark:block {:viewBox "0 0 24 24" :xmlns "http://www.w3.org/2000/svg" :fill "currentColor"}
+     [:circle {:cx "12" :cy "12" :r "5.75"}]
+     (for [[cx cy] [[3.09 6.86] [3.09 17.14] [12 22.29] [20.91 17.14] [20.91 6.86] [12 1.71]]]
+       [:circle {:cx (str cx) :cy (str cy) :r "1.71"}])]]])
 
 ;; ## Status
 

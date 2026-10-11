@@ -204,3 +204,17 @@
       (let [page (datastar/static-page-html opts {:path->doc {"" presented "other" presented}})]
         (is (= 2 (count (re-seq #"<section data-clerk-path" page))))
         (is (str/includes? page "data-clerk-path=\"other\" data-clerk-title=\"Static\" hidden"))))))
+
+(deftest toc
+  (let [presented (present-string "(ns datastar-test.toc {:nextjournal.clerk/toc :collapsed})
+;; # Title
+;; ## Section")
+        out (html/->html-str (html/inspect {} presented))]
+    (is (str/includes? out "<clerk-toc data-default=\"closed\">"))
+    (is (str/includes? out "href=\"#section\""))
+    (is (= "closed" (datastar/toc-default presented)))
+    (is (str/includes? (datastar/early-js "closed") "localStorage.getItem('clerk-navbar')"))
+    (testing "notebooks without a toc don't render one"
+      (let [presented (present-string "(ns datastar-test.no-toc)\n;; # Title")]
+        (is (nil? (datastar/toc-default presented)))
+        (is (not (str/includes? (html/->html-str (html/inspect {} presented)) "<clerk-toc")))))))
