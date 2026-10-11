@@ -474,7 +474,8 @@
   - `:paths`     - restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set.
   - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths.
   - `:index`     - path to a file to override Clerk's default index, will be added to paths.
-  - `:frontend`  - set to `:datastar` to opt into the experimental server-rendered Datastar frontend.
+  - `:frontend`  - `:datastar` (default) renders notebooks on the server and keeps the browser updated via Datastar,
+                   `:sci-react` renders them in the browser using ClojureScript (SCI + React).
 
   When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
@@ -492,8 +493,10 @@
                              :show-filter-fn {:desc "Symbol resolving to a fn to restrict when to show a notebook as a result of file system event."
                                               :coerce :symbol}
                              :browse {:desc "Opens the browser on boot when set."
-                                      :coerce :boolean}}
-                      :order [:host :port :browse :watch-paths :show-filter-fn :paths :paths-fn :index]}}
+                                      :coerce :boolean}
+                             :frontend {:desc "Either `datastar` (default) rendering on the server or `sci-react` rendering in the browser."
+                                        :coerce :keyword}}
+                      :order [:host :port :browse :watch-paths :show-filter-fn :paths :paths-fn :index :frontend]}}
   [config]
   (if (:help config)
     (if-let [format-opts (and (started-via-bb-cli? config) (requiring-resolve 'babashka.cli/format-opts))]
@@ -547,7 +550,8 @@
     - `:single-file` bundles all documents into a single html file
   - `:bundle`      [DEPRECATED use :package :single-file instead] if true results in a single self-contained html file including inlined images
   - `:compile-css` if true compiles css file containing only the used classes
-  - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html
+  - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html (`:sci-react` only)
+  - `:frontend`    `:datastar` (default) renders pages to html on the JVM, `:sci-react` renders them in the browser using ClojureScript
   - `:browse`      if true will open browser with the built file on success
   - `:dashboard`   if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
   - `:out-path`    a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
@@ -569,8 +573,10 @@
                              :ssr {:desc "Flag to run server-side-rendering to include pre-rendered markup in html output."}
                              :compile-css {:desc "Flag to run tailwindcss to compile a minimal stylesheet containing only the used classes."}
                              :git/sha {:desc "Git sha to use for the backlink."}
-                             :git/url {:desc "Git url to use for the backlink."}}
-                      :order [:paths :paths-fn :index :browse :dashbaord :compile-css :ssr :bundle :out-path :git/sha :git/url]}}
+                             :git/url {:desc "Git url to use for the backlink."}
+                             :frontend {:desc "Either `datastar` (default) rendering html on the JVM or `sci-react` rendering in the browser."
+                                        :coerce :keyword}}
+                      :order [:paths :paths-fn :index :browse :dashbaord :compile-css :ssr :bundle :out-path :git/sha :git/url :frontend]}}
   [build-opts]
   (if (:help build-opts)
     (if-let [format-opts (and (started-via-bb-cli? build-opts) (requiring-resolve 'babashka.cli/format-opts))]

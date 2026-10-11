@@ -8,6 +8,12 @@ Changes can be:
 
 ## Unreleased
 
+* 🚨 New default frontend rendering on the server via [Datastar](https://data-star.dev)
+
+    Notebooks are now rendered to html on the JVM and kept up to date in the browser by pushing the re-rendered page over a compressed server-sent events stream which Datastar morphs into the DOM. Expanding values, fetching elided values, synced atoms with the `experimental` slider and text-input controls and navigation work via actions sent to the server. Vega-Lite, Plotly, KaTeX and MathJax are rendered by small client components. Values whose viewers need the browser (custom `:render-fn`s, `:require-cljs`) are rendered by lazily loading the ClojureScript viewer bundle for just these values. Static builds render pages to html on the JVM.
+
+    Pass `:frontend :sci-react` to `serve!` or `build!` to keep using the ClojureScript (SCI + React) frontend which is still needed for `render-eval`, the `:render-nrepl` and `:ssr`.
+
 * 💫 Add option to disable inline formulas in markdown
 
     Allow setting `{:nextjournal.clerk/markdown {:disable-inline-formulas true}}` as ns metadata to disable markdown parsing of $-delimited inline formulas. @borkdude, fixes [#775](https://github.com/nextjournal/clerk/issues/775).

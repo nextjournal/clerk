@@ -32,6 +32,26 @@
 
 (defonce !server (atom nil))
 
+(def frontends
+  "Valid values of the `:frontend` option:
+  * `:datastar` (default) renders on the server, pushing html to the browser via Datastar
+  * `:sci-react` renders in the browser with ClojureScript (SCI + React)"
+  #{:datastar :sci-react})
+
+(defn frontend
+  "Returns the `:frontend` of the given serve or build `opts`, throwing on invalid values."
+  [opts]
+  (let [frontend (keyword (:frontend opts :datastar))]
+    (when-not (contains? frontends frontend)
+      (throw (ex-info (str "Invalid `:frontend` " (pr-str (:frontend opts)) ", valid options are " (pr-str (sort frontends)) ".")
+                      {:frontend (:frontend opts) :valid-options frontends})))
+    frontend))
+
+(defn datastar?
+  "Is the Datastar frontend used for the given serve or build `opts`?"
+  [opts]
+  (= :datastar (frontend opts)))
+
 #_(view/doc->viewer (:doc @!state))
 #_(reset! !state {})
 
@@ -70,6 +90,9 @@
 (defn render-eval
   "Evaluates the given `form` in Clerk's render environment in the browser."
   [form]
+  (when (and @!server (datastar? @!server))
+    (throw (ex-info "`render-eval` requires the `:sci-react` frontend, please run `(nextjournal.clerk/serve! {:frontend :sci-react})` and try again."
+                    {:form form})))
   (if-let [client (first @!clients)]
     (send! client {:type :render-eval :form form})
     (if (server-url)
@@ -306,11 +329,6 @@
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
-(defn datastar?
-  "Is the server configured to use the Datastar frontend (`:frontend :datastar`)?"
-  [server-opts]
-  (= :datastar (keyword (:frontend server-opts))))
-
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [opts (get-build-opts)
         nav-path (maybe-route-index opts (subs uri 1))]
@@ -413,6 +431,7 @@
                                         opts)))
 
 (defn serve! [{:as opts :keys [host port] :or {host "localhost" port 7777}}]
+  (frontend opts) ;; validate before stopping a running server
   (halt!)
   (try
     (let [instance (httpkit/run-server #'app {:ip host :port port :legacy-return-value? false})
@@ -423,7 +442,10 @@
                              :instance instance))
       (println (format "Clerk webserver started on http://%s:%s ..." host  port)))
     (when-let [render-nrepl-opts (:render-nrepl opts)]
-      (serve-sci-nrepl! render-nrepl-opts))
+      (if (datastar? opts)
+        (binding [*out* *err*]
+          (println "Clerk's `:render-nrepl` requires the `:sci-react` frontend, not starting it."))
+        (serve-sci-nrepl! render-nrepl-opts)))
     (catch java.net.BindException e
       (let [msg (format "Clerk webserver could not be started because port %d is not available. Stop what's running on port %d or specify a different port." port port)]
         (binding [*out* *err*]

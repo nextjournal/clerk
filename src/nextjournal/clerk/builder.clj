@@ -334,6 +334,7 @@
   #{:single-file :directory})
 
 (defn validate-build-opts! [{:as opts :keys [package]}]
+  (webserver/frontend opts)
   (when (and (contains? opts :package)
              (not (contains? valid-package-opts package)))
     (throw (ex-info (str "Invalid :package option: " package) {:package package :valid-options valid-package-opts}))))

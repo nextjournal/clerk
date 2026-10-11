@@ -1,6 +1,6 @@
 ;; # 🚀 Datastar Frontend
-;; Serve this notebook with `(clerk/serve! {:frontend :datastar})` to see it
-;; rendered on the server and pushed to the browser via Datastar.
+;; Clerk's default frontend renders this notebook on the server and pushes
+;; it to the browser via Datastar.
 (ns datastar
   {:nextjournal.clerk/toc true}
   (:require [nextjournal.clerk :as clerk]

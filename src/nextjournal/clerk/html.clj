@@ -267,7 +267,7 @@
      (str (if (= ::custom k)
             (str "A custom `:render-fn` for `" (-> x :nextjournal/viewer :name) "`")
             (str "`" k "`"))
-          " requires the browser renderer, not yet supported with `:frontend :datastar`.")]))
+          " requires the browser renderer which isn't available here.")]))
 
 (defn island
   "Renders the presented value `x` with Clerk's ClojureScript viewer bundle in the browser."

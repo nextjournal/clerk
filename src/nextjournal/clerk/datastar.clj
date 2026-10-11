@@ -225,9 +225,10 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
                  [:meta {:charset "UTF-8"}]
                  [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
                  [:title (or title "Clerk")]
-                 (when open-graph (h/raw (hiccup1/html (v/open-graph-metas open-graph))))
-                 (h/raw (hiccup1/html (view/include-viewer-css opts)))
-                 (h/raw (hiccup1/html (hiccup.page/include-css fonts-css-url katex-css-url)))
+                 (when open-graph (v/open-graph-metas open-graph))
+                 ;; `view` returns hiccup for `hiccup.core`, which doesn't escape script contents
+                 (h/raw (hiccup1/html {:mode :html} (view/include-viewer-css opts)))
+                 (h/raw (hiccup1/html {:mode :html} (hiccup.page/include-css fonts-css-url katex-css-url)))
                  [:style (h/raw page-css)]
                  [:script (h/raw (early-js toc-default))]
                  [:meta {:name "clerk-viewer-js" :content (view/adjust-relative-path opts (get resource->url "/js/viewer.js"))}]

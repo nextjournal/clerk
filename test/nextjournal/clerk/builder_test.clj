@@ -39,6 +39,10 @@
   (testing "error when paths are empty (issue #339)"
     (is (thrown-with-msg? ExceptionInfo #"nothing to build" (builder/build-static-app! {:paths []
                                                                                         :report-fn identity}))))
+  (testing "error on invalid frontend"
+    (is (thrown-with-msg? ExceptionInfo #"Invalid `:frontend`" (builder/build-static-app! {:paths ["notebooks/hello.clj"]
+                                                                                            :frontend :nope
+                                                                                            :report-fn identity}))))
   (testing "error when index is of the wrong type"
     (is (thrown-with-msg? Exception #"`:index` must be" (builder/build-static-app! {:index 0
                                                                                     :report-fn identity})))
@@ -52,6 +56,16 @@
                                   :git/sha "SHASHASHA"
                                   :git/prefix "prefix/"
                                   :out-path temp-dir
+                                  :report-fn identity})
+      (is (str/includes? (slurp (fs/file temp-dir "index.html"))
+                         "href=\"https://github.com/some/project/blob/SHASHASHA/prefix/notebooks/hello.clj\"")))
+    (fs/with-temp-dir [temp-dir {}]
+      (builder/build-static-app! {:index "notebooks/hello.clj"
+                                  :git/url "https://github.com/some/project"
+                                  :git/sha "SHASHASHA"
+                                  :git/prefix "prefix/"
+                                  :out-path temp-dir
+                                  :frontend :sci-react
                                   :report-fn identity})
 
       (is (fs/exists? (fs/file temp-dir "index.edn")))
