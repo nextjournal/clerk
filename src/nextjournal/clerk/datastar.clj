@@ -170,6 +170,7 @@
   [nav-path title]
   (str "{const p = '/' + " (js-str nav-path) "; "
        "if (decodeURIComponent(location.pathname) !== p) {const u = new URL(location); u.pathname = p; u.hash = ''; history.pushState(null, '', u)} "
+       "document.documentElement.dataset.clerkPath = p; "
        "document.title = " (js-str (or title "Clerk")) "}"))
 
 (defn navigate-expr
@@ -217,7 +218,7 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
 (defn page-html*
   "Page shell shared by the live and static pages. `opts` are like `view/->html`
   state (`:resource->url`, `:current-path` for relative urls of directory builds)."
-  [{:as opts :keys [resource->url]} {:keys [title open-graph toc-default head body-attrs body]}]
+  [{:as opts :keys [resource->url]} {:as page :keys [title open-graph toc-default head body-attrs body]}]
   (str "<!DOCTYPE html>\n"
        (h/html {:mode :html}
                [:html
@@ -230,7 +231,7 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
                  (h/raw (hiccup1/html {:mode :html} (view/include-viewer-css opts)))
                  (h/raw (hiccup1/html {:mode :html} (hiccup.page/include-css fonts-css-url katex-css-url)))
                  [:style (h/raw page-css)]
-                 [:script (h/raw (early-js toc-default))]
+                 [:script (h/raw (str (early-js toc-default) (some->> (:early-js page) (str ";"))))]
                  [:meta {:name "clerk-viewer-js" :content (view/adjust-relative-path opts (get resource->url "/js/viewer.js"))}]
                  head]
                 (into [:body.dark:bg-gray-900 body-attrs] body)])))
@@ -245,7 +246,10 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
                            [:meta {:name "clerk-island-endpoint" :content "/_clerk/island"}])
                :body-attrs {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")
                             :data-on:click link-click-expr
-                            :data-on:popstate__window (navigate-expr "decodeURIComponent(location.pathname).slice(1)")}
+                            ;; `popstate` also fires for in-page anchors (e.g. toc links), only navigate when the path changed
+                            :data-on:popstate__window (str "if (decodeURIComponent(location.pathname) !== document.documentElement.dataset.clerkPath) "
+                                                           (navigate-expr "decodeURIComponent(location.pathname).slice(1)"))}
+               :early-js "document.documentElement.dataset.clerkPath = decodeURIComponent(location.pathname)"
                :body [(when replace-url?
                         [:script (h/raw (replace-url-script tab-id))])
                       (render-main state tab-id)]}))

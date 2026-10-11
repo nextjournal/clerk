@@ -112,7 +112,11 @@
 (deftest scripts
   (testing "strings are safe to embed in a script tag"
     (is (= "\"<\\/script>\\\"\"" (datastar/js-str "</script>\""))))
-  (is (str/includes? (datastar/push-url-script "'nextjournal.clerk.home" "Home") "\"'nextjournal.clerk.home\"")))
+  (is (str/includes? (datastar/push-url-script "'nextjournal.clerk.home" "Home") "\"'nextjournal.clerk.home\""))
+  (testing "popstate only navigates when the path changed, not for in-page anchors like toc links"
+    (let [page (datastar/page-html {} "tab" {})]
+      (is (str/includes? page "data-on:popstate__window=\"if (decodeURIComponent(location.pathname) !== document.documentElement.dataset.clerkPath)"))
+      (is (str/includes? page "document.documentElement.dataset.clerkPath = decodeURIComponent(location.pathname)")))))
 
 (deftest controls
   (let [presented (present-string "(ns datastar-test.controls (:require [nextjournal.clerk :as clerk] [nextjournal.clerk.experimental :as cx]))
