@@ -89,8 +89,33 @@
 (defn query-string [params]
   (str/join "&" (map (fn [[k v]] (str (name k) "=" (html/url-encode (if (string? v) v (pr-str v))))) params)))
 
+(defn action-url [tab-id action params]
+  (str "/_clerk/action/" (name action) "?" (query-string (cond-> params tab-id (assoc :tab tab-id)))))
+
 (defn action-attrs [tab-id action params]
-  {:data-on:click (str "@post('/_clerk/action/" (name action) "?" (query-string (assoc params :tab tab-id)) "')")})
+  {:data-on:click (str "@post('" (action-url tab-id action params) "')")})
+
+(defn eval-attrs
+  "Returns attributes for an element in `clerk/html` that evaluate `form`
+  in the notebook's namespace on the server when `:event` (default
+  `:click`) fires. Pass `:recompute? true` to recompute the notebook
+  afterwards. Only supported with `:frontend :datastar`."
+  ([form] (eval-attrs {} form))
+  ([{:keys [event recompute?] :or {event :click}} form]
+   {(keyword (str "data-on:" (name event)))
+    (str "@post('" (action-url nil :eval (cond-> {:form form} recompute? (assoc :recompute true))) "')")}))
+
+(declare js-str)
+
+(defn sync-attrs
+  "Attrs for an input bound to `sync-var`. The server's `value` is applied
+  via `data-init`, which Datastar re-runs when it changes, but only while
+  the input isn't focused. So the client owns the value while the user is
+  typing or dragging and stale renders can't clobber it."
+  [tab-id sync-var coerce value]
+  {:data-init (str "if (document.activeElement !== el) el.value = " (js-str value))
+   (keyword (if (= :string coerce) "data-on:input__debounce.150ms" "data-on:input__throttle.50ms.trailing"))
+   (str "@post('" (action-url tab-id :sync {:var (symbol sync-var) :coerce coerce}) "&value=' + encodeURIComponent(el.value))")})
 
 (defn result-state-fn [tab]
   (fn [id presented auto-expand?]
@@ -104,7 +129,9 @@
    :on-toggle (fn [{:keys [result-id]} path]
                 (action-attrs tab-id :toggle-expand {:id result-id :path path}))
    :on-fetch (fn [{:keys [result-id]} elision]
-               (action-attrs tab-id :fetch-more {:id result-id :elision elision}))})
+               (action-attrs tab-id :fetch-more {:id result-id :elision elision}))
+   :on-sync (fn [_ctx sync-var coerce value]
+              (sync-attrs tab-id sync-var coerce value))})
 
 (defn render-main [{:keys [presented status tabs]} tab-id]
   [:main#clerk
@@ -114,6 +141,31 @@
 
 (defn replace-url-script [tab-id]
   (str "{const u = new URL(location); u.searchParams.set('tab', '" tab-id "'); history.replaceState(history.state, '', u)}"))
+
+(defn js-str
+  "Returns `s` as a JavaScript string literal that's safe to put into a script tag."
+  [s]
+  (str/replace (pr-str (str s)) "</" "<\\/"))
+
+(defn push-url-script
+  "Pushes a history entry for `nav-path` unless the browser is already there, keeping the query string (tab id)."
+  [nav-path title]
+  (str "{const p = '/' + " (js-str nav-path) "; "
+       "if (decodeURIComponent(location.pathname) !== p) {const u = new URL(location); u.pathname = p; u.hash = ''; history.pushState(null, '', u)} "
+       "document.title = " (js-str (or title "Clerk")) "}"))
+
+(defn navigate-expr
+  "Datastar expression navigating to the path given by the JavaScript expression `path-expr`."
+  [path-expr]
+  (str "@post('/_clerk/action/navigate?tab=' + new URL(location).searchParams.get('tab') + '&path=' + encodeURIComponent(" path-expr "))"))
+
+(def link-click-expr
+  ;; intercept same-origin links to notebooks, let the browser handle everything else
+  (str "const a = evt.target.closest('a'); "
+       "if (a && a.origin === location.origin && !a.target && !a.hasAttribute('download') "
+       "&& !evt.metaKey && !evt.ctrlKey && !evt.shiftKey && !evt.altKey && !a.pathname.startsWith('/_') "
+       "&& !(a.hash && a.pathname === location.pathname)) "
+       "{ evt.preventDefault(); " (navigate-expr "decodeURIComponent(a.pathname).slice(1)") " }"))
 
 (def page-css
   ".cm-line { padding: 0; line-height: 1.6; font-size: 15px; font-family: \"Fira Mono\", monospace; }")
@@ -131,7 +183,9 @@
                  [:style (h/raw page-css)]
                  [:script {:type "module" :src datastar-url}]]
                 [:body.dark:bg-gray-900
-                 {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")}
+                 {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")
+                  :data-on:click link-click-expr
+                  :data-on:popstate__window (navigate-expr "decodeURIComponent(location.pathname).slice(1)")}
                  (when replace-url?
                    [:script (h/raw (replace-url-script tab-id))])
                  (render-main state tab-id)]])))
@@ -223,8 +277,12 @@
   [(:presented state) (:status state) (get-in state [:tabs tab-id])])
 
 (defn render-conn! [state ch]
-  (when-let [{:keys [tab-id last-inputs]} (get @!conns ch)]
-    (let [inputs (render-inputs state tab-id)]
+  (when-let [{:keys [tab-id last-inputs nav-path]} (get @!conns ch)]
+    (let [inputs (render-inputs state tab-id)
+          nav-path' (get-in state [:doc :nav-path])]
+      (when (and nav-path' (not= nav-path nav-path'))
+        (send-event! ch (script-event (push-url-script nav-path' (-> state :presented :nextjournal/value :title))))
+        (swap! !conns (fn [conns] (cond-> conns (contains? conns ch) (assoc-in [ch :nav-path] nav-path')))))
       (when-not (and last-inputs (every? true? (map identical? inputs last-inputs)))
         (send-event! ch (sse-event (html/->html-str (render-main state tab-id))))
         (swap! !conns (fn [conns] (cond-> conns (contains? conns ch) (assoc-in [ch :last-inputs] inputs))))))))
@@ -336,7 +394,7 @@
       (swap! !conns (fn [conns] (cond-> conns (contains? conns other-ch) (assoc-in [other-ch :tab-id] new-id))))
       (try (send-event! other-ch (script-event (replace-url-script new-id)))
            (catch Exception _))))
-  (swap! !conns assoc ch {:tab-id tab-id :encoder encoder})
+  (swap! !conns assoc ch {:tab-id tab-id :encoder encoder :nav-path (get-in @webserver/!state [:doc :nav-path])})
   (swap! !tab-last-seen assoc tab-id (System/currentTimeMillis)))
 
 (defn sse-handler [{:as req :keys [query-string headers]}]
@@ -379,15 +437,56 @@
       (let [more (v/process-blobs {:blob-mode :lazy-load :blob-id blob-id} (present-elision-fn elision))]
         (swap! webserver/!state update-result-state tab-id id #(update % :fetched (fnil conj []) [elision more]))))))
 
-(defn action-handler [{:keys [uri query-string request-method]}]
-  (if (not= :post request-method)
-    {:status 405}
-    (let [action (subs uri (count "/_clerk/action/"))
-          {:as params :keys [tab]} (webserver/query-string->map query-string)]
-      (if (valid-tab-id? tab)
-        (do (handle-action action tab params)
-            {:status 204})
-        {:status 400 :body "invalid tab id"}))))
+(defn parse-number [s]
+  (let [n (edn/read-string s)]
+    (if (number? n)
+      n
+      (throw (ex-info (str "Not a number: " (pr-str s)) {:value s})))))
+
+(defmethod handle-action "sync" [_ _tab-id params]
+  (let [sym (read-param params :var)
+        var (when (qualified-symbol? sym) (resolve sym))
+        value (get params :value "")]
+    (when-not (contains? (v/extract-sync-atom-vars (:doc @webserver/!state)) var)
+      (throw (ex-info (str "`" sym "` is not a synced var of the current notebook.") {:var sym})))
+    (reset! @var (case (read-param params :coerce)
+                   :number (parse-number value)
+                   :string value))))
+
+(defmethod handle-action "eval" [_ _tab-id params]
+  (binding [*ns* (or (:ns (:doc @webserver/!state)) (create-ns 'user))]
+    (eval (read-param params :form)))
+  (when (= "true" (:recompute params))
+    (eval '(nextjournal.clerk/recompute!))))
+
+(defmethod handle-action "navigate" [_ _tab-id {:keys [path]}]
+  (webserver/navigate! {:nav-path path}))
+
+(defn same-origin-datastar-request?
+  "Actions can evaluate code so we only accept requests from Datastar
+  (a custom header which cross-origin requests can't set without a CORS
+  preflight) coming from the page's own origin."
+  [{:keys [headers]}]
+  (and (= "true" (get headers "datastar-request"))
+       (if-let [origin (get headers "origin")]
+         (= (str/replace origin #"^https?://" "") (get headers "host"))
+         true)))
+
+(def tab-less-actions #{"eval" "navigate"})
+
+(defn action-handler [{:as req :keys [uri query-string request-method]}]
+  (let [action (subs uri (count "/_clerk/action/"))
+        {:as params :keys [tab]} (webserver/query-string->map query-string)]
+    (cond
+      (not= :post request-method) {:status 405}
+      (not (same-origin-datastar-request? req)) {:status 403 :body "forbidden"}
+      (not (or (valid-tab-id? tab) (tab-less-actions action))) {:status 400 :body "invalid tab id"}
+      :else (try (handle-action action tab params)
+                 {:status 204}
+                 (catch Exception e
+                   (binding [*out* *err*]
+                     (println (str "Clerk action `" action "` failed: " (ex-message e))))
+                   {:status 500 :body (ex-message e)})))))
 
 (defn app [{:as req :keys [uri]}]
   (cond

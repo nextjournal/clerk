@@ -81,3 +81,44 @@
   (is (datastar/valid-tab-id? (datastar/new-tab-id)))
   (is (not (datastar/valid-tab-id? "x');alert(1)//")))
   (is (not (datastar/valid-tab-id? nil))))
+
+(deftest action-requests
+  (let [req (fn [headers] {:request-method :post :uri "/_clerk/action/eval" :query-string "form=nil" :headers headers})]
+    (testing "rejects requests without the datastar header (e.g. a cross-origin form post)"
+      (is (= 403 (:status (datastar/action-handler (req {"host" "localhost:7777"}))))))
+    (testing "rejects requests from another origin"
+      (is (= 403 (:status (datastar/action-handler (req {"host" "localhost:7777" "datastar-request" "true" "origin" "https://evil.example"}))))))
+    (is (datastar/same-origin-datastar-request? {:headers {"host" "localhost:7777" "datastar-request" "true" "origin" "http://localhost:7777"}}))
+    (testing "tab ids are required for tab specific actions"
+      (is (= 400 (:status (datastar/action-handler {:request-method :post :uri "/_clerk/action/toggle-expand" :query-string ""
+                                                    :headers {"datastar-request" "true"}})))))))
+
+(def !synced (atom 1))
+
+(deftest sync-action
+  (testing "only synced vars of the current notebook can be updated"
+    (is (thrown-with-msg? Exception #"is not a synced var"
+                          (datastar/handle-action "sync" "tab" {:var (pr-str `!synced) :coerce ":number" :value "2"}))))
+  (is (= 2 (datastar/parse-number "2")))
+  (is (= 0.5 (datastar/parse-number "0.5")))
+  (is (thrown? Exception (datastar/parse-number "(launch-missiles)"))))
+
+(deftest scripts
+  (testing "strings are safe to embed in a script tag"
+    (is (= "\"<\\/script>\\\"\"" (datastar/js-str "</script>\""))))
+  (is (str/includes? (datastar/push-url-script "'nextjournal.clerk.home" "Home") "\"'nextjournal.clerk.home\"")))
+
+(deftest controls
+  (let [presented (present-string "(ns datastar-test.controls (:require [nextjournal.clerk :as clerk] [nextjournal.clerk.experimental :as cx]))
+^{::clerk/sync true ::clerk/viewer cx/slider} (defonce !n (atom 3))
+^{::clerk/sync true ::clerk/viewer cx/text-input} (defonce !s (atom \"hi\"))
+(clerk/with-viewer (assoc nextjournal.clerk.viewer/render-eval-viewer :render-fn '(fn [x] [:div @x])) `!n)")]
+    (testing "without callbacks controls render disabled with their value"
+      (let [out (html/->html-str (html/inspect {} presented))]
+        (is (re-find #"<input[^>]*type=\"range\"[^>]*value=\"3\"" out))
+        (is (re-find #"<input[^>]*disabled[^>]*value=\"hi\"|<input[^>]*value=\"hi\"[^>]*disabled" out))
+        (is (str/includes? out "A custom `:render-fn` for `nextjournal.clerk.viewer/render-eval-viewer`"))))
+    (testing "with datastar the value is applied via data-init unless focused"
+      (let [out (html/->html-str (html/inspect (datastar/render-ctx "tab" nil) presented))]
+        (is (str/includes? out "data-init=\"if (document.activeElement !== el) el.value = &quot;3&quot;\""))
+        (is (str/includes? out "/_clerk/action/sync?var=datastar-test.controls%2F%21n"))))))

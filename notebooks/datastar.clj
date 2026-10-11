@@ -2,7 +2,29 @@
 ;; Serve this notebook with `(clerk/serve! {:frontend :datastar})` to see it
 ;; rendered on the server and pushed to the browser via Datastar.
 (ns datastar
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.datastar :as ds]
+            [nextjournal.clerk.experimental :as cx]))
+
+;; ## Synced atoms
+;; Moving the slider or typing updates the atom on the JVM, which
+;; recomputes the notebook and pushes the new view to the browser.
+^{::clerk/sync true ::clerk/viewer cx/slider}
+(defonce !num (atom 42))
+
+^{::clerk/sync true ::clerk/viewer cx/text-input}
+(defonce !greeting (atom "Hello, Datastar"))
+
+{:num @!num :greeting @!greeting :doubled (* 2 @!num)}
+
+;; ## Evaluating on the server
+;; `ds/eval-attrs` evaluates a form in this namespace when clicked.
+(clerk/html [:div.flex.gap-2.font-sans
+             [:button.px-3.py-1.rounded.bg-indigo-600.text-white (ds/eval-attrs '(swap! !num dec)) "−1"]
+             [:button.px-3.py-1.rounded.bg-indigo-600.text-white (ds/eval-attrs '(swap! !num inc)) "+1"]
+             [:button.px-3.py-1.rounded.bg-slate-200 (ds/eval-attrs '(reset! !num 0)) "reset"]])
+
+;; Links to other notebooks navigate without a page load, e.g. [Hello](/notebooks/hello).
 
 ;; ## Collections
 ;; Click a triangle to expand, click _more…_ to fetch elided values.

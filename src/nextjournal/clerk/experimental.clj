@@ -23,6 +23,9 @@
                       [:span.text-slate-500.ml-1 {:class "text-[11px] -mt-[3px]"} max]]))
                 opts)))
 
+(def slider-viewer
+  (assoc viewer/render-eval-viewer :name `slider-viewer))
+
 (defn slider
   "Creates a slider control from a `!state` atom.
 
@@ -31,7 +34,7 @@
   `:max` maximum value (100)
   `:step` increment (1)"
   ([!state] (slider {} !state))
-  ([opts !state] (viewer/with-viewer (assoc viewer/render-eval-viewer :render-fn (render-slider opts)) !state)))
+  ([opts !state] (viewer/with-viewer (assoc slider-viewer :render-fn (render-slider opts)) {:nextjournal/render-opts opts} !state)))
 
 
 (defn render-text-input
@@ -45,7 +48,10 @@
                             :on-input #(reset! !state (.. % -target -value))}])
                 opts)))
 
+(def text-input-viewer
+  (assoc viewer/render-eval-viewer :name `text-input-viewer))
+
 (defn text-input
   ([!state] (text-input {} !state))
-  ([opts !state] (viewer/with-viewer (assoc viewer/render-eval-viewer :render-fn (render-text-input opts)) !state)))
+  ([opts !state] (viewer/with-viewer (assoc text-input-viewer :render-fn (render-text-input opts)) {:nextjournal/render-opts opts} !state)))
 

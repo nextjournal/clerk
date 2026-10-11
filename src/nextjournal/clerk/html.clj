@@ -8,7 +8,9 @@
 
   * `:result-state` `(fn [result-id presented auto-expand?] {:presented .. :expanded-at ..})`
   * `:on-toggle`    `(fn [ctx path] attrs)` attrs for an expand button
-  * `:on-fetch`     `(fn [ctx fetch-opts] attrs)` attrs for an elision"
+  * `:on-fetch`     `(fn [ctx fetch-opts] attrs)` attrs for an elision
+  * `:on-sync`      `(fn [ctx sync-var coerce value] attrs)` attrs for an input updating a synced
+                    var, responsible for setting the input's `value`"
   (:require [clojure.string :as str]
             [hiccup2.core :as h]
             [nextjournal.clerk.viewer :as v])
@@ -17,12 +19,22 @@
 
 (def nbsp " ")
 
+(def ^:private default-render-fns
+  (memoize (fn [viewers] (into {} (map (juxt :name :render-fn)) viewers))))
+
 (defn viewer-key
   "Dispatch key for a presented value: the qualified symbol of its
-  `:render-fn` when it names a function, its viewer name otherwise."
+  `:render-fn` when it names a function, its viewer name otherwise.
+
+  Returns `::custom` for a default viewer whose `:render-fn` was replaced,
+  e.g. via `(assoc v/render-eval-viewer :render-fn ...)`."
   [{:nextjournal/keys [viewer]}]
-  (let [form (some-> viewer :render-fn :form)]
-    (if (qualified-symbol? form) form (:name viewer))))
+  (let [form (some-> viewer :render-fn :form)
+        defaults (default-render-fns (v/get-default-viewers))
+        viewer-name (:name viewer)]
+    (cond (qualified-symbol? form) form
+          (and (contains? defaults viewer-name) (not= form (defaults viewer-name))) ::custom
+          :else viewer-name)))
 
 (defmulti render-viewer
   "Renders the presented value `x` to hiccup."
@@ -152,8 +164,12 @@
           (str/split-lines code))]])
 
 (defn unsupported [x]
-  [:div.text-xs.font-sans.text-slate-400.italic
-   (str "`" (viewer-key x) "` requires the browser renderer, not yet supported with `:frontend :datastar`.")])
+  (let [k (viewer-key x)]
+    [:div.text-xs.font-sans.text-slate-400.italic
+     (str (if (= ::custom k)
+            (str "A custom `:render-fn` for `" (-> x :nextjournal/viewer :name) "`")
+            (str "`" k "`"))
+          " requires the browser renderer, not yet supported with `:frontend :datastar`.")]))
 
 (defn url-encode [s]
   (URLEncoder/encode (str s) StandardCharsets/UTF_8))
@@ -441,6 +457,61 @@
                 [`v/table-missing-viewer] (constantly nil)}
         k ks]
   (.addMethod ^clojure.lang.MultiFn render-viewer k f))
+
+;; ### Synced atoms & controls
+
+(defn render-eval->var
+  "Returns the var a render-eval value refers to, supporting `sym` and `(resolve 'sym)` forms."
+  [render-eval]
+  (let [form (:form render-eval)
+        sym (cond (qualified-symbol? form) form
+                  (and (seq? form) (= 'resolve (first form))) (let [[_ [_quote sym]] form] sym))]
+    (when (qualified-symbol? sym)
+      (resolve sym))))
+
+(defn input-value-attrs
+  "Attrs setting the `value` of an input bound to `sync-var`, delegating to `:on-sync` when given."
+  [{:as ctx :keys [on-sync]} sync-var coerce value]
+  (if on-sync
+    (on-sync ctx sync-var coerce value)
+    {:value value :disabled true}))
+
+(defmethod render-viewer `v/render-eval-viewer [ctx {:as x :nextjournal/keys [value]}]
+  (let [var (render-eval->var value)
+        ref (some-> var deref)]
+    (if (instance? clojure.lang.IDeref ref)
+      (render-tagged-value {:space? false} "#object"
+                           (inspect (-> ctx (dissoc :on-toggle :on-fetch) (assoc :expanded-at {}))
+                                    (v/present [(symbol (.getName (class ref))) @ref])))
+      (unsupported x))))
+
+(defmethod render-viewer 'nextjournal.clerk.experimental/slider-viewer [ctx {:as x :nextjournal/keys [value render-opts]}]
+  (let [{:keys [min max step] :or {min 0 max 100 step 1}} render-opts
+        var (render-eval->var value)
+        state (some-> var deref deref)]
+    (if-not (number? state)
+      (unsupported x)
+      [:div.inline-flex.items-center.font-sans.pt-3
+       [:span.text-slate-500.mr-1 {:class "text-[11px] -mt-[3px]"} (str min)]
+       [:div.relative
+        [:input (merge {:type "range" :min min :max max :step step}
+                       (input-value-attrs ctx var :number state))]
+        [:output.absolute.top-0.text-center
+         {:class "-translate-x-1/2 -translate-y-full text-[11px] min-w-[25px]"
+          :style (str "left:" (double (+ 5 (* (/ (- (clojure.core/min state max) min) (- max min)) 90))) "%")}
+         (str state)]]
+       [:span.text-slate-500.ml-1 {:class "text-[11px] -mt-[3px]"} (str max)]])))
+
+(defmethod render-viewer 'nextjournal.clerk.experimental/text-input-viewer [ctx {:as x :nextjournal/keys [value render-opts]}]
+  (let [{:keys [placeholder] :or {placeholder "⌨️"}} render-opts
+        var (render-eval->var value)
+        state (some-> var deref deref)]
+    (if-not (string? state)
+      (unsupported x)
+      [:input (merge {:type "text"
+                      :placeholder placeholder
+                      :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"}
+                     (input-value-attrs ctx var :string state))])))
 
 ;; ### Placeholders until client components land (phase 3)
 
