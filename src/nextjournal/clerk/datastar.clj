@@ -1,5 +1,5 @@
 (ns nextjournal.clerk.datastar
-  "Datastar frontend, enabled via `(clerk/serve! {:frontend :datastar})`.
+  "Datastar frontends, `:frontend :datastar+sci-react-island` (default) and `:frontend :datastar`.
 
   The page is a pure function of `webserver/!state` and a tab id. On every
   state change a render loop re-renders `<main id=\"clerk\">` for each
@@ -103,7 +103,7 @@
   "Returns attributes for an element in `clerk/html` that evaluate `form`
   in the notebook's namespace on the server when `:event` (default
   `:click`) fires. Pass `:recompute? true` to recompute the notebook
-  afterwards. Only supported with `:frontend :datastar`."
+  afterwards. Only supported with the Datastar frontends."
   ([form] (eval-attrs {} form))
   ([{:keys [event recompute?] :or {event :click}} form]
    {(keyword (str "data-on:" (name event)))
@@ -128,8 +128,13 @@
       {:presented presented'
        :expanded-at (reduce #(update %1 %2 not) (html/->expanded-at auto-expand? presented') flipped)})))
 
+(defn live-islands?
+  "Does the running server use SCI + React islands (`:frontend :datastar+sci-react-island`)?"
+  []
+  (webserver/islands? @webserver/!server))
+
 (defn render-ctx [tab-id tab]
-  {:islands? true
+  {:islands? (live-islands?)
    :result-state (result-state-fn tab)
    :on-toggle (fn [{:keys [result-id]} path]
                 (when result-id
@@ -148,13 +153,34 @@
     [:clerk-island-env (cond-> {:libs (v/->edn (into (vec cljs-libs) (some-> ns-eval vector)))}
                          (seq atom-var-name->state) (assoc :state (v/->edn atom-var-name->state)))]))
 
+(defn render-error-page
+  "Renders a full page error for an exception thrown while rendering a notebook."
+  [e]
+  [:div.flex.justify-center.min-h-screen.px-8.py-16.font-sans
+   [:div.w-full.max-w-prose
+    [:h1.text-xl.font-bold.text-red-600.dark:text-red-300.mb-4 "Clerk couldn't render this notebook"]
+    [:div.bg-red-100.dark:bg-gray-800.px-6.py-4.rounded-md.text-sm.dark:border-2.dark:border-red-300
+     [:p.font-mono.text-red-600.dark:text-red-300 (ex-message e)]
+     (when-let [data (not-empty (ex-data e))]
+       [:pre.mt-4.text-xs.text-red-600.dark:text-red-300.whitespace-pre-wrap (pr-str data)])]]])
+
 (defn render-main [{:keys [presented status tabs]} tab-id]
   ;; not `#clerk` which the cljs viewer bundle would mount itself onto
   [:main#clerk-datastar
-   (when presented (island-env presented))
+   (when (and presented (live-islands?)) (island-env presented))
    (when status (html/render-status status))
    (when presented
-     (html/inspect (render-ctx tab-id (get tabs tab-id)) presented))])
+     ;; rendered to a string here so errors from lazily rendered children are caught too
+     (try (h/raw (html/->html-str (html/inspect (render-ctx tab-id (get tabs tab-id)) presented)))
+          (catch Exception e
+            (render-error-page e))))])
+
+(defn throw-if-not-renderable!
+  "Renders `presented` once to throw when it can't be rendered with the current frontend,
+  e.g. a value whose viewer needs the browser with `:frontend :datastar`. Called when
+  a doc is presented so the error is thrown at the REPL."
+  [presented]
+  (html/->html-str (html/inspect {:islands? (live-islands?)} presented)))
 
 (defn replace-url-script [tab-id]
   (str "{const u = new URL(location); u.searchParams.set('tab', '" tab-id "'); history.replaceState(history.state, '', u)}"))
@@ -217,7 +243,7 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
 (defn page-html*
   "Page shell shared by the live and static pages. `opts` are like `view/->html`
   state (`:resource->url`, `:current-path` for relative urls of directory builds)."
-  [{:as opts :keys [resource->url]} {:as page :keys [title open-graph toc-default head body-attrs body]}]
+  [{:as opts :keys [resource->url islands?]} {:as page :keys [title open-graph toc-default head body-attrs body]}]
   (str "<!DOCTYPE html>\n"
        (h/html {:mode :html}
                [:html
@@ -231,18 +257,20 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
                  (h/raw (hiccup1/html {:mode :html} (hiccup.page/include-css fonts-css-url katex-css-url)))
                  [:style (h/raw page-css)]
                  [:script (h/raw (str (early-js toc-default) (some->> (:early-js page) (str ";"))))]
-                 [:meta {:name "clerk-viewer-js" :content (view/adjust-relative-path opts (get resource->url "/js/viewer.js"))}]
+                 (when islands?
+                   [:meta {:name "clerk-viewer-js" :content (view/adjust-relative-path opts (get resource->url "/js/viewer.js"))}])
                  head]
                 (into [:body.dark:bg-gray-900 body-attrs] body)])))
 
 (defn page-html [{:as state :keys [presented]} tab-id {:keys [replace-url?]}]
-  (page-html* {:resource->url @config/!resource->url}
+  (page-html* {:resource->url @config/!resource->url :islands? (live-islands?)}
               {:title (-> presented :nextjournal/value :title)
                :toc-default (toc-default presented)
                :head (list [:script {:type "module" :src datastar-url}]
                            [:script {:type "module" :src "/_clerk/components.js"}]
                            ;; where islands send their messages, absent in static builds
-                           [:meta {:name "clerk-island-endpoint" :content "/_clerk/island"}])
+                           (when (live-islands?)
+                             [:meta {:name "clerk-island-endpoint" :content "/_clerk/island"}]))
                :body-attrs {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")
                             :data-on:click link-click-expr
                             ;; `popstate` also fires for in-page anchors (e.g. toc links), only navigate when the path changed
@@ -255,15 +283,16 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
 
 ;; ## Static builds
 ;; Pages rendered once without a server: no Datastar, expansion is fixed at
-;; its initial state, client components and islands still work.
+;; its initial state, client components and islands (with
+;; `:frontend :datastar+sci-react-island`) still work.
 
-(defn render-static-doc [presented]
-  (html/inspect {:islands? true} presented))
+(defn render-static-doc [{:keys [islands?]} presented]
+  (html/inspect {:islands? islands?} presented))
 
 (defn static-doc-html
-  "The html of a presented doc in a static build, also used to compile its css."
-  [presented]
-  (html/->html-str (render-static-doc presented)))
+  "The html of a presented doc in a static build with build `opts`, also used to compile its css."
+  [opts presented]
+  (html/->html-str (render-static-doc {:islands? (webserver/islands? opts)} presented)))
 
 (def single-file-router-js
   ;; shows the section for the `#/path` written by `doc-url` for single file builds
@@ -289,29 +318,30 @@ show()")
   "Renders the static html for a single `:presented` doc (directory builds)
   or all docs in `:path->doc` (single file builds)."
   [opts {:keys [presented path->doc]}]
-  (if path->doc
-    (page-html* opts
-                {:title (-> (get path->doc "") :nextjournal/value :title)
-                 :head [:script {:type "module"} (h/raw (components-js))]
-                 :body [[:main#clerk-datastar
-                         (merged-island-env (vals path->doc))
-                         (for [[path presented] (sort-by key path->doc)]
-                           [:section {:data-clerk-path path
-                                      :data-clerk-title (or (-> presented :nextjournal/value :title) "Clerk")
-                                      :hidden (not= "" path)}
-                            (render-static-doc presented)])]
-                        [:script {:type "module"} (h/raw single-file-router-js)]]})
-    (page-html* opts
-                {:title (-> presented :nextjournal/value :title)
-                 :open-graph (-> presented :nextjournal/value :open-graph)
-                 :toc-default (toc-default presented)
-                 :head [:script {:type "module"} (h/raw (components-js))]
-                 :body [[:main#clerk-datastar
-                         (island-env presented)
-                         (render-static-doc presented)]]})))
+  (let [opts (assoc opts :islands? (webserver/islands? opts))]
+    (if path->doc
+      (page-html* opts
+                  {:title (-> (get path->doc "") :nextjournal/value :title)
+                   :head [:script {:type "module"} (h/raw (components-js))]
+                   :body [[:main#clerk-datastar
+                           (when (:islands? opts) (merged-island-env (vals path->doc)))
+                           (for [[path presented] (sort-by key path->doc)]
+                             [:section {:data-clerk-path path
+                                        :data-clerk-title (or (-> presented :nextjournal/value :title) "Clerk")
+                                        :hidden (not= "" path)}
+                              (render-static-doc opts presented)])]
+                          [:script {:type "module"} (h/raw single-file-router-js)]]})
+      (page-html* opts
+                  {:title (-> presented :nextjournal/value :title)
+                   :open-graph (-> presented :nextjournal/value :open-graph)
+                   :toc-default (toc-default presented)
+                   :head [:script {:type "module"} (h/raw (components-js))]
+                   :body [[:main#clerk-datastar
+                           (when (:islands? opts) (island-env presented))
+                           (render-static-doc opts presented)]]}))))
 
 (defn write-static-app!
-  "Writes the static html for a build, called by `builder/write-static-app!` when building with `:frontend :datastar`."
+  "Writes the static html for a build, called by `builder/write-static-app!` when building with a Datastar frontend."
   [{:as static-app-opts :keys [package out-path path->doc]}]
   (if (= :single-file package)
     (spit (str (fs/file out-path "index.html")) (static-page-html static-app-opts {:path->doc path->doc}))
@@ -681,7 +711,7 @@ show()")
 (defn app [{:as req :keys [uri]}]
   (cond
     (= "/_clerk/sse" uri) (sse-handler req)
-    (= "/_clerk/island" uri) (island-handler req)
+    (and (= "/_clerk/island" uri) (live-islands?)) (island-handler req)
     (= "/_clerk/components.js" uri) {:status 200
                                      :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
                                      :body (slurp (io/resource "nextjournal/clerk/datastar/components.js"))}

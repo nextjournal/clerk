@@ -5,7 +5,8 @@
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.html :as html]
             [nextjournal.clerk.view :as view]
-            [nextjournal.clerk.viewer :as v])
+            [nextjournal.clerk.viewer :as v]
+            [nextjournal.clerk.webserver :as webserver])
   (:import (java.io ByteArrayInputStream ByteArrayOutputStream EOFException)
            (java.util.zip GZIPInputStream)))
 
@@ -125,10 +126,12 @@
 ^{::clerk/sync true ::clerk/viewer cx/text-input} (defonce !s (atom \"hi\"))
 (clerk/with-viewer (assoc nextjournal.clerk.viewer/render-eval-viewer :render-fn '(fn [x] [:div @x])) `!n)")]
     (testing "without callbacks controls render disabled with their value"
-      (let [out (html/->html-str (html/inspect {} presented))]
+      (let [out (html/->html-str (html/inspect {:islands? true} presented))]
         (is (re-find #"<input[^>]*type=\"range\"[^>]*value=\"3\"" out))
-        (is (re-find #"<input[^>]*disabled[^>]*value=\"hi\"|<input[^>]*value=\"hi\"[^>]*disabled" out))
-        (is (str/includes? out "A custom `:render-fn` for `nextjournal.clerk.viewer/render-eval-viewer`"))))
+        (is (re-find #"<input[^>]*disabled[^>]*value=\"hi\"|<input[^>]*value=\"hi\"[^>]*disabled" out))))
+    (testing "without islands a value whose viewer needs the browser throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A custom `:render-fn` for `nextjournal.clerk.viewer/render-eval-viewer` needs the browser"
+                            (html/->html-str (html/inspect {} presented)))))
     (testing "with datastar the value is applied via data-init unless focused"
       (let [out (html/->html-str (html/inspect (datastar/render-ctx "tab" nil) presented))]
         (is (str/includes? out "data-init=\"if (document.activeElement !== el) el.value = &quot;3&quot;\""))
@@ -246,3 +249,31 @@
   (testing "highlighting very long strings doesn't overflow the stack"
     (let [code (str "(def x \"" (apply str (repeat 50000 "a\\\"b")) "\")")]
       (is (= code (apply str (map second (html/tokenize-clojure code))))))))
+
+(deftest frontends
+  (is (= :datastar+sci-react-island (webserver/frontend {})))
+  (is (every? webserver/datastar? [{} {:frontend :datastar} {:frontend :datastar+sci-react-island}]))
+  (is (not (webserver/datastar? {:frontend :sci-react})))
+  (is (webserver/islands? {}))
+  (is (not (webserver/islands? {:frontend :datastar})))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid `:frontend`" (webserver/frontend {:frontend :datastar+sci}))))
+
+(deftest datastar-without-islands
+  (let [presented (present-string "(ns datastar-test.no-islands (:require [nextjournal.clerk :as clerk]))
+(clerk/with-viewer '(fn [x] [:div x]) 42)")]
+    (with-redefs [datastar/live-islands? (constantly false)]
+      (testing "rendering the notebook shows a full page error"
+        (let [out (html/->html-str (datastar/render-main {:presented presented} "tab"))]
+          (is (str/includes? out "Clerk couldn&apos;t render this notebook"))
+          (is (str/includes? out "needs the browser to render"))
+          (is (not (str/includes? out "<clerk-island")))))
+      (testing "the page doesn't reference the cljs viewer bundle"
+        (is (not (str/includes? (datastar/page-html {:presented presented} "tab" {}) "clerk-viewer-js"))))
+      (testing "presenting it throws so the error shows up at the REPL"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs the browser"
+                              (datastar/throw-if-not-renderable! presented)))))
+    (testing "static builds with `:frontend :datastar` throw"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs the browser"
+                            (datastar/static-page-html {:frontend :datastar} {:presented presented}))))
+    (testing "static builds with islands render them"
+      (is (str/includes? (datastar/static-page-html {} {:presented presented}) "<clerk-island")))))

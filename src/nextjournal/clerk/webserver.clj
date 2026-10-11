@@ -34,23 +34,32 @@
 
 (def frontends
   "Valid values of the `:frontend` option:
-  * `:datastar` (default) renders on the server, pushing html to the browser via Datastar
+  * `:datastar+sci-react-island` (default) renders on the server, pushing html to the browser via Datastar,
+    values whose viewers need the browser (`:render-fn`s) are rendered as islands using ClojureScript (SCI + React)
+  * `:datastar` renders on the server only, values whose viewers need the browser show an error
   * `:sci-react` renders in the browser with ClojureScript (SCI + React)"
-  #{:datastar :sci-react})
+  #{:datastar+sci-react-island :datastar :sci-react})
+
+(def default-frontend :datastar+sci-react-island)
 
 (defn frontend
   "Returns the `:frontend` of the given serve or build `opts`, throwing on invalid values."
   [opts]
-  (let [frontend (keyword (:frontend opts :datastar))]
+  (let [frontend (keyword (:frontend opts default-frontend))]
     (when-not (contains? frontends frontend)
       (throw (ex-info (str "Invalid `:frontend` " (pr-str (:frontend opts)) ", valid options are " (pr-str (sort frontends)) ".")
                       {:frontend (:frontend opts) :valid-options frontends})))
     frontend))
 
 (defn datastar?
-  "Is the Datastar frontend used for the given serve or build `opts`?"
+  "Is a Datastar frontend used for the given serve or build `opts`?"
   [opts]
-  (= :datastar (frontend opts)))
+  (contains? #{:datastar+sci-react-island :datastar} (frontend opts)))
+
+(defn islands?
+  "Are values whose viewers need the browser rendered as SCI + React islands for the given serve or build `opts`?"
+  [opts]
+  (= :datastar+sci-react-island (frontend opts)))
 
 #_(view/doc->viewer (:doc @!state))
 #_(reset! !state {})
@@ -177,6 +186,13 @@
   (let [{old-doc :doc :keys [presentation-cache]} @!state
         !presentation-cache (or presentation-cache (atom {}))
         presented (view/doc->viewer {:presentation-cache !presentation-cache} doc)
+        _ (when (and (not (:error doc)) (datastar? @!server) (not (islands? @!server)))
+            ;; throw at the REPL when the doc can't be rendered without the browser,
+            ;; showing this doc with the error rather than the previous one
+            (try ((requiring-resolve 'nextjournal.clerk.datastar/throw-if-not-renderable!) presented)
+                 (catch Exception e
+                   (present+reset! (assoc doc :error e))
+                   (throw e))))
         sync-vars-old (v/extract-sync-atom-vars old-doc)
         sync-vars (v/extract-sync-atom-vars doc)]
     (swap! !presentation-cache select-keys (keys (:blob->result doc)))

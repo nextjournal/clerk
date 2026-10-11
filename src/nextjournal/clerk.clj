@@ -474,8 +474,10 @@
   - `:paths`     - restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set.
   - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths.
   - `:index`     - path to a file to override Clerk's default index, will be added to paths.
-  - `:frontend`  - `:datastar` (default) renders notebooks on the server and keeps the browser updated via Datastar,
-                   `:sci-react` renders them in the browser using ClojureScript (SCI + React).
+  - `:frontend`  - `:datastar+sci-react-island` (default) renders notebooks on the server and keeps the browser updated
+                   via Datastar, values whose viewers need the browser (`:render-fn`s) render in ClojureScript (SCI + React) islands.
+                   `:datastar` renders on the server only and throws for values whose viewers need the browser.
+                   `:sci-react` renders notebooks in the browser using ClojureScript (SCI + React).
 
   When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
@@ -494,7 +496,7 @@
                                               :coerce :symbol}
                              :browse {:desc "Opens the browser on boot when set."
                                       :coerce :boolean}
-                             :frontend {:desc "Either `datastar` (default) rendering on the server or `sci-react` rendering in the browser."
+                             :frontend {:desc "One of `datastar+sci-react-island` (default), `datastar` or `sci-react`."
                                         :coerce :keyword}}
                       :order [:host :port :browse :watch-paths :show-filter-fn :paths :paths-fn :index :frontend]}}
   [config]
@@ -551,7 +553,8 @@
   - `:bundle`      [DEPRECATED use :package :single-file instead] if true results in a single self-contained html file including inlined images
   - `:compile-css` if true compiles css file containing only the used classes
   - `:ssr`         if true runs react server-side-rendering and includes the generated markup in the html (`:sci-react` only)
-  - `:frontend`    `:datastar` (default) renders pages to html on the JVM, `:sci-react` renders them in the browser using ClojureScript
+  - `:frontend`    `:datastar+sci-react-island` (default) renders pages to html on the JVM with ClojureScript islands for values whose viewers
+                   need the browser, `:datastar` renders html only and throws for those, `:sci-react` renders pages in the browser using ClojureScript
   - `:browse`      if true will open browser with the built file on success
   - `:dashboard`   if true will start a server and show a rich build report in the browser (use with `:bundle` to open browser)
   - `:out-path`    a relative path to a folder to contain the static pages (defaults to `\"public/build\"`)
@@ -574,7 +577,7 @@
                              :compile-css {:desc "Flag to run tailwindcss to compile a minimal stylesheet containing only the used classes."}
                              :git/sha {:desc "Git sha to use for the backlink."}
                              :git/url {:desc "Git url to use for the backlink."}
-                             :frontend {:desc "Either `datastar` (default) rendering html on the JVM or `sci-react` rendering in the browser."
+                             :frontend {:desc "One of `datastar+sci-react-island` (default), `datastar` or `sci-react`."
                                         :coerce :keyword}}
                       :order [:paths :paths-fn :index :browse :dashbaord :compile-css :ssr :bundle :out-path :git/sha :git/url :frontend]}}
   [build-opts]

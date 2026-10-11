@@ -20,7 +20,7 @@
   * `:on-sync`      `(fn [ctx sync-var coerce value] attrs)` attrs for an input updating a synced
                     var, responsible for setting the input's `value`
   * `:islands?`     render values whose viewers need the browser as `<clerk-island>`s
-                    instead of a placeholder"
+                    instead of throwing"
   (:require [clojure.string :as str]
             [hiccup2.core :as h]
             [nextjournal.clerk.viewer :as v])
@@ -289,12 +289,19 @@
     (or (sequential? x) (set? x)) (str "[" (str/join "," (map ->json x)) "]")
     :else (json-str (str x))))
 
-(defn unsupported* [{:as x :nextjournal/keys [viewer]}]
-  [:div.text-xs.font-sans.text-slate-400.italic
-   (str (if (custom-render-fn? viewer)
-          (str "A custom `:render-fn` for `" (:name viewer) "`")
-          (str "`" (or (:name viewer) (some-> viewer :render-fn :form)) "`"))
-        " requires the browser renderer which isn't available here.")])
+(defn needs-browser-ex
+  "The error thrown for the presented value `x` whose viewer needs the browser when islands aren't enabled."
+  [{:as x :nextjournal/keys [viewer]}]
+  (ex-info (str (if (custom-render-fn? viewer)
+                  (str "A custom `:render-fn` for `" (:name viewer) "`")
+                  (str "The viewer `" (or (:name viewer) (some-> viewer :render-fn :form)) "`"))
+                " needs the browser to render which the `:datastar` frontend doesn't support. "
+                "Give the viewer a `:render-hiccup` function to render it on the server "
+                "or use the `:datastar+sci-react-island` frontend.")
+           {:nextjournal.clerk/needs-browser true
+            :viewer-name (:name viewer)
+            :render-fn (some-> viewer :render-fn :form)
+            :path (:path x)}))
 
 (defn island
   "Renders the presented value `x` with Clerk's ClojureScript viewer bundle in the browser."
@@ -306,9 +313,11 @@
                     :presented presented}]))
 
 (defn unsupported
-  "Renders `x` as an island when enabled, a placeholder otherwise."
-  ([x] (unsupported* x))
-  ([ctx x] (if (:islands? ctx) (island ctx x) (unsupported* x))))
+  "Renders `x` whose viewer needs the browser as an island when enabled, throws otherwise."
+  [ctx x]
+  (if (:islands? ctx)
+    (island ctx x)
+    (throw (needs-browser-ex x))))
 
 (defn url-encode [s]
   (URLEncoder/encode (str s) StandardCharsets/UTF_8))

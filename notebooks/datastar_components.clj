@@ -1,5 +1,5 @@
 ;; # 🧩 Datastar Client Components
-;; With `:frontend :datastar` these viewers render on the client via
+;; With Clerk's Datastar frontends these viewers render on the client via
 ;; custom elements, everything else renders on the server.
 (ns datastar-components
   (:require [nextjournal.clerk :as clerk]))

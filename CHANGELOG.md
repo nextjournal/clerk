@@ -12,7 +12,7 @@ Changes can be:
 
     Notebooks are now rendered to html on the JVM and kept up to date in the browser by pushing the re-rendered page over a compressed server-sent events stream which Datastar morphs into the DOM. Expanding values, fetching elided values, synced atoms with the `experimental` slider and text-input controls and navigation work via actions sent to the server. Vega-Lite, Plotly, KaTeX and MathJax are rendered by small client components. Values whose viewers need the browser (custom `:render-fn`s, `:require-cljs`) are rendered by lazily loading the ClojureScript viewer bundle for just these values. Static builds render pages to html on the JVM.
 
-    Pass `:frontend :sci-react` to `serve!` or `build!` to keep using the ClojureScript (SCI + React) frontend which is still needed for `render-eval`, the `:render-nrepl` and `:ssr`.
+    The default `:frontend :datastar+sci-react-island` renders values whose viewers need the browser (`:render-fn`s) in ClojureScript (SCI + React) islands, `:frontend :datastar` doesn't load ClojureScript at all and throws for them instead. Viewers can render on the server with a `:render-hiccup` function. Pass `:frontend :sci-react` to `serve!` or `build!` to keep using the ClojureScript (SCI + React) frontend which is still needed for `render-eval`, the `:render-nrepl` and `:ssr`.
 
 * 💫 Add option to disable inline formulas in markdown
 

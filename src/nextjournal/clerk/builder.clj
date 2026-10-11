@@ -298,7 +298,7 @@
       (when (webserver/datastar? opts)
         ;; the datastar frontend renders html on the server with its own classes
         (spit (str (fs/path tw-folder (str/replace file #"\.(cljc?|md)$" ".html")))
-              ((requiring-resolve 'nextjournal.clerk.datastar/static-doc-html) viewer))))
+              ((requiring-resolve 'nextjournal.clerk.datastar/static-doc-html) opts viewer))))
     (when (webserver/datastar? opts)
       (spit (str (fs/path tw-folder "components.html"))
             ((requiring-resolve 'nextjournal.clerk.datastar/components-js))))
