@@ -4,7 +4,14 @@
   Mirrors the markup of the ClojureScript render functions in
   `nextjournal.clerk.render` so the same CSS applies. Interactivity is
   injected through callbacks in the render context `ctx`, which keeps
-  this namespace independent of the transport (Datastar, static build):
+  this namespace independent of the transport (Datastar, static build).
+
+  Viewers opt into server-side rendering by referencing a function with a
+  qualified symbol in `:render-hiccup`, which is called with `ctx` and
+  the presented value and returns hiccup. Values whose viewer has no
+  `:render-hiccup` need the browser and render as islands.
+
+  Render context keys:
 
   * `:result-state` `(fn [result-id presented auto-expand?] {:presented .. :expanded-at ..})`
   * `:on-toggle`    `(fn [ctx path] attrs)` attrs for an expand button
@@ -21,30 +28,36 @@
 
 (def nbsp " ")
 
-(def ^:private default-render-fns
-  (memoize (fn [viewers] (into {} (map (juxt :name :render-fn)) viewers))))
+(def ^:private default-renderers
+  (memoize (fn [viewers]
+             (into {} (map (juxt :name #(select-keys % [:render-fn :render-hiccup]))) viewers))))
 
-(defn viewer-key
-  "Dispatch key for a presented value: the qualified symbol of its
-  `:render-fn` when it names a function, its viewer name otherwise.
+(defn custom-render-fn?
+  "Is `viewer` a default viewer whose `:render-fn` was replaced without
+  also replacing its `:render-hiccup`, e.g. via `(assoc v/render-eval-viewer :render-fn ...)`?
+  Its `:render-hiccup` would then render something else, so it needs the browser."
+  [{:as viewer viewer-name :name :keys [render-fn render-hiccup]}]
+  (when-let [default (get (default-renderers (v/get-default-viewers)) viewer-name)]
+    (and (not= (:form render-fn render-fn) (:render-fn default))
+         (= render-hiccup (:render-hiccup default)))))
 
-  Returns `::custom` for a default viewer whose `:render-fn` was replaced,
-  e.g. via `(assoc v/render-eval-viewer :render-fn ...)`."
+(defn render-hiccup-fn
+  "Returns the function rendering the presented value `x` to hiccup, resolved from its viewer's `:render-hiccup`."
   [{:nextjournal/keys [viewer]}]
-  (let [form (some-> viewer :render-fn :form)
-        defaults (default-render-fns (v/get-default-viewers))
-        viewer-name (:name viewer)]
-    (cond (qualified-symbol? form) form
-          (and (contains? defaults viewer-name) (not= form (defaults viewer-name))) ::custom
-          :else viewer-name)))
+  (when-let [sym (:render-hiccup viewer)]
+    (when-not (custom-render-fn? viewer)
+      (or (requiring-resolve sym)
+          (throw (ex-info (str "Could not resolve `:render-hiccup` " sym ".") {:viewer viewer}))))))
 
-(defmulti render-viewer
+(declare unsupported)
+
+(defn inspect
   "Renders the presented value `x` to hiccup."
-  (fn [_ctx x] (viewer-key x)))
-
-(defn inspect [ctx x]
+  [ctx x]
   (when x
-    (render-viewer ctx x)))
+    (if-let [render-hiccup (render-hiccup-fn x)]
+      (render-hiccup ctx x)
+      (unsupported ctx x))))
 
 (defn inspect-children [ctx xs]
   (map (partial inspect ctx) xs))
@@ -164,8 +177,9 @@
 
 (def ^:private token-types
   [[:comment ";[^\\n]*"]
-   [:regexp "#\"(?:\\\\.|[^\"\\\\])*\"?"]
-   [:string "\"(?:\\\\.|[^\"\\\\])*\"?"]
+   ;; "unrolled" with possessive quantifiers, `(?:\\.|[^"])*` recurses per char and overflows the stack on long strings
+   [:regexp "#\"[^\"\\\\]*+(?:\\\\.[^\"\\\\]*+)*+\"?"]
+   [:string "\"[^\"\\\\]*+(?:\\\\.[^\"\\\\]*+)*+\"?"]
    [:char "\\\\(?:newline|space|tab|formfeed|backspace|return|u[0-9a-fA-F]{4}|o[0-7]{1,3}|.)"]
    [:keyword "::?[^\\s,()\\[\\]{}\"`;@^~\\\\]+"]
    [:number "[-+]?\\d[^\\s,()\\[\\]{}\"`;@^~\\\\]*"]
@@ -261,13 +275,12 @@
     (or (sequential? x) (set? x)) (str "[" (str/join "," (map ->json x)) "]")
     :else (json-str (str x))))
 
-(defn unsupported* [x]
-  (let [k (viewer-key x)]
-    [:div.text-xs.font-sans.text-slate-400.italic
-     (str (if (= ::custom k)
-            (str "A custom `:render-fn` for `" (-> x :nextjournal/viewer :name) "`")
-            (str "`" k "`"))
-          " requires the browser renderer which isn't available here.")]))
+(defn unsupported* [{:as x :nextjournal/keys [viewer]}]
+  [:div.text-xs.font-sans.text-slate-400.italic
+   (str (if (custom-render-fn? viewer)
+          (str "A custom `:render-fn` for `" (:name viewer) "`")
+          (str "`" (or (:name viewer) (some-> viewer :render-fn :form)) "`"))
+        " requires the browser renderer which isn't available here.")])
 
 (defn island
   "Renders the presented value `x` with Clerk's ClojureScript viewer bundle in the browser."
@@ -295,9 +308,6 @@
 
 ;; ## Viewers
 
-(defmethod render-viewer :default [ctx x]
-  (unsupported ctx x))
-
 (defn ^:private result-css-class [x]
   (let [{viewer-name :name} (v/->viewer x)
         viewer-css-class (v/css-class x)
@@ -318,7 +328,7 @@
          :nested-prose "w-full max-w-prose"
          "w-full max-w-prose px-8")])))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-result [ctx {:nextjournal/keys [value render-opts]}]
+(defn render-result [ctx {:nextjournal/keys [value render-opts]}]
   (let [{:nextjournal/keys [presented fetch-opts]} value
         {:keys [id auto-expand-results?]} render-opts
         result-state (or (:result-state ctx) default-result-state)
@@ -332,7 +342,7 @@
 
 (declare dark-mode-toggle)
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-notebook [ctx {:nextjournal/keys [value]}]
+(defn render-notebook [ctx {:nextjournal/keys [value]}]
   (let [{:keys [blocks header footer doc-css-class sidenotes? error toc]} value]
     [:div.flex
      dark-mode-toggle
@@ -348,23 +358,23 @@
           {:style {:bottom "-1px"}} "Errors"]]
         (inspect (assoc ctx :expanded-at {}) presented)])]))
 
-(defmethod render-viewer `v/cell-viewer [ctx {:nextjournal/keys [value]}]
+(defn render-cell [ctx {:nextjournal/keys [value]}]
   (inspect-children ctx value))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-code-block [_ctx {:nextjournal/keys [value render-opts]}]
+(defn render-code-block [_ctx {:nextjournal/keys [value render-opts]}]
   [:div.viewer.code-viewer.w-full.max-w-wide {:data-block-id (:id render-opts)}
    (code-markup value)])
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-folded-code-block [_ctx {:nextjournal/keys [value render-opts]}]
+(defn render-folded-code-block [_ctx {:nextjournal/keys [value render-opts]}]
   ;; native <details> needs no server round-trip; `data-preserve-attr` keeps it open across morphs
   [:details.viewer.code-viewer.w-full.max-w-wide {:data-block-id (:id render-opts) :data-preserve-attr "open"}
    [:summary.font-sans.text-slate-400.cursor-pointer.hover:text-slate-500 {:class "text-[10px]"} "show code"]
    (code-markup value)])
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-code [_ctx {:nextjournal/keys [value render-opts]}]
+(defn render-code [_ctx {:nextjournal/keys [value render-opts]}]
   (code-markup value (:language render-opts)))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-html [ctx {:as x :nextjournal/keys [value]}]
+(defn render-html [ctx {:as x :nextjournal/keys [value]}]
   (if (string? value)
     [:span (h/raw value)]
     (try (normalize-hiccup ctx value)
@@ -373,7 +383,7 @@
              (unsupported ctx x)
              (throw e))))))
 
-(defmethod render-viewer `v/markdown-node-viewer [ctx {:nextjournal/keys [value]}]
+(defn render-markdown-node [ctx {:nextjournal/keys [value]}]
   (normalize-hiccup ctx value))
 
 (defn render-coll* [ctx {:nextjournal/keys [value viewer] :keys [path]} opening-paren expandable?]
@@ -388,13 +398,13 @@
                  (inspect-children ctx value))
       [:span (apply str (closing-parens viewer))]]]))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-coll [ctx {:as x :nextjournal/keys [value viewer]}]
+(defn render-coll [ctx {:as x :nextjournal/keys [value viewer]}]
   (render-coll* ctx x (:opening-paren viewer) (< 1 (count value))))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-map [ctx {:as x :nextjournal/keys [value]}]
+(defn render-map [ctx {:as x :nextjournal/keys [value]}]
   (render-coll* ctx x "{" (< 1 (count value))))
 
-(defmethod render-viewer `v/map-entry-viewer [ctx {:nextjournal/keys [value]}]
+(defn render-map-entry [ctx {:nextjournal/keys [value]}]
   (interpose " " (inspect-children ctx value)))
 
 (defn render-string-content [ctx s expanded?]
@@ -403,7 +413,7 @@
           (inspect ctx %))
        (if (string? s) [s] s)))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-quoted-string [ctx {:nextjournal/keys [value viewer] :keys [path]}]
+(defn render-quoted-string [ctx {:nextjournal/keys [value viewer] :keys [path]}]
   (let [{:keys [opening-paren]} viewer
         [closing-paren & more-closing] (closing-parens viewer)
         multi-line? (some #(and (string? %) (str/includes? % "\n")) (if (string? value) [value] value))]
@@ -416,46 +426,46 @@
       [:span.cmt-string (render-string-content ctx value (expanded? ctx path)) closing-paren]
       (apply str more-closing)]]))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-string [ctx {:nextjournal/keys [value] :keys [path]}]
+(defn render-string [ctx {:nextjournal/keys [value] :keys [path]}]
   [:span.whitespace-pre (render-string-content ctx value (expanded? ctx path))])
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-number [_ctx {:nextjournal/keys [value]}]
+(defn render-number [_ctx {:nextjournal/keys [value]}]
   [:span.cmt-number.inspected-value (str value)])
 
-(defmethod render-viewer `v/number-hex-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-number-hex [_ctx {:nextjournal/keys [value]}]
   [:span.cmt-number.inspected-value (str "0x" (Long/toHexString (long value)))])
 
-(defmethod render-viewer `v/char-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-char [_ctx {:nextjournal/keys [value]}]
   [:span.cmt-string.inspected-value "\\" (str value)])
 
-(defmethod render-viewer `v/symbol-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-symbol [_ctx {:nextjournal/keys [value]}]
   [:span.cmt-keyword.inspected-value (str value)])
 
-(defmethod render-viewer `v/keyword-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-keyword [_ctx {:nextjournal/keys [value]}]
   [:span.cmt-atom.inspected-value (str value)])
 
-(defmethod render-viewer `v/nil-viewer [_ctx _x]
+(defn render-nil [_ctx _x]
   [:span.cmt-default.inspected-value "nil"])
 
-(defmethod render-viewer `v/boolean-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-boolean [_ctx {:nextjournal/keys [value]}]
   [:span.cmt-bool.inspected-value (str value)])
 
-(defmethod render-viewer `v/var-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-var [_ctx {:nextjournal/keys [value]}]
   [:span.inspected-value [:span.cmt-meta "#'" (str value)]])
 
-(defmethod render-viewer `v/read+inspect-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-read+inspect [_ctx {:nextjournal/keys [value]}]
   [:span.inspected-value.whitespace-nowrap.cmt-default value])
 
 (defn render-tagged-value [{:keys [space?]} tag value]
   [:span.inspected-value.whitespace-nowrap
    [:span.cmt-meta tag] (when space? nbsp) value])
 
-(defmethod render-viewer `v/tagged-value-viewer [ctx {{:keys [tag value space?]} :nextjournal/value}]
+(defn render-tagged-value-viewer [ctx {{:keys [tag value space?]} :nextjournal/value}]
   (render-tagged-value {:space? (:nextjournal/value space?)}
                        (str "#" (:nextjournal/value tag))
                        (inspect ctx value)))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-elision [ctx {:nextjournal/keys [value]}]
+(defn render-elision [ctx {:nextjournal/keys [value]}]
   (let [{:keys [total offset unbounded?]} value
         attrs (fetch-attrs ctx value)]
     [:span.sans-serif.relative.whitespace-nowrap
@@ -466,7 +476,7 @@
             attrs)
      (- total offset) (when unbounded? "+") (if attrs " more…" " more elided")]))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-throwable [ctx {:nextjournal/keys [value]}]
+(defn render-throwable [ctx {:nextjournal/keys [value]}]
   (let [{:keys [via trace]} value
         {:keys [type message data]} (first via)]
     [:div.rounded.border.border-red-200.border-t-0.overflow-hidden
@@ -501,15 +511,15 @@
   [:div.flex.flex-col.items-center.not-prose
    [:img {:src (url-for src)}]])
 
-(defmethod render-viewer `v/image-viewer [_ctx {:nextjournal/keys [value]}]
+(defn render-image [_ctx {:nextjournal/keys [value]}]
   (image-markup value))
 
-(defmethod render-viewer `v/row-viewer [ctx {:nextjournal/keys [value]}]
+(defn render-row [ctx {:nextjournal/keys [value]}]
   (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"}]
         (map (fn [item] [:div.flex.items-center.justify-center.flex-auto (inspect ctx item)]))
         value))
 
-(defmethod render-viewer `v/col-viewer [ctx {:nextjournal/keys [value]}]
+(defn render-col [ctx {:nextjournal/keys [value]}]
   (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"}]
         (map (fn [item] [:div.flex.items-center.justify-center (inspect ctx item)]))
         value))
@@ -566,17 +576,11 @@
    [:p.mt-4.font-medium "Clerk’s table viewer does not recognize the format of your data:"]
    [:div.mt-2 (inspect ctx data)]])
 
-(doseq [[ks f] {['nextjournal.clerk.render.table/render-table-markup `v/table-markup-viewer] render-table-markup
-                ['nextjournal.clerk.render.table/render-table-head `v/table-head-viewer] render-table-head
-                ['nextjournal.clerk.render.table/render-table-body `v/table-body-viewer] render-table-body
-                ['nextjournal.clerk.render.table/render-table-row `v/table-row-viewer] render-table-row
-                ['nextjournal.clerk.render.table/render-table-elision] render-table-elision
-                ['nextjournal.clerk.render.table/render-table-error `v/table-error-viewer] render-table-error
-                ['nextjournal.clerk.render.table/render-table-number] (fn [_ctx {:nextjournal/keys [value]}]
-                                                                        [:span.tabular-nums (str value)])
-                [`v/table-missing-viewer] (constantly nil)}
-        k ks]
-  (.addMethod ^clojure.lang.MultiFn render-viewer k f))
+(defn render-table-number [_ctx {:nextjournal/keys [value]}]
+  [:span.tabular-nums (str value)])
+
+(defn render-nothing [_ctx _x]
+  nil)
 
 ;; ### Synced atoms & controls
 
@@ -596,7 +600,7 @@
     (on-sync ctx sync-var coerce value)
     {:value value :disabled true}))
 
-(defmethod render-viewer `v/render-eval-viewer [ctx {:as x :nextjournal/keys [value]}]
+(defn render-eval-value [ctx {:as x :nextjournal/keys [value]}]
   (let [var (render-eval->var value)
         ref (some-> var deref)]
     (if (instance? clojure.lang.IDeref ref)
@@ -605,7 +609,7 @@
                                     (v/present [(symbol (.getName (class ref))) @ref])))
       (unsupported ctx x))))
 
-(defmethod render-viewer 'nextjournal.clerk.experimental/slider-viewer [ctx {:as x :nextjournal/keys [value render-opts]}]
+(defn render-slider [ctx {:as x :nextjournal/keys [value render-opts]}]
   (let [{:keys [min max step] :or {min 0 max 100 step 1}} render-opts
         var (render-eval->var value)
         state (some-> var deref deref)]
@@ -622,7 +626,7 @@
          (str state)]]
        [:span.text-slate-500.ml-1 {:class "text-[11px] -mt-[3px]"} (str max)]])))
 
-(defmethod render-viewer 'nextjournal.clerk.experimental/text-input-viewer [ctx {:as x :nextjournal/keys [value render-opts]}]
+(defn render-text-input [ctx {:as x :nextjournal/keys [value render-opts]}]
   (let [{:keys [placeholder] :or {placeholder "⌨️"}} render-opts
         var (render-eval->var value)
         state (some-> var deref deref)]
@@ -645,23 +649,23 @@
                     attrs)]
         children))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-vega-lite [ctx {:as x :nextjournal/keys [value]}]
+(defn render-vega-lite [ctx {:as x :nextjournal/keys [value]}]
   [:div.overflow-x-auto
    (component :clerk-vega-lite ctx x {:spec (->json (dissoc value :embed/opts :embed/callback))
                                       :opts (->json (get value :embed/opts {}))})])
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-plotly [ctx {:as x :nextjournal/keys [value]}]
+(defn render-plotly [ctx {:as x :nextjournal/keys [value]}]
   [:div.overflow-x-auto
    (component :clerk-plotly ctx x {:figure (->json value)})])
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-mathjax [ctx {:as x :nextjournal/keys [value]}]
+(defn render-mathjax [ctx {:as x :nextjournal/keys [value]}]
   [:div.overflow-x-auto
    (component :clerk-mathjax ctx x {:tex value} value)])
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-katex [ctx {:as x :nextjournal/keys [value]}]
+(defn render-katex [ctx {:as x :nextjournal/keys [value]}]
   (component :clerk-katex ctx x {:tex value :class "block"} value))
 
-(defmethod render-viewer :nextjournal.markdown/formula [ctx {:as x :nextjournal/keys [value]}]
+(defn render-inline-katex [ctx {:as x :nextjournal/keys [value]}]
   (component :clerk-katex ctx x {:tex value :inline true} value))
 
 ;; ### Table of contents & dark mode
@@ -680,7 +684,7 @@
                   [:div.relative {:class "ml-[19px]"} (render-toc-items items)])]))
         items))
 
-(defmethod render-viewer 'nextjournal.clerk.render.navbar/render-items [_ctx {:nextjournal/keys [value render-opts]}]
+(defn render-toc [_ctx {:nextjournal/keys [value render-opts]}]
   (let [{:keys [toc-visibility]} render-opts]
     (when (and toc-visibility (seq value))
       [:clerk-toc {:data-default (if (= :collapsed toc-visibility) "closed" "open")}

@@ -24,7 +24,9 @@
                 opts)))
 
 (def slider-viewer
-  (assoc viewer/render-eval-viewer :name `slider-viewer))
+  (assoc viewer/render-eval-viewer
+         :name `slider-viewer
+         :render-hiccup 'nextjournal.clerk.html/render-slider))
 
 (defn slider
   "Creates a slider control from a `!state` atom.
@@ -49,7 +51,9 @@
                 opts)))
 
 (def text-input-viewer
-  (assoc viewer/render-eval-viewer :name `text-input-viewer))
+  (assoc viewer/render-eval-viewer
+         :name `text-input-viewer
+         :render-hiccup 'nextjournal.clerk.html/render-text-input))
 
 (defn text-input
   ([!state] (text-input {} !state))

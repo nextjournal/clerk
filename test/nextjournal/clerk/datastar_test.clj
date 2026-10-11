@@ -4,7 +4,8 @@
             [nextjournal.clerk.datastar :as datastar]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.html :as html]
-            [nextjournal.clerk.view :as view])
+            [nextjournal.clerk.view :as view]
+            [nextjournal.clerk.viewer :as v])
   (:import (java.io ByteArrayInputStream ByteArrayOutputStream EOFException)
            (java.util.zip GZIPInputStream)))
 
@@ -222,3 +223,18 @@
       (let [presented (present-string "(ns datastar-test.no-toc)\n;; # Title")]
         (is (nil? (datastar/toc-default presented)))
         (is (not (str/includes? (html/->html-str (html/inspect {} presented)) "<clerk-toc")))))))
+
+(deftest render-hiccup
+  (testing "viewers link their server side rendering via a `:render-hiccup` symbol"
+    (is (= 'nextjournal.clerk.html/render-coll (:render-hiccup v/vector-viewer)))
+    (is (= #'html/render-coll (html/render-hiccup-fn {:nextjournal/viewer v/vector-viewer}))))
+  (testing "a default viewer with a replaced `:render-fn` isn't rendered by its `:render-hiccup`"
+    (is (html/custom-render-fn? (assoc v/image-viewer :render-fn '(fn [blob] [:img]))))
+    (is (nil? (html/render-hiccup-fn {:nextjournal/viewer (assoc v/image-viewer :render-fn '(fn [blob] [:img]))}))))
+  (testing "unless it replaces the `:render-hiccup` as well"
+    (is (not (html/custom-render-fn? (assoc v/result-viewer :render-fn '(fn [_ _] [:<>]) :render-hiccup `html/render-nothing))))))
+
+(deftest long-strings
+  (testing "highlighting very long strings doesn't overflow the stack"
+    (let [code (str "(def x \"" (apply str (repeat 50000 "a\\\"b")) "\")")]
+      (is (= code (apply str (map second (html/tokenize-clojure code))))))))

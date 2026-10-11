@@ -368,7 +368,7 @@
 
 (defn into-markup [markup]
   (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
-    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
+    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity :render-hiccup 'nextjournal.clerk.html/render-markdown-node} wrapped-value)
         mark-presented
         (update :nextjournal/value
                 (fn [{:as node :keys [text content] ::keys [doc]}]
@@ -677,7 +677,7 @@
       (->> (mapv (partial with-viewer
                           (cond-> result-viewer
                             (hidden-render-eval-result? cell)
-                            (assoc :render-fn '(fn [_ _] [:<>]))))))))
+                            (assoc :render-fn '(fn [_ _] [:<>]) :render-hiccup 'nextjournal.clerk.html/render-nothing)))))))
 
 (defn transform-cell [cell]
   (let [{:keys [code? result?]} (->visibility cell)]
@@ -694,7 +694,8 @@
 (def cell-viewer
   {:name `cell-viewer
    :transform-fn (update-val transform-cell)
-   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))})
+   :render-fn '(fn [xs opts] (into [:<>] (nextjournal.clerk.render/inspect-children opts) xs))
+   :render-hiccup 'nextjournal.clerk.html/render-cell})
 
 (defn lift-block-images
   "Lift an image node to top-level when it is the only child of a paragraph."
@@ -767,23 +768,28 @@
 (def table-missing-viewer
   {:name `table-missing-viewer
    :pred #{:nextjournal/missing}
-   :render-fn '(fn [x] [:<>])})
+   :render-fn '(fn [x] [:<>])
+   :render-hiccup 'nextjournal.clerk.html/render-nothing})
 
 (def table-markup-viewer
   {:name `table-markup-viewer
-   :render-fn 'nextjournal.clerk.render.table/render-table-markup})
+   :render-fn 'nextjournal.clerk.render.table/render-table-markup
+   :render-hiccup 'nextjournal.clerk.html/render-table-markup})
 
 (def table-head-viewer
   {:name `table-head-viewer
-   :render-fn 'nextjournal.clerk.render.table/render-table-head})
+   :render-fn 'nextjournal.clerk.render.table/render-table-head
+   :render-hiccup 'nextjournal.clerk.html/render-table-head})
 
 (def table-body-viewer
   {:name `table-body-viewer
-   :render-fn 'nextjournal.clerk.render.table/render-table-body})
+   :render-fn 'nextjournal.clerk.render.table/render-table-body
+   :render-hiccup 'nextjournal.clerk.html/render-table-body})
 
 (def table-row-viewer
   {:name `table-row-viewer
-   :render-fn 'nextjournal.clerk.render.table/render-table-row})
+   :render-fn 'nextjournal.clerk.render.table/render-table-row
+   :render-hiccup 'nextjournal.clerk.html/render-table-row})
 
 #?(:clj (def utc-date-format ;; from `clojure.instant/thread-local-utc-date-format`
           (doto (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss.SSS-00:00")
@@ -827,10 +833,12 @@
    {:name :nextjournal.markdown/formula
     :transform-fn (comp :text ->value)
     :render-fn '(fn [tex]
-                  (nextjournal.clerk.render/render-katex tex {:inline? true}))}
+                  (nextjournal.clerk.render/render-katex tex {:inline? true}))
+    :render-hiccup 'nextjournal.clerk.html/render-inline-katex}
    {:name :nextjournal.markdown/block-formula
     :transform-fn (comp :text ->value)
-    :render-fn 'nextjournal.clerk.render/render-katex}
+    :render-fn 'nextjournal.clerk.render/render-katex
+    :render-hiccup 'nextjournal.clerk.html/render-katex}
 
    ;; lists
    {:name :nextjournal.markdown/bullet-list :transform-fn (into-markup [:ul])}
@@ -856,7 +864,7 @@
    ;; sidenotes
    {:name :nextjournal.markdown/sidenote-container
     :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers render-opts]}]
-                    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity} wrapped-value)
+                    (-> (with-viewer {:name `markdown-node-viewer :render-fn 'identity :render-hiccup 'nextjournal.clerk.html/render-markdown-node} wrapped-value)
                         mark-presented
                         (update :nextjournal/value
                                 (fn [{:as node :keys [text content] ::keys [doc]}]
@@ -877,10 +885,11 @@
     :transform-fn (into-markup [:<>])}])
 
 (def char-viewer
-  {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c])})
+  {:name `char-viewer :pred char? :render-fn '(fn [c] [:span.cmt-string.inspected-value "\\" c]) :render-hiccup 'nextjournal.clerk.html/render-char})
 
 (def string-viewer
   {:name `string-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-quoted-string
    :pred string?
    :render-fn 'nextjournal.clerk.render/render-quoted-string
    :opening-paren "\""
@@ -889,6 +898,7 @@
 
 (def number-viewer
   {:name `number-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-number
    :pred number?
    :render-fn 'nextjournal.clerk.render/render-number
    #?@(:clj [:transform-fn (update-val #(cond-> %
@@ -898,44 +908,46 @@
                                               (< % -9007199254740992)) pr-str))])})
 
 (def number-hex-viewer
-  {:name `number-hex-viewer :render-fn '(fn [num] (nextjournal.clerk.render/render-number (str "0x" (.toString (js/Number. num) 16))))})
+  {:name `number-hex-viewer :render-fn '(fn [num] (nextjournal.clerk.render/render-number (str "0x" (.toString (js/Number. num) 16)))) :render-hiccup 'nextjournal.clerk.html/render-number-hex})
 
 (def symbol-viewer
-  {:name `symbol-viewer :pred symbol? :render-fn '(fn [x] [:span.cmt-keyword.inspected-value (str x)])})
+  {:name `symbol-viewer :pred symbol? :render-fn '(fn [x] [:span.cmt-keyword.inspected-value (str x)]) :render-hiccup 'nextjournal.clerk.html/render-symbol})
 
 (def keyword-viewer
-  {:name `keyword-viewer :pred keyword? :render-fn '(fn [x] [:span.cmt-atom.inspected-value (str x)])})
+  {:name `keyword-viewer :pred keyword? :render-fn '(fn [x] [:span.cmt-atom.inspected-value (str x)]) :render-hiccup 'nextjournal.clerk.html/render-keyword})
 
 (def nil-viewer
-  {:name `nil-viewer :pred nil? :render-fn '(fn [_] [:span.cmt-default.inspected-value "nil"])})
+  {:name `nil-viewer :pred nil? :render-fn '(fn [_] [:span.cmt-default.inspected-value "nil"]) :render-hiccup 'nextjournal.clerk.html/render-nil})
 
 (def boolean-viewer
-  {:name `boolean-viewer :pred boolean? :render-fn '(fn [x] [:span.cmt-bool.inspected-value (str x)])})
+  {:name `boolean-viewer :pred boolean? :render-fn '(fn [x] [:span.cmt-bool.inspected-value (str x)]) :render-hiccup 'nextjournal.clerk.html/render-boolean})
 
 (def map-entry-viewer
-  {:name `map-entry-viewer :pred map-entry? :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2})
+  {:name `map-entry-viewer :pred map-entry? :render-fn '(fn [xs opts] (into [:<>] (comp (nextjournal.clerk.render/inspect-children opts) (interpose " ")) xs)) :page-size 2 :render-hiccup 'nextjournal.clerk.html/render-map-entry})
 
 (def read+inspect-viewer
-  {:name `read+inspect-viewer :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (nextjournal.clerk.viewer/read-string-without-tag-table x)]
+  {:name `read+inspect-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-read+inspect :render-fn '(fn [x] (try [nextjournal.clerk.render/inspect (nextjournal.clerk.viewer/read-string-without-tag-table x)]
                                                        (catch js/Error _e
                                                          (nextjournal.clerk.render/render-unreadable-edn x))))})
 
 (def vector-viewer
-  {:name `vector-viewer :pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20})
+  {:name `vector-viewer :pred vector? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "[" :closing-paren "]" :page-size 20 :render-hiccup 'nextjournal.clerk.html/render-coll})
 
 (def set-viewer
-  {:name `set-viewer :pred set? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "#{" :closing-paren "}" :page-size 20})
+  {:name `set-viewer :pred set? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "#{" :closing-paren "}" :page-size 20 :render-hiccup 'nextjournal.clerk.html/render-coll})
 
 (def sequential-viewer
-  {:name `sequential-viewer :pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20})
+  {:name `sequential-viewer :pred sequential? :render-fn 'nextjournal.clerk.render/render-coll :opening-paren "(" :closing-paren ")" :page-size 20 :render-hiccup 'nextjournal.clerk.html/render-coll})
 
 (def map-viewer
-  {:name `map-viewer :pred map? :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10})
+  {:name `map-viewer :pred map? :render-fn 'nextjournal.clerk.render/render-map :opening-paren "{" :closing-paren "}" :page-size 10 :render-hiccup 'nextjournal.clerk.html/render-map})
 
 #?(:cljs (defn var->symbol [v] (if (instance? sci.lang.Var v) (sci.impl.vars/toSymbol v) (symbol v))))
 
 (def var-viewer
   {:name `var-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-var
    :pred var?
    :transform-fn (comp #?(:cljs var->symbol :clj symbol) ->value)
    :render-fn '(fn [x] [:span.inspected-value [:span.cmt-meta "#'" (str x)]])})
@@ -963,6 +975,7 @@
 
 (def throwable-viewer
   {:name `throwable-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-throwable
    :render-fn 'nextjournal.clerk.render/render-throwable
    :pred (fn [e] (instance? #?(:clj Throwable :cljs js/Error) e))
    :transform-fn (fn [wrapped-value]
@@ -1015,6 +1028,7 @@
                                     :nextjournal/width (image-width image)}
                                    mark-presented)))])
    :name `image-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-image
    :render-fn '(fn [blob-or-url] [:div.flex.flex-col.items-center.not-prose
                                   [:img {:src #?(:clj  (nextjournal.clerk.render/url-for blob-or-url)
                                                  :cljs blob-or-url)}]])})
@@ -1041,13 +1055,13 @@
   {:name `fallback-viewer :pred (constantly :true) :transform-fn (update-val #(with-viewer `read+inspect-viewer (pr-str %)))})
 
 (def elision-viewer
-  {:name `elision-viewer :render-fn 'nextjournal.clerk.render/render-elision :transform-fn mark-presented})
+  {:name `elision-viewer :render-fn 'nextjournal.clerk.render/render-elision :transform-fn mark-presented :render-hiccup 'nextjournal.clerk.html/render-elision})
 
 (def katex-viewer
-  {:name `katex-viewer :render-fn 'nextjournal.clerk.render/render-katex :transform-fn mark-presented})
+  {:name `katex-viewer :render-fn 'nextjournal.clerk.render/render-katex :transform-fn mark-presented :render-hiccup 'nextjournal.clerk.html/render-katex})
 
 (def mathjax-viewer
-  {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented})
+  {:name `mathjax-viewer :render-fn 'nextjournal.clerk.render/render-mathjax :transform-fn mark-presented :render-hiccup 'nextjournal.clerk.html/render-mathjax})
 
 (defn transform-html [{:as wrapped-value :keys [path]}]
   (let [!path-idx (atom -1)]
@@ -1064,16 +1078,17 @@
 
 (def html-viewer
   {:name `html-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-html
    :render-fn 'nextjournal.clerk.render/render-html
    :transform-fn (comp mark-presented transform-html)})
 
 #_(present (with-viewer html-viewer [:div {:nextjournal/value (range 30)} {:nextjournal/value (range 30)}]))
 
 (def plotly-viewer
-  {:name `plotly-viewer :render-fn 'nextjournal.clerk.render/render-plotly :transform-fn mark-presented})
+  {:name `plotly-viewer :render-fn 'nextjournal.clerk.render/render-plotly :transform-fn mark-presented :render-hiccup 'nextjournal.clerk.html/render-plotly})
 
 (def vega-lite-viewer
-  {:name `vega-lite-viewer :render-fn 'nextjournal.clerk.render/render-vega-lite :transform-fn mark-presented})
+  {:name `vega-lite-viewer :render-fn 'nextjournal.clerk.render/render-vega-lite :transform-fn mark-presented :render-hiccup 'nextjournal.clerk.html/render-vega-lite})
 
 (def markdown-viewer
   {:name `markdown-viewer
@@ -1086,13 +1101,15 @@
 
 (def code-viewer
   {:name `code-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-code
    :render-fn 'nextjournal.clerk.render/render-code
    :transform-fn (comp mark-presented
                        #(update-in % [:nextjournal/render-opts :language] (fn [lang] (or lang "clojure")))
                        (update-val (fn [v] (if (string? v) v (str/trim (with-out-str (pprint/pprint v)))))))})
 
 (def row-viewer
-  {:name `row-viewer :render-fn '(fn [items opts]
+  {:name `row-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-row :render-fn '(fn [items opts]
                                    (let [item-count (count items)]
                                      (into [:div {:class "md:flex md:flex-row md:gap-4 not-prose"
                                                   :style opts}]
@@ -1101,7 +1118,8 @@
                                                    (nextjournal.clerk.render/inspect-presented opts item)])) items)))})
 
 (def col-viewer
-  {:name `col-viewer :render-fn '(fn [items opts]
+  {:name `col-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-col :render-fn '(fn [items opts]
                                    (into [:div {:class "md:flex md:flex-col md:gap-4 clerk-grid not-prose"
                                                 :style opts}]
                                          (map (fn [item]
@@ -1111,9 +1129,9 @@
 (def table-viewers
   [(-> string-viewer
        (dissoc :closing-paren :opening-paren)
-       (assoc :render-fn 'nextjournal.clerk.render/render-string))
-   (assoc number-viewer :render-fn 'nextjournal.clerk.render.table/render-table-number)
-   (assoc elision-viewer :render-fn 'nextjournal.clerk.render.table/render-table-elision)
+       (assoc :render-fn 'nextjournal.clerk.render/render-string :render-hiccup 'nextjournal.clerk.html/render-string))
+   (assoc number-viewer :render-fn 'nextjournal.clerk.render.table/render-table-number :render-hiccup 'nextjournal.clerk.html/render-table-number)
+   (assoc elision-viewer :render-fn 'nextjournal.clerk.render.table/render-table-elision :render-hiccup 'nextjournal.clerk.html/render-table-elision)
    table-missing-viewer
    table-markup-viewer
    table-head-viewer
@@ -1123,7 +1141,7 @@
 (declare html doc-url)
 
 (def table-error-viewer
-  {:name `table-error-viewer :render-fn 'nextjournal.clerk.render.table/render-table-error})
+  {:name `table-error-viewer :render-fn 'nextjournal.clerk.render.table/render-table-error :render-hiccup 'nextjournal.clerk.html/render-table-error})
 
 (def table-viewer
   {:name `table-viewer
@@ -1155,16 +1173,19 @@
 
 (def code-block-viewer
   {:name `code-block-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-code-block
    :transform-fn (update-val (some-fn :text-without-meta :text))
    :render-fn 'nextjournal.clerk.render/render-code-block})
 
 (def folded-code-block-viewer
   {:name `folded-code-block-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-folded-code-block
    :transform-fn (update-val (some-fn :text-without-meta :text))
    :render-fn 'nextjournal.clerk.render/render-folded-code-block})
 
 (def tagged-value-viewer
   {:name `tagged-value-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-tagged-value-viewer
    :render-fn '(fn [{:keys [tag value space?]} opts]
                  (nextjournal.clerk.render/render-tagged-value
                   {:space? (:nextjournal/value space?)}
@@ -1211,6 +1232,7 @@
 
 (def result-viewer
   {:name `result-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-result
    :render-fn 'nextjournal.clerk.render/render-result
    :transform-fn transform-result})
 
@@ -1316,6 +1338,7 @@
 
 (def toc-viewer
   {:name `toc-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-toc
    :transform-fn transform-toc
    :render-fn 'nextjournal.clerk.render.navbar/render-items})
 
@@ -1357,6 +1380,7 @@
 
 (def notebook-viewer
   {:name `notebook-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-notebook
    :render-fn 'nextjournal.clerk.render/render-notebook
    :transform-fn (fn [{:as wrapped-value :nextjournal/keys [viewers]}]
                    (-> wrapped-value
@@ -1366,6 +1390,7 @@
 
 (def render-eval-viewer
   {:name `render-eval-viewer
+   :render-hiccup 'nextjournal.clerk.html/render-eval-value
    :pred render-eval?
    :var-from-def? true
    :transform-fn (comp mark-presented
