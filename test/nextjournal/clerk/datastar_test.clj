@@ -228,6 +228,14 @@
   (testing "viewers link their server side rendering via a `:render-hiccup` symbol"
     (is (= 'nextjournal.clerk.html/render-coll (:render-hiccup v/vector-viewer)))
     (is (= #'html/render-coll (html/render-hiccup-fn {:nextjournal/viewer v/vector-viewer}))))
+  (testing "`:render-hiccup` can be a fn, which processed viewers keep in metadata so they can be printed and hashed"
+    (let [render (fn [{:nextjournal/keys [value]}] [:span.custom value])
+          processed (v/process-viewer {:pred number? :render-hiccup render} {})]
+      (is (not (contains? processed :render-hiccup)))
+      (is (= render (html/render-hiccup-fn {:nextjournal/viewer processed})))
+      (is (not (str/includes? (v/->edn processed) "#object")))
+      (is (= "<span class=\"custom\">42</span>"
+             (html/->html-str (html/inspect {} (v/present (v/with-viewer {:render-hiccup render} 42))))))))
   (testing "a default viewer with a replaced `:render-fn` isn't rendered by its `:render-hiccup`"
     (is (html/custom-render-fn? (assoc v/image-viewer :render-fn '(fn [blob] [:img]))))
     (is (nil? (html/render-hiccup-fn {:nextjournal/viewer (assoc v/image-viewer :render-fn '(fn [blob] [:img]))}))))

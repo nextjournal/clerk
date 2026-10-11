@@ -1654,13 +1654,18 @@
   ;; `(clerk/update-viewers viewers {:render-fn #(assoc % :render-evaluator :cherry)})`
   (if-not (map? viewer)
     viewer
-    (-> (doto viewer
-          validate-viewer!)
-        (cond-> (and (not (:render-evaluator viewer)) render-evaluator)
-          (assoc :render-evaluator render-evaluator))
-        (dissoc :add-viewers :pred :transform-fn :update-viewers-fn)
-        (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
-        (process-render-fn))))
+    (let [{:keys [render-hiccup]} viewer
+          ;; a `:render-hiccup` fn can't be printed or hashed, keep it in metadata for `nextjournal.clerk.html`
+          render-hiccup-in-meta? (and render-hiccup (not (symbol? render-hiccup)))]
+      (-> (doto viewer
+            validate-viewer!)
+          (cond-> (and (not (:render-evaluator viewer)) render-evaluator)
+            (assoc :render-evaluator render-evaluator))
+          (dissoc :add-viewers :pred :transform-fn :update-viewers-fn)
+          (cond-> render-hiccup-in-meta? (dissoc :render-hiccup))
+          (as-> viewer (assoc viewer :hash (hash-sha1 viewer)))
+          (process-render-fn)
+          (cond-> render-hiccup-in-meta? (vary-meta assoc :nextjournal/render-hiccup render-hiccup))))))
 
 #_(process-viewer {:render-fn '#(vector :h1) :transform-fn mark-presented})
 

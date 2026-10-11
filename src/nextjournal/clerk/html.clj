@@ -6,9 +6,9 @@
   injected through callbacks in the render context `ctx`, which keeps
   this namespace independent of the transport (Datastar, static build).
 
-  Viewers opt into server-side rendering by referencing a function with a
-  qualified symbol in `:render-hiccup`, which is called with the presented
-  value and returns hiccup. Values whose viewer has no `:render-hiccup`
+  Viewers opt into server-side rendering with a `:render-hiccup` function
+  (or a qualified symbol referencing one), which is called with the
+  presented value and returns hiccup. Values whose viewer has no `:render-hiccup`
   need the browser and render as islands.
 
   The render context is passed along in the presented value under `:nextjournal/ctx`
@@ -29,26 +29,37 @@
 
 (def nbsp " ")
 
+(defn viewer-render-hiccup
+  "Returns the `:render-hiccup` of `viewer`, a fn or a qualified symbol. Processed
+  viewers keep fns in their metadata so they can be printed and hashed."
+  [viewer]
+  (or (-> viewer meta :nextjournal/render-hiccup)
+      (:render-hiccup viewer)))
+
 (def ^:private default-renderers
   (memoize (fn [viewers]
-             (into {} (map (juxt :name #(select-keys % [:render-fn :render-hiccup]))) viewers))))
+             (into {} (map (juxt :name (fn [viewer] {:render-fn (:render-fn viewer)
+                                                     :render-hiccup (viewer-render-hiccup viewer)})))
+                   viewers))))
 
 (defn custom-render-fn?
   "Is `viewer` a default viewer whose `:render-fn` was replaced without
   also replacing its `:render-hiccup`, e.g. via `(assoc v/render-eval-viewer :render-fn ...)`?
   Its `:render-hiccup` would then render something else, so it needs the browser."
-  [{:as viewer viewer-name :name :keys [render-fn render-hiccup]}]
+  [{:as viewer viewer-name :name :keys [render-fn]}]
   (when-let [default (get (default-renderers (v/get-default-viewers)) viewer-name)]
     (and (not= (:form render-fn render-fn) (:render-fn default))
-         (= render-hiccup (:render-hiccup default)))))
+         (= (viewer-render-hiccup viewer) (:render-hiccup default)))))
 
 (defn render-hiccup-fn
   "Returns the function rendering the presented value `x` to hiccup, resolved from its viewer's `:render-hiccup`."
   [{:nextjournal/keys [viewer]}]
-  (when-let [sym (:render-hiccup viewer)]
+  (when-let [render-hiccup (viewer-render-hiccup viewer)]
     (when-not (custom-render-fn? viewer)
-      (or (requiring-resolve sym)
-          (throw (ex-info (str "Could not resolve `:render-hiccup` " sym ".") {:viewer viewer}))))))
+      (if (symbol? render-hiccup)
+        (or (requiring-resolve render-hiccup)
+            (throw (ex-info (str "Could not resolve `:render-hiccup` " render-hiccup ".") {:viewer viewer})))
+        render-hiccup))))
 
 (declare unsupported)
 

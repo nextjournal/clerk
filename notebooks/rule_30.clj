@@ -1,16 +1,20 @@
 ;; # Rule 30 🕹
 ;; Let's explore cellular automata in a Clerk Notebook. We start by requiring the custom viewers.
 (ns rule-30
-  (:require [nextjournal.clerk :as clerk]))
+  (:require [nextjournal.clerk :as clerk]
+            [nextjournal.clerk.html :as html]))
 
 (def viewers
   [{:pred number?
-    :render-fn '#(vector :div.inline-block {:style {:width 16 :height 16}
-                                            :class (if (pos? %) "bg-black" "bg-white border-solid border-2 border-black")})}
+    :render-hiccup (fn [{:nextjournal/keys [value]}]
+                     [:div.inline-block {:style "width:16px;height:16px"
+                                         :class (if (pos? value) "bg-black" "bg-white border-solid border-2 border-black")}])}
    {:pred (every-pred list? (partial every? (some-fn number? vector?)))
-    :render-fn '#(into [:div.flex.flex-col] (nextjournal.clerk.render/inspect-children %2) %1)}
+    :render-hiccup (fn [{:nextjournal/keys [ctx value]}]
+                     (into [:div.flex.flex-col] (html/inspect-children ctx value)))}
    {:pred (every-pred vector? (complement map-entry?) (partial every? number?))
-    :render-fn '#(into [:div.flex.inline-flex] (nextjournal.clerk.render/inspect-children %2) %1)}
+    :render-hiccup (fn [{:nextjournal/keys [ctx value]}]
+                     (into [:div.flex.inline-flex] (html/inspect-children ctx value)))}
    {:pred var? :transform-fn (clerk/update-val deref)}])
 
 (clerk/add-viewers! viewers)
