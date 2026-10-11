@@ -184,3 +184,23 @@
     (testing "only synced vars of the current notebook can be patched"
       (is (= 500 (:status (post {:type :sync! :var-name `!island-synced :patch [[[:n] :r 2]]}))))
       (is (= {:n 1} @!island-synced)))))
+
+(deftest static-pages
+  (let [presented (present-string "(ns datastar-test.static (:require [nextjournal.clerk :as clerk]))
+;; # Static
+(clerk/with-viewer '(fn [x] [:div x]) 1)
+(range 30)")
+        opts {:resource->url {"/js/viewer.js" "https://cdn.example/viewer.js"}}
+        page (datastar/static-page-html opts {:presented presented})]
+    (testing "static pages don't use datastar or the server"
+      (is (not (str/includes? page "datastar.js")))
+      (is (not (str/includes? page "/_clerk/")))
+      (is (not (str/includes? page "<meta name=\"clerk-island-endpoint\""))))
+    (is (str/includes? page "<title>Static</title>"))
+    (is (str/includes? page "customElements.define('clerk-island'"))
+    (is (str/includes? page "content=\"https://cdn.example/viewer.js\""))
+    (is (str/includes? page "10 more elided"))
+    (testing "single file builds render all docs as sections"
+      (let [page (datastar/static-page-html opts {:path->doc {"" presented "other" presented}})]
+        (is (= 2 (count (re-seq #"<section data-clerk-path" page))))
+        (is (str/includes? page "data-clerk-path=\"other\" data-clerk-title=\"Static\" hidden"))))))

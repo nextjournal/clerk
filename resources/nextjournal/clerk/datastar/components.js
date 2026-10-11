@@ -95,7 +95,8 @@ const loadViewer = () =>
   once('clerk-viewer', async () => {
     await import(viewerUrl())
     const viewer = globalThis.nextjournal.clerk.sci_env
-    viewer.connect_http('/_clerk/island')
+    const endpoint = document.querySelector('meta[name="clerk-island-endpoint"]')?.content
+    if (endpoint) viewer.connect_http(endpoint)
     return viewer
   })
 

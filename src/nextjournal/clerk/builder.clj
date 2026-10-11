@@ -251,8 +251,14 @@
       (throw (ex-info "Index must have been processed at this point" {:static-app-opts static-app-opts})))
     (when-not (fs/exists? (fs/parent index-html))
       (fs/create-dirs (fs/parent index-html)))
-    (if (= :single-file package)
+    (cond
+      (webserver/datastar? opts)
+      ((requiring-resolve 'nextjournal.clerk.datastar/write-static-app!) static-app-opts)
+
+      (= :single-file package)
       (spit index-html (view/->html (cleanup static-app-opts)))
+
+      :else
       (doseq [[path doc] path->doc]
         (let [out-html (fs/file out-path path "index.html")]
           (fs/create-dirs (fs/parent out-html))

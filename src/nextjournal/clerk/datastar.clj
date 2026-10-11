@@ -8,7 +8,8 @@
 
   Per tab ui state lives in `(:tabs @webserver/!state)`, keyed by a tab id
   that's kept in the `tab` query param so it survives reloads."
-  (:require [clojure.edn :as edn]
+  (:require [babashka.fs :as fs]
+            [clojure.edn :as edn]
             [editscript.core :as editscript]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -187,28 +188,103 @@
 (def page-css
   ".cm-line { padding: 0; line-height: 1.6; font-size: 15px; font-family: \"Fira Mono\", monospace; }")
 
-(defn page-html [{:as state :keys [presented]} tab-id {:keys [replace-url?]}]
+(def fonts-css-url
+  "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")
+
+(defn components-js []
+  (slurp (io/resource "nextjournal/clerk/datastar/components.js")))
+
+(defn page-html*
+  "Page shell shared by the live and static pages. `opts` are like `view/->html`
+  state (`:resource->url`, `:current-path` for relative urls of directory builds)."
+  [{:as opts :keys [resource->url]} {:keys [title open-graph head body-attrs body]}]
   (str "<!DOCTYPE html>\n"
        (h/html {:mode :html}
                [:html
                 [:head
                  [:meta {:charset "UTF-8"}]
                  [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-                 [:title (or (-> presented :nextjournal/value :title) "Clerk")]
-                 (h/raw (hiccup1/html (view/include-viewer-css {:resource->url @config/!resource->url})))
-                 (h/raw (hiccup1/html (hiccup.page/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
-                 (h/raw (hiccup1/html (hiccup.page/include-css katex-css-url)))
+                 [:title (or title "Clerk")]
+                 (when open-graph (h/raw (hiccup1/html (v/open-graph-metas open-graph))))
+                 (h/raw (hiccup1/html (view/include-viewer-css opts)))
+                 (h/raw (hiccup1/html (hiccup.page/include-css fonts-css-url katex-css-url)))
                  [:style (h/raw page-css)]
-                 [:script {:type "module" :src datastar-url}]
-                 [:script {:type "module" :src "/_clerk/components.js"}]
-                 [:meta {:name "clerk-viewer-js" :content (get @config/!resource->url "/js/viewer.js")}]]
-                [:body.dark:bg-gray-900
-                 {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")
-                  :data-on:click link-click-expr
-                  :data-on:popstate__window (navigate-expr "decodeURIComponent(location.pathname).slice(1)")}
-                 (when replace-url?
-                   [:script (h/raw (replace-url-script tab-id))])
-                 (render-main state tab-id)]])))
+                 [:meta {:name "clerk-viewer-js" :content (view/adjust-relative-path opts (get resource->url "/js/viewer.js"))}]
+                 head]
+                (into [:body.dark:bg-gray-900 body-attrs] body)])))
+
+(defn page-html [{:as state :keys [presented]} tab-id {:keys [replace-url?]}]
+  (page-html* {:resource->url @config/!resource->url}
+              {:title (-> presented :nextjournal/value :title)
+               :head (list [:script {:type "module" :src datastar-url}]
+                           [:script {:type "module" :src "/_clerk/components.js"}]
+                           ;; where islands send their messages, absent in static builds
+                           [:meta {:name "clerk-island-endpoint" :content "/_clerk/island"}])
+               :body-attrs {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")
+                            :data-on:click link-click-expr
+                            :data-on:popstate__window (navigate-expr "decodeURIComponent(location.pathname).slice(1)")}
+               :body [(when replace-url?
+                        [:script (h/raw (replace-url-script tab-id))])
+                      (render-main state tab-id)]}))
+
+;; ## Static builds
+;; Pages rendered once without a server: no Datastar, expansion is fixed at
+;; its initial state, client components and islands still work.
+
+(defn render-static-doc [presented]
+  (html/inspect {:islands? true} presented))
+
+(def single-file-router-js
+  ;; shows the section for the `#/path` written by `doc-url` for single file builds
+  "const show = () => {
+  const path = decodeURIComponent(location.hash.replace(/^#\\/?/, '').split(':')[0])
+  const sections = [...document.querySelectorAll('section[data-clerk-path]')]
+  const section = sections.find(s => s.dataset.clerkPath === path) || sections.find(s => s.dataset.clerkPath === '')
+  sections.forEach(s => { s.hidden = s !== section })
+  if (section) document.title = section.dataset.clerkTitle
+}
+addEventListener('hashchange', () => { show(); scrollTo(0, 0) })
+show()")
+
+(defn merged-island-env
+  "One island env for several presented docs (single file builds)."
+  [presented-docs]
+  (island-env {:cljs-libs (into [] (mapcat :cljs-libs) presented-docs)
+               :nextjournal/value {:atom-var-name->state (into {} (map (comp :atom-var-name->state :nextjournal/value)) presented-docs)}}))
+
+(defn static-page-html
+  "Renders the static html for a single `:presented` doc (directory builds)
+  or all docs in `:path->doc` (single file builds)."
+  [opts {:keys [presented path->doc]}]
+  (if path->doc
+    (page-html* opts
+                {:title (-> (get path->doc "") :nextjournal/value :title)
+                 :head [:script {:type "module"} (h/raw (components-js))]
+                 :body [[:main#clerk-datastar
+                         (merged-island-env (vals path->doc))
+                         (for [[path presented] (sort-by key path->doc)]
+                           [:section {:data-clerk-path path
+                                      :data-clerk-title (or (-> presented :nextjournal/value :title) "Clerk")
+                                      :hidden (not= "" path)}
+                            (render-static-doc presented)])]
+                        [:script {:type "module"} (h/raw single-file-router-js)]]})
+    (page-html* opts
+                {:title (-> presented :nextjournal/value :title)
+                 :open-graph (-> presented :nextjournal/value :open-graph)
+                 :head [:script {:type "module"} (h/raw (components-js))]
+                 :body [[:main#clerk-datastar
+                         (island-env presented)
+                         (render-static-doc presented)]]})))
+
+(defn write-static-app!
+  "Writes the static html for a build, called by `builder/write-static-app!` when building with `:frontend :datastar`."
+  [{:as static-app-opts :keys [package out-path path->doc]}]
+  (if (= :single-file package)
+    (spit (str (fs/file out-path "index.html")) (static-page-html static-app-opts {:path->doc path->doc}))
+    (doseq [[path presented] path->doc]
+      (let [out-html (fs/file out-path path "index.html")]
+        (fs/create-dirs (fs/parent out-html))
+        (spit out-html (static-page-html (assoc static-app-opts :current-path path) {:presented presented}))))))
 
 (defn serve-page
   "Responds with the full page for the current notebook, called after `show!` in `webserver/serve-notebook`."
