@@ -31,15 +31,16 @@
 {:progress 0.95 :status "Presenting…"}
 
 (defn set-cell-progress! [progress]
-  (swap! webserver/!doc (fn [doc] (if-let [status (-> doc meta :status)]
-                                    (let [status+progress (assoc status :cell-progress progress)]
-                                      (when-let [send-future (-> doc meta ::webserver/!send-status-future)]
-                                        (future-cancel send-future))
-                                      (webserver/broadcast-status! status+progress)
-                                      (-> doc
-                                          (vary-meta dissoc ::!send-status-future)
-                                          (vary-meta assoc :status status+progress)))
-                                    doc))))
+  (swap! webserver/!state (fn [{:as state :keys [status]}]
+                            (if status
+                              (let [status+progress (assoc status :cell-progress progress)]
+                                (when-let [send-future (::webserver/!send-status-future state)]
+                                  (future-cancel send-future))
+                                (webserver/broadcast-status! status+progress)
+                                (-> state
+                                    (dissoc ::webserver/!send-status-future)
+                                    (assoc :status status+progress)))
+                              state))))
 
 (defonce !rand
   (atom 0))

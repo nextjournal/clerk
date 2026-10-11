@@ -18,16 +18,15 @@
             [hiccup2.core :as h]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.html :as html]
+            [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver]
             [org.httpkit.server :as httpkit])
   (:import (java.io ByteArrayOutputStream)
-           (java.nio.channels SelectionKey)
            (java.nio.charset StandardCharsets)
            (java.util.concurrent ExecutorService LinkedBlockingQueue TimeUnit)
-           (java.util.zip GZIPOutputStream)
-           (org.httpkit.server AsyncChannel)))
+           (java.util.zip GZIPOutputStream)))
 
 (def datastar-url "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js")
 
@@ -36,7 +35,7 @@
 ;; ## Tab state
 
 (defn new-tab-id []
-  (subs (str (random-uuid)) 0 8))
+  (subs (str (java.util.UUID/randomUUID)) 0 8))
 
 (defn valid-tab-id? [s]
   (boolean (and (string? s) (re-matches #"[A-Za-z0-9-]{1,36}" s))))
@@ -75,7 +74,7 @@
 
 (defn prune-tabs [tabs presented]
   (let [index (result-index presented)]
-    (update-vals tabs #(prune-tab % index))))
+    (into {} (map (fn [[tab-id tab]] [tab-id (prune-tab tab index)])) tabs)))
 
 (defn update-result-state
   "Updates the tab's state of result `id` with `f`, resetting it when the result's hash changed."
@@ -419,10 +418,12 @@ show()")
         (swap! !conns (fn [conns] (cond-> conns (contains? conns ch) (assoc-in [ch :last-inputs] inputs))))))))
 
 (defn virtual-thread-executor
-  "Returns a virtual thread per task executor when running on JDK 21+, nil otherwise."
+  "Returns a virtual thread per task executor when running on JDK 21+, nil otherwise (and in babashka)."
   ^ExecutorService []
-  (try (clojure.lang.Reflector/invokeStaticMethod java.util.concurrent.Executors "newVirtualThreadPerTaskExecutor" (object-array 0))
-       (catch Throwable _ nil)))
+  (u/if-bb
+   nil
+   (try (clojure.lang.Reflector/invokeStaticMethod java.util.concurrent.Executors "newVirtualThreadPerTaskExecutor" (object-array 0))
+        (catch Throwable _ nil))))
 
 (defonce render-executor (delay (virtual-thread-executor)))
 
@@ -454,19 +455,23 @@ show()")
     (swap! !tab-last-seen assoc tab-id (System/currentTimeMillis))
     ((:close encoder))))
 
-(def ^:private ^java.lang.reflect.Field async-channel-key-field
-  (try (doto (.getDeclaredField AsyncChannel "key") (.setAccessible true))
-       (catch Exception _ nil)))
+(def ^:private async-channel-key-field
+  (u/if-bb
+   nil
+   (try (doto (.getDeclaredField org.httpkit.server.AsyncChannel "key") (.setAccessible true))
+        (catch Exception _ nil))))
 
 (defn conn-open?
   "http-kit (2.8) doesn't call `on-close` when the client of a streaming
   HTTP response goes away and `open?` keeps returning true, so we also
-  check the underlying selection key."
+  check the underlying selection key (not available in babashka)."
   [ch]
-  (and (httpkit/open? ch)
-       (if async-channel-key-field
-         (.isValid ^SelectionKey (.get async-channel-key-field ch))
-         true)))
+  (u/if-bb
+   true
+   (and (httpkit/open? ch)
+        (if async-channel-key-field
+          (.isValid ^java.nio.channels.SelectionKey (.get ^java.lang.reflect.Field async-channel-key-field ch))
+          true))))
 
 (defn reap-closed-conns! []
   (run! remove-conn! (remove conn-open? (keys @!conns))))
@@ -590,7 +595,7 @@ show()")
   (let [sym (read-param params :var)
         var (when (qualified-symbol? sym) (resolve sym))
         value (get params :value "")
-        seq (some-> (get params :seq) parse-long)]
+        seq (some-> (get params :seq) (->> (re-matches #"\d{1,18}")) Long/parseLong)]
     (when-not (contains? (v/extract-sync-atom-vars (:doc @webserver/!state)) var)
       (throw (ex-info (str "`" sym "` is not a synced var of the current notebook.") {:var sym})))
     (when (or (nil? seq) (newer-sync? tab-id sym seq))

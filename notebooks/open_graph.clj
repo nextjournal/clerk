@@ -65,7 +65,7 @@
 
 (clerk/with-viewer open-graph-card-preview
   ;; FIXME: can't use this here
-  #_ @nextjournal.clerk.webserver/!doc
+  #_ (:doc @nextjournal.clerk.webserver/!state)
   {:open-graph {:type "article:clerk",
                 :title "My title",
                 :description "Some description"
@@ -74,12 +74,12 @@
 
 (defn preview-open-graph-card! [& {:keys [screenshots?] :or {screenshots? false}}]
   (when screenshots? (take-screenshots!))
-  (viewer/reset-viewers! (or (:ns @webserver/!doc) *ns*)
+  (viewer/reset-viewers! (or (:ns (:doc @webserver/!state)) *ns*)
                          (viewer/add-viewers [(assoc open-graph-card-preview :name :clerk/notebook)]))
   (clerk/recompute!))
 
 (defn reset-notebook! []
-  (viewer/reset-viewers! (or (:ns @webserver/!doc) *ns*) viewer/default-viewers)
+  (viewer/reset-viewers! (or (:ns (:doc @webserver/!state)) *ns*) viewer/default-viewers)
   (clerk/recompute!))
 
 ^{:nextjournal.clerk/visibility {:code :hide :result :hide}}
@@ -91,4 +91,4 @@
   ;; reset view
   (reset-notebook!)
 
-  (:open-graph @webserver/!doc))
+  (:open-graph (:doc @webserver/!state)))

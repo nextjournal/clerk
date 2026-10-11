@@ -16,7 +16,7 @@
            '[clj-async-profiler.core :as prof])
 
   
-  (analyzer/unhashed-deps (:->analysis-info @nextjournal.clerk.webserver/!doc))
+  (analyzer/unhashed-deps (:->analysis-info (:doc @nextjournal.clerk.webserver/!state)))
 
   (analyzer/find-location 'emmy.util.stopwatch/repr)
   (analyzer/find-location 'emmy.value/zero?)
