@@ -472,7 +472,7 @@
 
 #_(find-location `inc)
 #_(find-location `*print-dup*)
-#_(find-location '@nextjournal.clerk.webserver/!doc)
+#_(find-location '(:doc @nextjournal.clerk.webserver/!state))
 #_(find-location `dep/depend)
 #_(find-location 'java.util.UUID)
 #_(find-location 'java.util.UUID/randomUUID)
@@ -731,7 +731,7 @@
 #_(do (swap! hash-fn/!state inc)
       (nextjournal.clerk/recompute!))
 
-#_(deref nextjournal.clerk.webserver/!doc)
+#_(:doc @nextjournal.clerk.webserver/!state)
 
 #_(nextjournal.clerk/clear-cache!)
 
@@ -756,6 +756,6 @@
         (seq? sym-or-form)
         (filter #(= sym-or-form (:form %)) blocks)))
 
-#_(find-blocks @nextjournal.clerk.webserver/!doc 'scratch/foo)
-#_(find-blocks @nextjournal.clerk.webserver/!doc 'foo)
-#_(find-blocks @nextjournal.clerk.webserver/!doc '(rand-int 1000))
+#_(find-blocks (:doc @nextjournal.clerk.webserver/!state) 'scratch/foo)
+#_(find-blocks (:doc @nextjournal.clerk.webserver/!state) 'foo)
+#_(find-blocks (:doc @nextjournal.clerk.webserver/!state) '(rand-int 1000))

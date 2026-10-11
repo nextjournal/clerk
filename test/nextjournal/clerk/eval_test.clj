@@ -262,7 +262,7 @@
 (deftest show!-test
   (testing "in-memory cache is preserved when exception is thrown (#549)"
     (let [code "{:f inc :n (rand-int 100000)}"
-          get-result #(:blob->result @webserver/!doc)]
+          get-result #(:blob->result (:doc @webserver/!state))]
       (clerk/show! (java.io.StringReader. code))
       (let [result-first-run (get-result)]
         (try (clerk/show! (java.io.StringReader. (str code " (throw (ex-info \"boom\" {}))")))

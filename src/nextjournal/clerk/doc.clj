@@ -198,5 +198,5 @@
                                (str-match-nss @!active-ns)))]
           :else [:div "No namespaces found."]))]]]))
 
-#_(deref nextjournal.clerk.webserver/!doc)
+#_(:doc @nextjournal.clerk.webserver/!state)
 

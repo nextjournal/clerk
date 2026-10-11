@@ -219,7 +219,7 @@
 #_(eval-file "notebooks/test123.clj")
 #_(eval-file "notebooks/how_clerk_works.clj")
 
-#_(blob->result @nextjournal.clerk.webserver/!doc)
+#_(blob->result (:doc @nextjournal.clerk.webserver/!state))
 
 
 
@@ -236,9 +236,9 @@
                                                 (str (subs code 0 max-length) ",,,")
                                                 code))))}))
 
-#_(->eval-status @webserver/!doc 0 (nth (filter parser/code? (:blocks @webserver/!doc)) 0))
-#_(->eval-status @webserver/!doc 1 (nth (filter parser/code? (:blocks @webserver/!doc)) 2))
-#_(->eval-status @webserver/!doc 2 (nth (filter parser/code? (:blocks @webserver/!doc)) 3))
+#_(->eval-status (:doc @webserver/!state) 0 (nth (filter parser/code? (:blocks (:doc @webserver/!state))) 0))
+#_(->eval-status (:doc @webserver/!state) 1 (nth (filter parser/code? (:blocks (:doc @webserver/!state))) 2))
+#_(->eval-status (:doc @webserver/!state) 2 (nth (filter parser/code? (:blocks (:doc @webserver/!state))) 3))
 
 #_(nextjournal.clerk/show! "notebooks/exec_status.clj")
 

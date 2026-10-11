@@ -67,7 +67,7 @@
                                                                       {:file file-or-ns}
                                                                       e))))
              _ (reset! !last-file file)
-             {:keys [blob->result]} @webserver/!doc
+             {:keys [blob->result]} (:doc @webserver/!state)
              {:keys [result] eval-ms :time-ms} (eval/time-ms (binding [paths/*build-opts* (webserver/get-build-opts)]
                                                                (eval/+eval-results blob->result (assoc doc :set-status-fn webserver/set-status!))))
              {presentation-ms :time-ms} (eval/time-ms (webserver/update-doc! result))]
@@ -79,7 +79,7 @@
                                (:error result))]
            (throw error)))
        (catch Exception e
-         (webserver/update-doc! (-> @webserver/!doc (assoc :error e) (update :ns #(or % (find-ns 'user)))))
+         (webserver/update-doc! (-> (:doc @webserver/!state) (assoc :error e) (update :ns #(or % (find-ns 'user)))))
          (throw e))))))
 
 #_(show! "notebooks/exec_status.clj")
@@ -93,9 +93,9 @@
 (defn recompute!
   "Recomputes the currently visible doc, without parsing it."
   []
-  (when-not (eval/cljs? @webserver/!doc)
-    (binding [*ns* (:ns @webserver/!doc)]
-      (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc @webserver/!doc))]
+  (when-not (eval/cljs? (:doc @webserver/!state))
+    (binding [*ns* (:ns (:doc @webserver/!state))]
+      (let [{:keys [result time-ms]} (eval/time-ms (eval/eval-analyzed-doc (:doc @webserver/!state)))]
         (println (str "Clerk recomputed '" @!last-file "' in " time-ms "ms."))
         (webserver/update-doc! result)))))
 
@@ -114,10 +114,10 @@
   [x]
   (reset! @(requiring-resolve 'nextjournal.clerk.presenter/!val) x)
   (if (= (the-ns 'nextjournal.clerk.presenter)
-         (:ns @webserver/!doc))
+         (:ns (:doc @webserver/!state)))
     (recompute!)
     (show! 'nextjournal.clerk.presenter))
-  (-> @webserver/!doc meta :nextjournal/value :blocks peek :nextjournal/value first :nextjournal/value :nextjournal/presented))
+  (-> @webserver/!state :presented :nextjournal/value :blocks peek :nextjournal/value first :nextjournal/value :nextjournal/presented))
 
 (defn ^:private supported-file?
   "Returns whether `path` points to a file that should be shown."
@@ -474,6 +474,7 @@
   - `:paths`     - restricts serving to the given paths, supports glob patterns. Will disable Clerk's homepage when set.
   - `:paths-fn`  - a symbol resolving to a 0-arity function returning computed paths.
   - `:index`     - path to a file to override Clerk's default index, will be added to paths.
+  - `:frontend`  - set to `:datastar` to opt into the experimental server-rendered Datastar frontend.
 
   When both `:paths` and `:paths-fn` are given, `:paths` takes precendence.
 
@@ -596,20 +597,20 @@
   * a symbol representing the var name (qualified or not)
   * the form of an anonymous expression"
   ([]
-   (swap! webserver/!doc dissoc :blob->result ::webserver/presentation-cache)
+   (swap! webserver/!state #(-> % (update :doc dissoc :blob->result) (dissoc :presentation-cache)))
    (if (fs/exists? config/cache-dir)
      (do (fs/delete-tree config/cache-dir)
          (prn :cache-dir/deleted config/cache-dir))
      (prn :cache-dir/does-not-exist config/cache-dir)))
   ([sym-or-form]
-   (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks @webserver/!doc sym-or-form))]
+   (if-let [{:as block :keys [id result]} (first (analyzer/find-blocks (:doc @webserver/!state) sym-or-form))]
      (let [{:nextjournal/keys [blob-id]} result
            cache-file (fs/file config/cache-dir (str "@" blob-id))
-           cached-in-memory? (contains? (:blob->result @webserver/!doc) blob-id)
+           cached-in-memory? (contains? (:blob->result (:doc @webserver/!state)) blob-id)
            cached-on-fs? (fs/exists? cache-file)]
        (if-not (or cached-in-memory? cached-on-fs?)
          (prn :cache/not-cached {:id id})
-         (do (swap! webserver/!doc update :blob->result dissoc blob-id)
+         (do (swap! webserver/!state update-in [:doc :blob->result] dissoc blob-id)
              (fs/delete-if-exists cache-file)
              (prn :cache/removed {:id id :cached-in-memory? cached-in-memory? :cached-on-fs? cached-on-fs?}))))
      (prn :cache/no-block-found {:sym-or-form sym-or-form}))))
@@ -617,7 +618,7 @@
 #_(clear-cache!)
 #_(clear-cache! 'foo)
 #_(clear-cache! '(rand-int 1000))
-#_(blob->result @nextjournal.clerk.webserver/!doc)
+#_(blob->result (:doc @nextjournal.clerk.webserver/!state))
 
 (defmacro with-cache
   "An expression evaluated with Clerk's caching."

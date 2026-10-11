@@ -19,13 +19,21 @@
   (:import (java.nio.file Files)))
 
 (defonce !clients (atom #{}))
-(defonce !doc (atom nil))
+(defonce ^{:doc "All of Clerk's server-side state in a single atom:
+
+  * `:doc` the analyzed & evaluated doc
+  * `:presented` the presented doc that gets rendered
+  * `:presentation-cache` an atom caching expensive presentations
+  * `:status` the current evaluation status
+  * `:tabs` per browser tab ui state, keyed by tab id (Datastar frontend)"}
+  !state
+  (atom {}))
 (defonce !last-sender-ch (atom nil))
 
 (defonce !server (atom nil))
 
-#_(view/doc->viewer @!doc)
-#_(reset! !doc nil)
+#_(view/doc->viewer (:doc @!state))
+#_(reset! !state {})
 
 (def ^:dynamic *sender-ch* nil)
 
@@ -77,7 +85,7 @@
   (let [[k v] (str/split param #"=")]
     [(keyword (percent-decode k)) (if v (percent-decode (str/replace v #"\+" " ")) "")]))
 
-(defn ^:private query-string->map [s]
+(defn query-string->map [s]
   (if (str/blank? s) {} (into {} (map decode-param-pair) (str/split s #"&"))))
 
 (defn get-fetch-opts [query-string]
@@ -98,12 +106,12 @@
         (tree-seq coll? seq
                   (:nextjournal/value presented-doc))))
 
-#_(blob->presented (meta @!doc))
+#_(blob->presented (:presented @!state))
 
-(defn serve-blob [{:as doc :keys [ns]} {:keys [blob-id fetch-opts]}]
-  (when-not ns
+(defn serve-blob [{:keys [doc presented]} {:keys [blob-id fetch-opts]}]
+  (when-not (:ns doc)
     (throw (ex-info "namespace must be set" {:doc doc})))
-  (if-some [root-desc (get (blob->presented (meta doc)) blob-id)]
+  (if-some [root-desc (get (blob->presented presented) blob-id)]
     (let [{:keys [present-elision-fn]} (meta root-desc)
           desc (present-elision-fn fetch-opts)]
       (if (contains? desc :nextjournal/content-type)
@@ -138,27 +146,30 @@
 (defn sync-atom-changed [key atom old-state new-state]
   (eval '(nextjournal.clerk/recompute!)))
 
-(defn maybe-cancel-send-status-future [doc]
-  (when-let [scheduled-send-status-future (-> doc meta ::!send-status-future)]
+(defn maybe-cancel-send-status-future [state]
+  (when-let [scheduled-send-status-future (::!send-status-future state)]
     (future-cancel scheduled-send-status-future)))
 
 (defn present+reset! [doc]
-  (let [!presentation-cache (or (::presentation-cache @!doc) (atom {}))
+  (let [{old-doc :doc :keys [presentation-cache]} @!state
+        !presentation-cache (or presentation-cache (atom {}))
         presented (view/doc->viewer {:presentation-cache !presentation-cache} doc)
-        sync-vars-old (v/extract-sync-atom-vars @!doc)
+        sync-vars-old (v/extract-sync-atom-vars old-doc)
         sync-vars (v/extract-sync-atom-vars doc)]
     (swap! !presentation-cache select-keys (keys (:blob->result doc)))
     (doseq [sync-var (set/difference sync-vars sync-vars-old)]
       (add-watch @sync-var (symbol sync-var) sync-atom-changed))
     (doseq [sync-var (set/difference sync-vars-old sync-vars)]
       (remove-watch @sync-var (symbol sync-var)))
-    (maybe-cancel-send-status-future @!doc)
-    (reset! !doc (with-meta (assoc doc ::presentation-cache !presentation-cache) presented))
+    (maybe-cancel-send-status-future @!state)
+    (swap! !state #(-> %
+                       (assoc :doc doc :presented presented :presentation-cache !presentation-cache)
+                       (dissoc :status ::!send-status-future)))
     presented))
 
 (defn update-doc! [{:as doc :keys [nav-path fragment skip-history?]}]
-  (broadcast! (if (and (:ns @!doc) (= (:ns @!doc) (:ns doc)))
-                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (meta @!doc) (present+reset! doc) {:algo :quick}))}
+  (broadcast! (if (and (:ns (:doc @!state)) (= (:ns (:doc @!state)) (:ns doc)))
+                {:type :patch-state! :patch (editscript/get-edits (editscript/diff (:presented @!state) (present+reset! doc) {:algo :quick}))}
                 (cond-> {:type :set-state!
                          :doc (present+reset! doc)}
                   (and nav-path (not skip-history?))
@@ -166,7 +177,7 @@
                                                           (cond-> {:path nav-path} fragment (assoc :fragment fragment))))])))))
 
 (defn update-error! [ex]
-  (update-doc! (assoc @!doc :error ex)))
+  (update-doc! (assoc (:doc @!state) :error ex)))
 
 (defn read-msg [s]
   (binding [*data-readers* v/data-readers]
@@ -183,7 +194,7 @@
   {:on-open (fn [ch] (swap! !clients conj ch))
    :on-close (fn [ch _reason] (swap! !clients disj ch))
    :on-receive (fn [sender-ch edn-string]
-                 (binding [*ns* (or (:ns @!doc)
+                 (binding [*ns* (or (:ns (:doc @!state))
                                     (create-ns 'user))]
                    (let [{:as msg :keys [type recompute?]} (read-msg edn-string)]
                      (case type
@@ -295,6 +306,11 @@
 
 (defn prefetch-request? [req] (= "prefetch" (-> req :headers (get "purpose"))))
 
+(defn datastar?
+  "Is the server configured to use the Datastar frontend (`:frontend :datastar`)?"
+  [server-opts]
+  (= :datastar (keyword (:frontend server-opts))))
+
 (defn serve-notebook [{:as req :keys [uri]}]
   (let [opts (get-build-opts)
         nav-path (maybe-route-index opts (subs uri 1))]
@@ -304,7 +320,7 @@
 
       (str/blank? nav-path)
       {:status 302
-       :headers {"Location" (or (:nav-path @!doc)
+       :headers {"Location" (or (:nav-path (:doc @!state))
                                 (->nav-path 'nextjournal.clerk.home))}}
       :else
       (if-let [file-or-ns (let [file-or-ns (->file-or-ns (maybe-add-extension nav-path))]
@@ -320,12 +336,14 @@
                      (println
                       (str/join "\n" (sci.core/format-stacktrace (sci.core/stacktrace e)))))
                    nil)))
-          {:status 200
-           :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
-           :body (view/->html {:doc (view/doc->viewer {:presentation-cache (::presentation-cache @!doc)} @!doc)
-                               :resource->url @config/!resource->url
-                               :render-router :serve
-                               :conn-ws? true})})
+          (if (datastar? @!server)
+            ((requiring-resolve 'nextjournal.clerk.datastar/serve-page) req)
+            {:status 200
+             :headers {"Content-Type" "text/html" "Cache-Control" "no-store"}
+             :body (view/->html {:doc (view/doc->viewer {:presentation-cache (:presentation-cache @!state)} (:doc @!state))
+                                 :resource->url @config/!resource->url
+                                 :render-router :serve
+                                 :conn-ws? true})}))
         {:status 404
          :headers {"Content-Type" "text/plain"}
          :body (format "Could not find notebook at %s." (pr-str nav-path))}))))
@@ -335,7 +353,8 @@
     (httpkit/as-channel req ws-handlers)
     (try
       (case (get (re-matches #"/([^/]*).*" uri) 1)
-        "_blob" (serve-blob @!doc (extract-blob-opts req))
+        "_blob" (serve-blob @!state (extract-blob-opts req))
+        "_clerk" ((requiring-resolve 'nextjournal.clerk.datastar/app) req)
         ("build" "js" "css") (serve-file uri (str "public" uri))
         "clerk_service_worker.js" (serve-resource (io/resource "public/clerk_service_worker.js"))
         ("_fs") (serve-file uri (str/replace uri "/_fs/" ""))
@@ -369,9 +388,9 @@
     (broadcast-status! status)))
 
 (defn set-status! [status]
-  (swap! !doc (fn [doc] (-> (or doc {})
-                            (vary-meta assoc :status status)
-                            (vary-meta update ::!send-status-future broadcast-status-debounced! status)))))
+  (swap! !state (fn [state] (-> state
+                                (assoc :status status)
+                                (update ::!send-status-future broadcast-status-debounced! status)))))
 
 #_(clojure.java.browse/browse-url "http://localhost:7777")
 

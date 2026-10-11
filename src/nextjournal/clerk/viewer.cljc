@@ -579,7 +579,7 @@
                                                       :nextjournal/hash (analyzer/->hash-str [blob-id presented-result opts-from-block]))]))}
                (dissoc presented-result :nextjournal/value :nextjournal/viewer :nextjournal/viewers)))))
 
-#_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
+#_(nextjournal.clerk.view/doc->viewer (:doc @nextjournal.clerk.webserver/!state))
 
 (def hide-result-viewer
   {:name `hide-result-viewer :transform-fn (fn [_] nil)})
@@ -640,7 +640,7 @@
     [:div.flex.flex-col.items-center.not-prose.mb-4
      [:img (update attrs :src process-image-source doc)]]))
 
-#_(present @nextjournal.clerk.webserver/!doc)
+#_(present (:doc @nextjournal.clerk.webserver/!state))
 
 (defn update-if [m k f] (if (k m) (update m k f) m))
 #_(update-if {:n "42"} :n #(Integer/parseInt %))
@@ -722,9 +722,9 @@
             [(with-viewer `cell-viewer (assoc cell ::doc doc))]
             [])))
 
-#_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)))
+#_(:blocks (:nextjournal/value (nextjournal.clerk.view/doc->viewer (:doc @nextjournal.clerk.webserver/!state))))
 
-#_(nextjournal.clerk.view/doc->viewer @nextjournal.clerk.webserver/!doc)
+#_(nextjournal.clerk.view/doc->viewer (:doc @nextjournal.clerk.webserver/!state))
 
 (defn update-viewers [viewers select-fn->update-fn]
   (reduce (fn [viewers [pred update-fn]]
