@@ -99,6 +99,12 @@
   (testing "only synced vars of the current notebook can be updated"
     (is (thrown-with-msg? Exception #"is not a synced var"
                           (datastar/handle-action "sync" "tab" {:var (pr-str `!synced) :coerce ":number" :value "2"}))))
+  (testing "updates arriving out of order are dropped"
+    (let [sym (gensym "var")]
+      (is (datastar/newer-sync? "tab" sym 2))
+      (is (not (datastar/newer-sync? "tab" sym 1)))
+      (is (datastar/newer-sync? "tab" sym 3))
+      (is (datastar/newer-sync? "other-tab" sym 1))))
   (is (= 2 (datastar/parse-number "2")))
   (is (= 0.5 (datastar/parse-number "0.5")))
   (is (thrown? Exception (datastar/parse-number "(launch-missiles)"))))
@@ -122,3 +128,31 @@
       (let [out (html/->html-str (html/inspect (datastar/render-ctx "tab" nil) presented))]
         (is (str/includes? out "data-init=\"if (document.activeElement !== el) el.value = &quot;3&quot;\""))
         (is (str/includes? out "/_clerk/action/sync?var=datastar-test.controls%2F%21n"))))))
+
+(deftest syntax-highlighting
+  (let [code "(defn ^:private foo\n  \"doc\n  string\" [x]\n  ;; comment\n  (re-find #\"a\\\"b\" (str x \\a :k ::k/x nil true 1.5)))"
+        tokens (html/tokenize-clojure code)]
+    (testing "tokens contain the exact source"
+      (is (= code (apply str (map second tokens)))))
+    (is (= [["cmt-keyword" "defn"] ["cmt-meta" "^"] ["cmt-atom" ":private"] ["cmt-variableName" "foo"]
+            ["cmt-string" "\"doc\n  string\""] ["cmt-comment" ";; comment"] ["cmt-regexp" "#\"a\\\"b\""]
+            ["cmt-string" "\\a"] ["cmt-atom" ":k"] ["cmt-atom" "::k/x"] ["cmt-atom" "nil"] ["cmt-bool" "true"]]
+           (filter first tokens)))
+    (testing "multi-line tokens are split across lines"
+      (is (= 5 (count (html/tokens->lines tokens))))))
+  (testing "unbalanced or unknown input is passed through"
+    (is (= "(foo \"bar" (apply str (map second (html/tokenize-clojure "(foo \"bar")))))))
+
+(deftest json
+  (is (= "{\"a\":[1,2.5,0.5,null,null,true],\"b\\n\\\"\":[\"x\"],\"opts\":\"sym\"}"
+         (html/->json (array-map :a [1 2.5 1/2 ##NaN nil true] "b\n\"" #{:x} :embed/opts 'sym))))
+  (is (= "\"\\u0001\"" (html/->json (str (char 1))))))
+
+(deftest client-components
+  (let [render (fn [n] (html/->html-str (html/inspect {} (present-string (str "(ns datastar-test.components (:require [nextjournal.clerk :as clerk]))
+(clerk/vl {:data {:values (range " n ")} :mark \"bar\"})")))))
+        id (fn [out] (second (re-find #"<clerk-vega-lite[^>]* id=\"([^\"]+)\"" out)))]
+    (is (str/includes? (render 3) "data-ignore-morph"))
+    (testing "the id changes with the content so morphing replaces the component"
+      (is (= (id (render 3)) (id (render 3))))
+      (is (not= (id (render 3)) (id (render 4)))))))

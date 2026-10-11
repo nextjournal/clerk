@@ -156,12 +156,108 @@
    [:span.text-slate-400.group-hover:text-indigo-700 (triangle (expanded? ctx path))]
    [:span.group-hover:text-indigo-700 opening-paren]])
 
-(defn code-markup [code]
-  [:div.cm-editor
-   [:div.cm-scroller
-    (into [:div.cm-content.whitespace-pre]
-          (map (fn [line] [:div.cm-line (if (str/blank? line) "\n" line)]))
-          (str/split-lines code))]])
+;; ### Clojure syntax highlighting
+;; A small tokenizer producing the same `cmt-*` classes as the CodeMirror
+;; based highlighting in the browser. Never fails, unknown input is passed through.
+
+(def ^:private token-types
+  [[:comment ";[^\\n]*"]
+   [:regexp "#\"(?:\\\\.|[^\"\\\\])*\"?"]
+   [:string "\"(?:\\\\.|[^\"\\\\])*\"?"]
+   [:char "\\\\(?:newline|space|tab|formfeed|backspace|return|u[0-9a-fA-F]{4}|o[0-7]{1,3}|.)"]
+   [:keyword "::?[^\\s,()\\[\\]{}\"`;@^~\\\\]+"]
+   [:number "[-+]?\\d[^\\s,()\\[\\]{}\"`;@^~\\\\]*"]
+   [:meta "\\^"]
+   [:open "#?[(\\[{]|#\\?@?\\(|#_|#'"]
+   [:symbol "[^\\s,()\\[\\]{}\"`;@^~\\\\#']+[^\\s,()\\[\\]{}\"`;@^~\\\\]*"]
+   [:other "[\\s\\S]"]])
+
+(def ^:private token-re
+  (re-pattern (str/join "|" (map #(str "(" (second %) ")") token-types))))
+
+(defn tokenize-clojure
+  "Splits `code` into `[css-class text]` tokens, concatenating the texts returns `code`."
+  [code]
+  (first
+   (reduce (fn [[tokens {:as state :keys [after-open? after-def?]}] [text & groups]]
+             (let [type (first (keep-indexed (fn [i g] (when g (first (nth token-types i)))) groups))
+                   def-like? (and (= :symbol type) after-open? (or (str/starts-with? text "def") (= "ns" text)))
+                   class (case type
+                           :comment "cmt-comment"
+                           :regexp "cmt-regexp"
+                           (:string :char) "cmt-string"
+                           :keyword "cmt-atom"
+                           :meta "cmt-meta"
+                           :symbol (cond def-like? "cmt-keyword"
+                                         after-def? "cmt-variableName"
+                                         (#{"true" "false"} text) "cmt-bool"
+                                         (= "nil" text) "cmt-atom")
+                           nil)
+                   whitespace? (and (= :other type) (str/blank? text))]
+               [(conj tokens [class text])
+                (cond
+                  (or whitespace? (#{:comment :meta :keyword} type)) state
+                  :else {:after-open? (and (= :open type) (str/ends-with? text "("))
+                         :after-def? def-like?})]))
+           [[] {}]
+           (re-seq token-re code))))
+
+(defn tokens->lines
+  "Splits highlighted tokens into lines of hiccup."
+  [tokens]
+  (reduce (fn [lines [class text]]
+            (let [[line & more-lines] (str/split text #"\n" -1)
+                  ->hiccup (fn [s] (if (and class (seq s)) [:span {:class class} s] s))]
+              (into (update lines (dec (count lines)) conj (->hiccup line))
+                    (map (fn [s] [(->hiccup s)]))
+                    more-lines)))
+          [[]]
+          tokens))
+
+(def ^:private clojure-languages #{"clojure" "clojurescript" "clj" "cljs" "cljc" "edn"})
+
+(defn code-markup
+  ([code] (code-markup code "clojure"))
+  ([code language]
+   (let [code (str/trim-newline code)
+         lines (if (clojure-languages language)
+                 (tokens->lines (tokenize-clojure code))
+                 (map vector (str/split code #"\n" -1)))]
+     [:div.cm-editor
+      [:div.cm-scroller
+       (into [:div.cm-content.whitespace-pre]
+             (map (fn [line] (into [:div.cm-line] (if (every? #(and (string? %) (str/blank? %)) line) ["\n"] line))))
+             lines)]])))
+
+;; ### JSON
+;; Data for client components is passed as JSON attributes.
+
+(defn ^:private json-str [s]
+  (str "\"" (str/escape s (fn [c]
+                            (case c
+                              \" "\\\""
+                              \\ "\\\\"
+                              \newline "\\n"
+                              \return "\\r"
+                              \tab "\\t"
+                              (when (< (int c) 0x20) (format "\\u%04x" (int c))))))
+       "\""))
+
+(defn ->json
+  "Serializes `x` to JSON, keywords become strings without their namespace like `clj->js` does."
+  [x]
+  (cond
+    (nil? x) "null"
+    (boolean? x) (str x)
+    (number? x) (let [d (double x)]
+                  (cond (or (Double/isNaN d) (Double/isInfinite d)) "null"
+                        (or (integer? x) (== d (Math/rint d))) (if (integer? x) (str (bigint x)) (str (long d)))
+                        :else (str d)))
+    (string? x) (json-str x)
+    (keyword? x) (json-str (name x))
+    (map? x) (str "{" (str/join "," (map (fn [[k v]] (str (json-str (if (keyword? k) (name k) (str k))) ":" (->json v))) x)) "}")
+    (or (sequential? x) (set? x)) (str "[" (str/join "," (map ->json x)) "]")
+    :else (json-str (str x))))
 
 (defn unsupported [x]
   (let [k (viewer-key x)]
@@ -245,8 +341,8 @@
    [:summary.font-sans.text-slate-400.cursor-pointer.hover:text-slate-500 {:class "text-[10px]"} "show code"]
    (code-markup value)])
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-code [_ctx {:nextjournal/keys [value]}]
-  (code-markup value))
+(defmethod render-viewer 'nextjournal.clerk.render/render-code [_ctx {:nextjournal/keys [value render-opts]}]
+  (code-markup value (:language render-opts)))
 
 (defmethod render-viewer 'nextjournal.clerk.render/render-html [ctx {:nextjournal/keys [value]}]
   (if (string? value)
@@ -513,13 +609,36 @@
                       :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"}
                      (input-value-attrs ctx var :string state))])))
 
-;; ### Placeholders until client components land (phase 3)
+;; ### Client components
+;; Rendered by custom elements defined in `nextjournal/clerk/datastar/components.js`.
+;; The `id` changes with the content so a morph only replaces them when needed.
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-katex [_ctx {:nextjournal/keys [value]}]
-  [:div.font-mono.text-center.my-2 value])
+(defn component [tag {:keys [result-id]} {:keys [path]} attrs & children]
+  (into [tag (merge {:id (str (name tag) "-" (Integer/toUnsignedString (hash [result-id path attrs]) 36))
+                     ;; keep Datastar away from the DOM the libraries create
+                     :data-ignore true
+                     :data-ignore-morph true}
+                    attrs)]
+        children))
 
-(defmethod render-viewer :nextjournal.markdown/formula [_ctx {:nextjournal/keys [value]}]
-  [:span.font-mono value])
+(defmethod render-viewer 'nextjournal.clerk.render/render-vega-lite [ctx {:as x :nextjournal/keys [value]}]
+  [:div.overflow-x-auto
+   (component :clerk-vega-lite ctx x {:spec (->json (dissoc value :embed/opts :embed/callback))
+                                      :opts (->json (get value :embed/opts {}))})])
+
+(defmethod render-viewer 'nextjournal.clerk.render/render-plotly [ctx {:as x :nextjournal/keys [value]}]
+  [:div.overflow-x-auto
+   (component :clerk-plotly ctx x {:figure (->json value)})])
+
+(defmethod render-viewer 'nextjournal.clerk.render/render-mathjax [ctx {:as x :nextjournal/keys [value]}]
+  [:div.overflow-x-auto
+   (component :clerk-mathjax ctx x {:tex value} value)])
+
+(defmethod render-viewer 'nextjournal.clerk.render/render-katex [ctx {:as x :nextjournal/keys [value]}]
+  (component :clerk-katex ctx x {:tex value :class "block"} value))
+
+(defmethod render-viewer :nextjournal.markdown/formula [ctx {:as x :nextjournal/keys [value]}]
+  (component :clerk-katex ctx x {:tex value :inline true} value))
 
 (defmethod render-viewer `v/toc-viewer [_ctx _x]
   nil)

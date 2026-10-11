@@ -9,6 +9,7 @@
   Per tab ui state lives in `(:tabs @webserver/!state)`, keyed by a tab id
   that's kept in the `tab` query param so it survives reloads."
   (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.core :as hiccup1]
             [hiccup.page]
@@ -27,6 +28,8 @@
            (org.httpkit.server AsyncChannel)))
 
 (def datastar-url "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js")
+
+(def katex-css-url "https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css")
 
 ;; ## Tab state
 
@@ -115,7 +118,7 @@
   [tab-id sync-var coerce value]
   {:data-init (str "if (document.activeElement !== el) el.value = " (js-str value))
    (keyword (if (= :string coerce) "data-on:input__debounce.150ms" "data-on:input__throttle.50ms.trailing"))
-   (str "@post('" (action-url tab-id :sync {:var (symbol sync-var) :coerce coerce}) "&value=' + encodeURIComponent(el.value))")})
+   (str "@post('" (action-url tab-id :sync {:var (symbol sync-var) :coerce coerce}) "&seq=' + Math.round(performance.timeOrigin + performance.now()) + '&value=' + encodeURIComponent(el.value))")})
 
 (defn result-state-fn [tab]
   (fn [id presented auto-expand?]
@@ -180,8 +183,10 @@
                  [:title (or (-> presented :nextjournal/value :title) "Clerk")]
                  (h/raw (hiccup1/html (view/include-viewer-css {:resource->url @config/!resource->url})))
                  (h/raw (hiccup1/html (hiccup.page/include-css "https://fonts.bunny.net/css?family=fira-mono:400,700%7Cfira-sans:400,400i,500,500i,700,700i%7Cfira-sans-condensed:700,700i%7Cpt-serif:400,400i,700,700i")))
+                 (h/raw (hiccup1/html (hiccup.page/include-css katex-css-url)))
                  [:style (h/raw page-css)]
-                 [:script {:type "module" :src datastar-url}]]
+                 [:script {:type "module" :src datastar-url}]
+                 [:script {:type "module" :src "/_clerk/components.js"}]]
                 [:body.dark:bg-gray-900
                  {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")
                   :data-on:click link-click-expr
@@ -305,6 +310,8 @@
       (run! deref (.invokeAll executor ^java.util.Collection (vec render-fns)))
       (run! #(%) render-fns))))
 
+(declare !sync-seqs)
+
 (defn prune-closed-tabs! []
   (let [live (into #{} (map :tab-id) (vals @!conns))
         now (System/currentTimeMillis)
@@ -312,7 +319,8 @@
                                  (< tab-grace-ms (- now (get @!tab-last-seen tab-id 0)))))]
     (when (some stale? (keys (:tabs @webserver/!state)))
       (swap! webserver/!state update :tabs #(into {} (remove (comp stale? key)) %))
-      (swap! !tab-last-seen #(into {} (remove (comp stale? key)) %)))))
+      (swap! !tab-last-seen #(into {} (remove (comp stale? key)) %))
+      (swap! !sync-seqs #(into {} (remove (comp stale? first key)) %)))))
 
 (defn remove-conn! [ch]
   (when-let [{:keys [tab-id encoder]} (get @!conns ch)]
@@ -443,15 +451,26 @@
       n
       (throw (ex-info (str "Not a number: " (pr-str s)) {:value s})))))
 
-(defmethod handle-action "sync" [_ _tab-id params]
+(defonce ^{:doc "Last sequence number of a sync action per `[tab-id var]`, to drop updates arriving out of order."}
+  !sync-seqs
+  (atom {}))
+
+(defn newer-sync? [tab-id sym seq]
+  (let [k [tab-id sym]
+        [old _] (swap-vals! !sync-seqs (fn [seqs] (cond-> seqs (< (get seqs k -1) seq) (assoc k seq))))]
+    (< (get old k -1) seq)))
+
+(defmethod handle-action "sync" [_ tab-id params]
   (let [sym (read-param params :var)
         var (when (qualified-symbol? sym) (resolve sym))
-        value (get params :value "")]
+        value (get params :value "")
+        seq (some-> (get params :seq) parse-long)]
     (when-not (contains? (v/extract-sync-atom-vars (:doc @webserver/!state)) var)
       (throw (ex-info (str "`" sym "` is not a synced var of the current notebook.") {:var sym})))
-    (reset! @var (case (read-param params :coerce)
-                   :number (parse-number value)
-                   :string value))))
+    (when (or (nil? seq) (newer-sync? tab-id sym seq))
+      (reset! @var (case (read-param params :coerce)
+                     :number (parse-number value)
+                     :string value)))))
 
 (defmethod handle-action "eval" [_ _tab-id params]
   (binding [*ns* (or (:ns (:doc @webserver/!state)) (create-ns 'user))]
@@ -491,5 +510,8 @@
 (defn app [{:as req :keys [uri]}]
   (cond
     (= "/_clerk/sse" uri) (sse-handler req)
+    (= "/_clerk/components.js" uri) {:status 200
+                                     :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
+                                     :body (slurp (io/resource "nextjournal/clerk/datastar/components.js"))}
     (str/starts-with? uri "/_clerk/action/") (action-handler req)
     :else {:status 404}))
