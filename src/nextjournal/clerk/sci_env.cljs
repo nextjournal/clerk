@@ -10,12 +10,14 @@
             ["framer-motion" :as framer-motion]
             ["react" :as react]
             ["react-dom" :as react-dom]
+            ["react-dom/client" :as react-client]
             ["w3c-keyname" :as w3c-keyname]
             [applied-science.js-interop :as j]
             [cljs.math]
             [cljs.reader]
             [cljs.repl]
             [clojure.string :as str]
+            [clojure.walk :as w]
             [edamame.core :as edamame]
             [goog.object]
             [nextjournal.clerk.cherry-env :as cherry-env]
@@ -221,14 +223,16 @@
    :render-eval render-eval
    :nrepl handle-nrepl})
 
-(defn ^:export onmessage [ws-msg]
-  (let [{:as msg :keys [type]} (read-string (.-data ws-msg))
-        dispatch-fn (get message-type->fn
+(defn dispatch-message [{:as msg :keys [type]}]
+  (let [dispatch-fn (get message-type->fn
                          type
                          (fn [_]
                            (js/console.warn (str "no on-message dispatch for type `" type "`"))))]
     #_(js/console.log :<= type := msg)
     (dispatch-fn msg)))
+
+(defn ^:export onmessage [ws-msg]
+  (dispatch-message (read-string (.-data ws-msg))))
 
 (def ^:export init render/init)
 
@@ -264,3 +268,56 @@
 (sci/alter-var-root sci/print-err-fn (constantly *print-err-fn*))
 
 (set! *eval* eval-form)
+
+;; ## Islands
+;; Used by the Datastar frontend to render values whose viewers need the
+;; browser (custom `:render-fn`s) in an otherwise server rendered page.
+
+(defonce !last-local-send (atom 0))
+
+(defn ^:export connect-http
+  "Sends messages via HTTP POST to `url` instead of a websocket, replies are dispatched like websocket messages."
+  [url]
+  (set! (.-ws_send ^js goog/global)
+        (fn [msg]
+          (reset! !last-local-send (js/Date.now))
+          (-> (js/fetch url #js {:method "POST"
+                                 :body msg
+                                 :headers #js {"Content-Type" "application/edn"
+                                               "Datastar-Request" "true"}})
+              (.then #(.text %))
+              (.then (fn [s] (when-not (str/blank? s)
+                               (dispatch-message (read-string s)))))))))
+
+(defonce !island-env (atom {}))
+
+(defn ^:export eval-island-libs!
+  "Evaluates a vector of render-evals (the notebook's `:cljs-libs`), once per distinct value."
+  [libs-str]
+  (when (not= libs-str (:libs-str @!island-env))
+    (swap! !island-env assoc :libs-str libs-str)
+    (doseq [render-eval (read-string libs-str)]
+      (try (deref (:f render-eval))
+           (catch js/Error e
+             (js/console.error "error in render-eval" e (:form render-eval)))))))
+
+(def local-send-grace-ms 500)
+
+(defn ^:export set-island-state!
+  "Interns the synced atoms with their server state. Defers while a local
+  change was sent recently so stale server state can't clobber it."
+  [state-str]
+  (swap! !island-env assoc :state-str state-str)
+  (letfn [(apply-state! []
+            (if (< (- (js/Date.now) @!last-local-send) local-send-grace-ms)
+              (js/setTimeout apply-state! local-send-grace-ms)
+              (render/intern-atoms! (read-string (:state-str @!island-env)))))]
+    (apply-state!)))
+
+(defn ^:export mount-island
+  "Renders the presented value given as an edn string into `el`, returns the react root."
+  [el presented-str]
+  (let [presented (w/postwalk #(cond-> % (viewer/render-eval? %) (-> :f deref))
+                              (read-string presented-str))]
+    (doto (react-client/createRoot el)
+      (.render (r/as-element [render/inspect-presented presented])))))

@@ -9,6 +9,7 @@
   Per tab ui state lives in `(:tabs @webserver/!state)`, keyed by a tab id
   that's kept in the `tab` query param so it survives reloads."
   (:require [clojure.edn :as edn]
+            [editscript.core :as editscript]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [hiccup.core :as hiccup1]
@@ -128,16 +129,29 @@
        :expanded-at (reduce #(update %1 %2 not) (html/->expanded-at auto-expand? presented') flipped)})))
 
 (defn render-ctx [tab-id tab]
-  {:result-state (result-state-fn tab)
+  {:islands? true
+   :result-state (result-state-fn tab)
    :on-toggle (fn [{:keys [result-id]} path]
-                (action-attrs tab-id :toggle-expand {:id result-id :path path}))
+                (when result-id
+                  (action-attrs tab-id :toggle-expand {:id result-id :path path})))
    :on-fetch (fn [{:keys [result-id]} elision]
-               (action-attrs tab-id :fetch-more {:id result-id :elision elision}))
+               (when result-id
+                 (action-attrs tab-id :fetch-more {:id result-id :elision elision})))
    :on-sync (fn [_ctx sync-var coerce value]
               (sync-attrs tab-id sync-var coerce value))})
 
+(defn island-env
+  "Element carrying what islands need: the notebook's synced atoms and required cljs."
+  [presented]
+  (let [{:keys [atom-var-name->state] ns-eval :ns} (:nextjournal/value presented)
+        {:keys [cljs-libs]} presented]
+    [:clerk-island-env (cond-> {:libs (v/->edn (into (vec cljs-libs) (some-> ns-eval vector)))}
+                         (seq atom-var-name->state) (assoc :state (v/->edn atom-var-name->state)))]))
+
 (defn render-main [{:keys [presented status tabs]} tab-id]
-  [:main#clerk
+  ;; not `#clerk` which the cljs viewer bundle would mount itself onto
+  [:main#clerk-datastar
+   (when presented (island-env presented))
    (when status (html/render-status status))
    (when presented
      (html/inspect (render-ctx tab-id (get tabs tab-id)) presented))])
@@ -186,7 +200,8 @@
                  (h/raw (hiccup1/html (hiccup.page/include-css katex-css-url)))
                  [:style (h/raw page-css)]
                  [:script {:type "module" :src datastar-url}]
-                 [:script {:type "module" :src "/_clerk/components.js"}]]
+                 [:script {:type "module" :src "/_clerk/components.js"}]
+                 [:meta {:name "clerk-viewer-js" :content (get @config/!resource->url "/js/viewer.js")}]]
                 [:body.dark:bg-gray-900
                  {:data-init (str "@get('/_clerk/sse?tab=" tab-id "', {openWhenHidden: true, retryMaxCount: Infinity})")
                   :data-on:click link-click-expr
@@ -507,9 +522,50 @@
                      (println (str "Clerk action `" action "` failed: " (ex-message e))))
                    {:status 500 :body (ex-message e)})))))
 
+;; ## Islands
+;; The cljs viewer bundle running islands sends its messages (the same
+;; ones it sends over the websocket otherwise) via HTTP POST.
+
+(defmulti handle-island-message :type)
+
+(defmethod handle-island-message :default [{:keys [type]}]
+  {:status 400 :body (str "Unsupported message type: " type)})
+
+(defmethod handle-island-message :eval [{:as msg :keys [form eval-id recompute?]}]
+  (let [reply (try {:reply (binding [*ns* (or (:ns (:doc @webserver/!state)) (create-ns 'user))]
+                             (eval form))}
+                   (catch Exception e
+                     {:error (Throwable->map (ex-info (str "An error occured during clerk-eval: " (ex-message e))
+                                                      (dissoc msg :type :eval-id)
+                                                      e))}))]
+    (when recompute?
+      (eval '(nextjournal.clerk/recompute!)))
+    {:status 200
+     :headers {"Content-Type" "application/edn"}
+     :body (v/->edn (merge {:type :eval-reply :eval-id eval-id} reply))}))
+
+(defmethod handle-island-message :sync! [{:keys [var-name patch]}]
+  (let [var (when (qualified-symbol? var-name) (resolve var-name))]
+    (when-not (contains? (v/extract-sync-atom-vars (:doc @webserver/!state)) var)
+      (throw (ex-info (str "`" var-name "` is not a synced var of the current notebook.") {:var var-name})))
+    (swap! @var editscript/patch (editscript/edits->script patch))
+    {:status 204}))
+
+(defn island-handler [{:as req :keys [request-method body]}]
+  (cond
+    (not= :post request-method) {:status 405}
+    (not (same-origin-datastar-request? req)) {:status 403 :body "forbidden"}
+    :else (try (handle-island-message (binding [*read-eval* false]
+                                        (webserver/read-msg (slurp body))))
+               (catch Exception e
+                 (binding [*out* *err*]
+                   (println "Clerk island message failed:" (ex-message e)))
+                 {:status 500 :body (ex-message e)}))))
+
 (defn app [{:as req :keys [uri]}]
   (cond
     (= "/_clerk/sse" uri) (sse-handler req)
+    (= "/_clerk/island" uri) (island-handler req)
     (= "/_clerk/components.js" uri) {:status 200
                                      :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
                                      :body (slurp (io/resource "nextjournal/clerk/datastar/components.js"))}

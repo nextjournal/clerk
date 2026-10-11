@@ -10,7 +10,9 @@
   * `:on-toggle`    `(fn [ctx path] attrs)` attrs for an expand button
   * `:on-fetch`     `(fn [ctx fetch-opts] attrs)` attrs for an elision
   * `:on-sync`      `(fn [ctx sync-var coerce value] attrs)` attrs for an input updating a synced
-                    var, responsible for setting the input's `value`"
+                    var, responsible for setting the input's `value`
+  * `:islands?`     render values whose viewers need the browser as `<clerk-island>`s
+                    instead of a placeholder"
   (:require [clojure.string :as str]
             [hiccup2.core :as h]
             [nextjournal.clerk.viewer :as v])
@@ -98,7 +100,7 @@
     (v/wrapped-value? x) (inspect ctx x)
     (vector? x) (let [[tag & more] x]
                   (cond
-                    (= :<> tag) (map (partial normalize-hiccup ctx) more)
+                    (= :<> tag) (doall (map (partial normalize-hiccup ctx) more))
                     (or (keyword? tag) (string? tag))
                     (let [[attrs children] (if (map? (first more)) [(first more) (rest more)] [nil more])
                           inner-html (some-> attrs :dangerouslySetInnerHTML :__html)]
@@ -107,8 +109,8 @@
                               attrs (conj (normalize-attrs attrs))
                               inner-html (conj (h/raw inner-html))
                               (not inner-html) (into (map (partial normalize-hiccup ctx)) children))))
-                    :else [:span.text-slate-400 {:title (pr-str tag)} "[component requires browser renderer]"]))
-    (seq? x) (map (partial normalize-hiccup ctx) x)
+                    :else (throw (ex-info "hiccup with components needs the browser renderer" {::needs-browser true :tag tag}))))
+    (seq? x) (doall (map (partial normalize-hiccup ctx) x))
     :else x))
 
 (defn ->html-str
@@ -259,13 +261,27 @@
     (or (sequential? x) (set? x)) (str "[" (str/join "," (map ->json x)) "]")
     :else (json-str (str x))))
 
-(defn unsupported [x]
+(defn unsupported* [x]
   (let [k (viewer-key x)]
     [:div.text-xs.font-sans.text-slate-400.italic
      (str (if (= ::custom k)
             (str "A custom `:render-fn` for `" (-> x :nextjournal/viewer :name) "`")
             (str "`" k "`"))
           " requires the browser renderer, not yet supported with `:frontend :datastar`.")]))
+
+(defn island
+  "Renders the presented value `x` with Clerk's ClojureScript viewer bundle in the browser."
+  [{:keys [result-id]} x]
+  (let [presented (v/->edn x)]
+    [:clerk-island {:id (str "clerk-island-" (Integer/toUnsignedString (hash [result-id (:path x) presented]) 36))
+                    :data-ignore true
+                    :data-ignore-morph true
+                    :presented presented}]))
+
+(defn unsupported
+  "Renders `x` as an island when enabled, a placeholder otherwise."
+  ([x] (unsupported* x))
+  ([ctx x] (if (:islands? ctx) (island ctx x) (unsupported* x))))
 
 (defn url-encode [s]
   (URLEncoder/encode (str s) StandardCharsets/UTF_8))
@@ -279,8 +295,8 @@
 
 ;; ## Viewers
 
-(defmethod render-viewer :default [_ctx x]
-  (unsupported x))
+(defmethod render-viewer :default [ctx x]
+  (unsupported ctx x))
 
 (defn ^:private result-css-class [x]
   (let [{viewer-name :name} (v/->viewer x)
@@ -344,10 +360,14 @@
 (defmethod render-viewer 'nextjournal.clerk.render/render-code [_ctx {:nextjournal/keys [value render-opts]}]
   (code-markup value (:language render-opts)))
 
-(defmethod render-viewer 'nextjournal.clerk.render/render-html [ctx {:nextjournal/keys [value]}]
+(defmethod render-viewer 'nextjournal.clerk.render/render-html [ctx {:as x :nextjournal/keys [value]}]
   (if (string? value)
     [:span (h/raw value)]
-    (normalize-hiccup ctx value)))
+    (try (normalize-hiccup ctx value)
+         (catch clojure.lang.ExceptionInfo e
+           (if (::needs-browser (ex-data e))
+             (unsupported ctx x)
+             (throw e))))))
 
 (defmethod render-viewer `v/markdown-node-viewer [ctx {:nextjournal/keys [value]}]
   (normalize-hiccup ctx value))
@@ -579,14 +599,14 @@
       (render-tagged-value {:space? false} "#object"
                            (inspect (-> ctx (dissoc :on-toggle :on-fetch) (assoc :expanded-at {}))
                                     (v/present [(symbol (.getName (class ref))) @ref])))
-      (unsupported x))))
+      (unsupported ctx x))))
 
 (defmethod render-viewer 'nextjournal.clerk.experimental/slider-viewer [ctx {:as x :nextjournal/keys [value render-opts]}]
   (let [{:keys [min max step] :or {min 0 max 100 step 1}} render-opts
         var (render-eval->var value)
         state (some-> var deref deref)]
     (if-not (number? state)
-      (unsupported x)
+      (unsupported ctx x)
       [:div.inline-flex.items-center.font-sans.pt-3
        [:span.text-slate-500.mr-1 {:class "text-[11px] -mt-[3px]"} (str min)]
        [:div.relative
@@ -603,7 +623,7 @@
         var (render-eval->var value)
         state (some-> var deref deref)]
     (if-not (string? state)
-      (unsupported x)
+      (unsupported ctx x)
       [:input (merge {:type "text"
                       :placeholder placeholder
                       :class "px-3 py-3 placeholder-blueGray-300 text-blueGray-600 relative bg-white bg-white rounded text-sm border border-blueGray-300 outline-none focus:outline-none focus:ring w-full"}

@@ -156,3 +156,31 @@
     (testing "the id changes with the content so morphing replaces the component"
       (is (= (id (render 3)) (id (render 3))))
       (is (not= (id (render 3)) (id (render 4)))))))
+
+(deftest islands
+  (let [presented (present-string "(ns datastar-test.islands (:require [nextjournal.clerk :as clerk]))
+(clerk/with-viewer '(fn [x] [:div.custom x]) 42)
+(clerk/html [:div ['nextjournal.clerk.render/inspect 1]])")
+        out (html/->html-str (html/inspect (datastar/render-ctx "tab" nil) presented))]
+    (testing "values needing the browser render as islands carrying their presented edn"
+      (is (= 2 (count (re-seq #"<clerk-island " out))))
+      (is (str/includes? out "(fn [x] [:div.custom x])")))
+    (testing "the island env carries required cljs and synced atoms"
+      (is (= :clerk-island-env (first (datastar/island-env presented)))))))
+
+(def !island-synced (atom {:n 1}))
+
+(deftest island-messages
+  (let [post (fn [msg & {:keys [headers]}]
+               (datastar/island-handler {:request-method :post
+                                         :headers (merge {"datastar-request" "true"} headers)
+                                         :body (java.io.ByteArrayInputStream. (.getBytes (pr-str msg)))}))]
+    (testing "clerk-eval replies with the result"
+      (let [{:keys [status body]} (post {:type :eval :eval-id 'e1 :form '(+ 1 2)})]
+        (is (= 200 status))
+        (is (= {:type :eval-reply :eval-id 'e1 :reply 3} (read-string body)))))
+    (testing "only same-origin datastar requests are accepted"
+      (is (= 403 (:status (post {:type :eval :form '(+ 1 2)} :headers {"datastar-request" nil})))))
+    (testing "only synced vars of the current notebook can be patched"
+      (is (= 500 (:status (post {:type :sync! :var-name `!island-synced :patch [[[:n] :r 2]]}))))
+      (is (= {:n 1} @!island-synced)))))

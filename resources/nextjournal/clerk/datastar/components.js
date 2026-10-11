@@ -84,3 +84,54 @@ customElements.define('clerk-mathjax', class extends ClerkComponent {
     this.replaceChildren(window.MathJax.tex2svg(this.getAttribute('tex')))
   }
 })
+
+// ## Islands
+// Values whose viewers need the browser (custom `:render-fn`s) are rendered
+// by Clerk's ClojureScript viewer bundle (SCI + Reagent), loaded on first use.
+
+const viewerUrl = () => document.querySelector('meta[name="clerk-viewer-js"]')?.content
+
+const loadViewer = () =>
+  once('clerk-viewer', async () => {
+    await import(viewerUrl())
+    const viewer = globalThis.nextjournal.clerk.sci_env
+    viewer.connect_http('/_clerk/island')
+    return viewer
+  })
+
+const islandEnv = () => document.querySelector('clerk-island-env')
+
+const applyEnv = (viewer, env) => {
+  if (!env) return
+  if (env.hasAttribute('libs')) viewer.eval_island_libs_BANG_(env.getAttribute('libs'))
+  if (env.hasAttribute('state')) viewer.set_island_state_BANG_(env.getAttribute('state'))
+}
+
+// Carries the notebook's synced atoms and required cljs, applied to the
+// viewer bundle once it's loaded and whenever the server changes them.
+customElements.define('clerk-island-env', class extends HTMLElement {
+  static observedAttributes = ['libs', 'state']
+
+  attributeChangedCallback () {
+    if (loading.has('clerk-viewer')) loadViewer().then((viewer) => applyEnv(viewer, this))
+  }
+})
+
+customElements.define('clerk-island', class extends ClerkComponent {
+  async render () {
+    const viewer = await loadViewer()
+    applyEnv(viewer, islandEnv())
+    this.root = viewer.mount_island(this, this.getAttribute('presented'))
+  }
+
+  disconnectedCallback () {
+    // morphing may move the element, only unmount when it's really gone
+    setTimeout(() => {
+      if (!this.isConnected && this.root) {
+        this.root.unmount()
+        this.root = null
+        this.rendered = false
+      }
+    })
+  }
+})
