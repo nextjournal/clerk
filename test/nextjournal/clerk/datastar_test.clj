@@ -210,8 +210,9 @@
     (is (str/includes? page "10 more elided"))
     (testing "single file builds render all docs as sections"
       (let [page (datastar/static-page-html opts {:path->doc {"" presented "other" presented}})]
-        (is (= 2 (count (re-seq #"<section data-clerk-path" page))))
-        (is (str/includes? page "data-clerk-path=\"other\" data-clerk-title=\"Static\" hidden"))))))
+        (is (= 2 (count (re-seq #"<template data-clerk-path" page))))
+        (is (str/includes? page "<template data-clerk-path=\"other\" data-clerk-title=\"Static\">"))
+        (is (str/includes? page "<div id=\"clerk-page\"></div>"))))))
 
 (deftest toc
   (let [presented (present-string "(ns datastar-test.toc {:nextjournal.clerk/toc :collapsed})
@@ -277,3 +278,12 @@
                             (datastar/static-page-html {:frontend :datastar} {:presented presented}))))
     (testing "static builds with islands render them"
       (is (str/includes? (datastar/static-page-html {} {:presented presented}) "<clerk-island")))))
+
+(deftest unqualified-synced-atoms
+  (let [presented (present-string "(ns datastar-test.unqualified (:require [nextjournal.clerk :as clerk] [nextjournal.clerk.experimental :as cx]))
+^{::clerk/sync true} (defonce !n (atom 3))
+(cx/slider '!n)")]
+    (is (= 'datastar-test.unqualified (html/doc-ns presented)))
+    (testing "unqualified symbols resolve in the notebook's namespace so the slider renders on the server"
+      (let [out (html/->html-str (datastar/render-static-doc {:islands? false} presented))]
+        (is (re-find #"<input[^>]*type=\"range\"[^>]*value=\"3\"" out))))))

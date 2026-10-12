@@ -19,6 +19,7 @@
   * `:on-fetch`     `(fn [ctx fetch-opts] attrs)` attrs for an elision
   * `:on-sync`      `(fn [ctx sync-var coerce value] attrs)` attrs for an input updating a synced
                     var, responsible for setting the input's `value`
+  * `:ns`           the notebook's namespace symbol, to resolve unqualified symbols of synced atoms
   * `:islands?`     render values whose viewers need the browser as `<clerk-island>`s
                     instead of throwing"
   (:require [clojure.string :as str]
@@ -607,14 +608,22 @@
 
 ;; ### Synced atoms & controls
 
+(defn doc-ns
+  "Returns the namespace symbol of a presented notebook, from its `(ns ...)` render-eval."
+  [presented]
+  (let [form (-> presented :nextjournal/value :ns :form)]
+    (when (and (seq? form) (symbol? (second form)))
+      (second form))))
+
 (defn render-eval->var
-  "Returns the var a render-eval value refers to, supporting `sym` and `(resolve 'sym)` forms."
-  [render-eval]
+  "Returns the var a render-eval value refers to, supporting `sym` and `(resolve 'sym)` forms.
+  Unqualified symbols are resolved in the notebook's namespace `ns` (a symbol)."
+  [render-eval ns]
   (let [form (:form render-eval)
-        sym (cond (qualified-symbol? form) form
+        sym (cond (symbol? form) form
                   (and (seq? form) (= 'resolve (first form))) (let [[_ [_quote sym]] form] sym))]
-    (when (qualified-symbol? sym)
-      (resolve sym))))
+    (cond (qualified-symbol? sym) (resolve sym)
+          (and (symbol? sym) ns (find-ns ns)) (ns-resolve (find-ns ns) sym))))
 
 (defn input-value-attrs
   "Attrs setting the `value` of an input bound to `sync-var`, delegating to `:on-sync` when given."
@@ -624,7 +633,7 @@
     {:value value :disabled true}))
 
 (defn render-eval-value [{:as x :nextjournal/keys [ctx value]}]
-  (let [var (render-eval->var value)
+  (let [var (render-eval->var value (:ns ctx))
         ref (some-> var deref)]
     (if (instance? clojure.lang.IDeref ref)
       (render-tagged-value {:space? false} "#object"
@@ -634,7 +643,7 @@
 
 (defn render-slider [{:as x :nextjournal/keys [ctx value render-opts]}]
   (let [{:keys [min max step] :or {min 0 max 100 step 1}} render-opts
-        var (render-eval->var value)
+        var (render-eval->var value (:ns ctx))
         state (some-> var deref deref)]
     (if-not (number? state)
       (unsupported ctx x)
@@ -651,7 +660,7 @@
 
 (defn render-text-input [{:as x :nextjournal/keys [ctx value render-opts]}]
   (let [{:keys [placeholder] :or {placeholder "⌨️"}} render-opts
-        var (render-eval->var value)
+        var (render-eval->var value (:ns ctx))
         state (some-> var deref deref)]
     (if-not (string? state)
       (unsupported ctx x)

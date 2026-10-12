@@ -665,7 +665,9 @@
 
 (defn sci-ns-unmap! [ns-sym var-sym]
   (let [ns-unmap (sci/eval-string* (sci.ctx-store/get-ctx) "ns-unmap")]
-    (ns-unmap ns-sym var-sym)))
+    (try (ns-unmap ns-sym var-sym)
+         ;; the namespace may not exist in sci, e.g. when islands switch notebooks
+         (catch :default _ nil))))
 
 (defonce ^:dynamic *reset-sync-atoms?* true)
 (defn set-reset-sync-atoms! [new-val] (set! *reset-sync-atoms?* new-val))

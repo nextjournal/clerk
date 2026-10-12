@@ -7,7 +7,9 @@
 // Libraries are loaded lazily from the CDN on first use.
 
 const VEGA_EMBED = 'https://cdn.jsdelivr.net/npm/vega-embed@6.26.0/+esm'
-const PLOTLY = 'https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js'
+// As an ES module because the UMD build registers with an AMD `define` (from the viewer bundle) instead
+// of setting `window.Plotly`. From esm.sh as jsDelivr's `+esm` conversion of it doesn't parse.
+const PLOTLY = 'https://esm.sh/plotly.js-dist-min@2.35.2'
 const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/+esm'
 const MATHJAX = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js'
 
@@ -59,7 +61,7 @@ customElements.define('clerk-vega-lite', class extends ClerkComponent {
 
 customElements.define('clerk-plotly', class extends ClerkComponent {
   async render () {
-    const Plotly = await loadScript(PLOTLY, 'Plotly')
+    const { default: Plotly } = await importModule(PLOTLY)
     const container = document.createElement('div')
     this.replaceChildren(container)
     await Plotly.react(container, jsonAttr(this, 'figure'))
@@ -93,7 +95,9 @@ const viewerUrl = () => document.querySelector('meta[name="clerk-viewer-js"]')?.
 
 const loadViewer = () =>
   once('clerk-viewer', async () => {
-    await import(viewerUrl())
+    const url = viewerUrl()
+    if (!url) throw new Error('Clerk\'s viewer bundle isn\'t available, values needing it require the `:datastar+sci-react-island` frontend.')
+    await import(url)
     const viewer = globalThis.nextjournal.clerk.sci_env
     const endpoint = document.querySelector('meta[name="clerk-island-endpoint"]')?.content
     if (endpoint) viewer.connect_http(endpoint)

@@ -141,7 +141,10 @@
           :package :directory
           :render-router :fetch-edn
           :browse? false
-          :report-fn (if @webserver/!server build-ui-reporter stdout-reporter)}
+          ;; the build ui needs the browser, which the server's `:datastar` frontend doesn't support
+          :report-fn (if (and @webserver/!server (not= :datastar (webserver/frontend @webserver/!server)))
+                       build-ui-reporter
+                       stdout-reporter)}
          (git/read-git-attrs)
          (let [opts+index (cond-> opts
                             index (assoc :index (str index)))

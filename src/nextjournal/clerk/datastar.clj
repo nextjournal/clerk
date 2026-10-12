@@ -171,7 +171,7 @@
    (when status (html/render-status status))
    (when presented
      ;; rendered to a string here so errors from lazily rendered children are caught too
-     (try (h/raw (html/->html-str (html/inspect (render-ctx tab-id (get tabs tab-id)) presented)))
+     (try (h/raw (html/->html-str (html/inspect (assoc (render-ctx tab-id (get tabs tab-id)) :ns (html/doc-ns presented)) presented)))
           (catch Exception e
             (render-error-page e))))])
 
@@ -180,7 +180,7 @@
   e.g. a value whose viewer needs the browser with `:frontend :datastar`. Called when
   a doc is presented so the error is thrown at the REPL."
   [presented]
-  (html/->html-str (html/inspect {:islands? (live-islands?)} presented)))
+  (html/->html-str (html/inspect {:islands? (live-islands?) :ns (html/doc-ns presented)} presented)))
 
 (defn replace-url-script [tab-id]
   (str "{const u = new URL(location); u.searchParams.set('tab', '" tab-id "'); history.replaceState(history.state, '', u)}"))
@@ -287,7 +287,7 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
 ;; `:frontend :datastar+sci-react-island`) still work.
 
 (defn render-static-doc [{:keys [islands?]} presented]
-  (html/inspect {:islands? islands?} presented))
+  (html/inspect {:islands? islands? :ns (html/doc-ns presented)} presented))
 
 (defn static-doc-html
   "The html of a presented doc in a static build with build `opts`, also used to compile its css."
@@ -295,17 +295,24 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
   (html/->html-str (render-static-doc {:islands? (webserver/islands? opts)} presented)))
 
 (def single-file-router-js
-  ;; shows the section for the `#/path` written by `doc-url` for single file builds
-  "const show = () => {
+  ;; Shows the notebook for the `#/path` written by `doc-url` in single file builds. Each
+  ;; notebook is kept in a <template> so only the shown one is in the DOM (and its
+  ;; components and islands only start when it's shown).
+  "const page = document.getElementById('clerk-page')
+const show = () => {
   // leave in-page anchors like toc links to the browser
   if (location.hash && !location.hash.startsWith('#/')) return
   const path = decodeURIComponent(location.hash.replace(/^#\\/?/, '').split(':')[0])
-  const sections = [...document.querySelectorAll('section[data-clerk-path]')]
-  const section = sections.find(s => s.dataset.clerkPath === path) || sections.find(s => s.dataset.clerkPath === '')
-  sections.forEach(s => { s.hidden = s !== section })
-  if (section) document.title = section.dataset.clerkTitle
+  const templates = [...document.querySelectorAll('template[data-clerk-path]')]
+  const template = templates.find(t => t.dataset.clerkPath === path) || templates.find(t => t.dataset.clerkPath === '')
+  if (template && page.dataset.clerkPath !== template.dataset.clerkPath) {
+    page.replaceChildren(template.content.cloneNode(true))
+    page.dataset.clerkPath = template.dataset.clerkPath
+    document.title = template.dataset.clerkTitle
+    scrollTo(0, 0)
+  }
 }
-addEventListener('hashchange', () => { show(); scrollTo(0, 0) })
+addEventListener('hashchange', show)
 show()")
 
 (defn merged-island-env
@@ -325,10 +332,10 @@ show()")
                    :head [:script {:type "module"} (h/raw (components-js))]
                    :body [[:main#clerk-datastar
                            (when (:islands? opts) (merged-island-env (vals path->doc)))
+                           [:div#clerk-page]
                            (for [[path presented] (sort-by key path->doc)]
-                             [:section {:data-clerk-path path
-                                        :data-clerk-title (or (-> presented :nextjournal/value :title) "Clerk")
-                                        :hidden (not= "" path)}
+                             [:template {:data-clerk-path path
+                                         :data-clerk-title (or (-> presented :nextjournal/value :title) "Clerk")}
                               (render-static-doc opts presented)])]
                           [:script {:type "module"} (h/raw single-file-router-js)]]})
       (page-html* opts
