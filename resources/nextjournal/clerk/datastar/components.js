@@ -141,6 +141,20 @@ customElements.define('clerk-island', class extends ClerkComponent {
   }
 })
 
+// ## Squint islands
+// Values whose viewers need the browser, rendered by Reagami with their
+// `:render-fn` compiled by Squint. The page's import map resolves the imports.
+
+customElements.define('clerk-squint-island', class extends ClerkComponent {
+  async render () {
+    const [reagami, { render_fn: renderFn }] = await Promise.all([
+      importModule('reagami'),
+      importModule(`clerk-squint/${this.getAttribute('module')}.js`)
+    ])
+    reagami.render(this, renderFn(jsonAttr(this, 'value'), jsonAttr(this, 'opts', {})))
+  }
+})
+
 // ## Table of contents & dark mode
 // Per browser ui state kept in localStorage (same keys as the cljs viewer)
 // and on the <html> element which morphing never touches.

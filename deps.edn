@@ -23,7 +23,10 @@
 
         rewrite-clj/rewrite-clj {:mvn/version "1.1.45"}
 
-        juji/editscript {:mvn/version "0.7.0"}}
+        juji/editscript {:mvn/version "0.7.0"}
+
+        io.github.squint-cljs/squint {:mvn/version "0.15.212"}
+        io.github.borkdude/reagami {:git/tag "v0.2.41" :git/sha "04ae80fa49c1bae619d7eaf7819d45b94b70a4ee"}}
 
  :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
                                             org.slf4j/slf4j-nop {:mvn/version "2.0.7"}

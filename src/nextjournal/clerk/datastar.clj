@@ -18,6 +18,7 @@
             [hiccup2.core :as h]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.html :as html]
+            [nextjournal.clerk.squint :as squint]
             [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -133,8 +134,14 @@
   []
   (webserver/islands? @webserver/!server))
 
+(defn live-squint-islands?
+  "Returns true if the running server uses Squint + Reagami islands (`:frontend :datastar-squint-island`)."
+  []
+  (webserver/squint-islands? @webserver/!server))
+
 (defn render-ctx [tab-id tab]
   {:islands? (live-islands?)
+   :squint-islands? (live-squint-islands?)
    :result-state (result-state-fn tab)
    :on-toggle (fn [{:keys [result-id]} path]
                 (when result-id
@@ -180,7 +187,7 @@
   e.g. a value whose viewer needs the browser with `:frontend :datastar`. Called when
   a doc is presented so the error is thrown at the REPL."
   [presented]
-  (html/->html-str (html/inspect {:islands? (live-islands?) :ns (html/doc-ns presented)} presented)))
+  (html/->html-str (html/inspect {:islands? (live-islands?) :squint-islands? (live-squint-islands?) :ns (html/doc-ns presented)} presented)))
 
 (defn replace-url-script [tab-id]
   (str "{const u = new URL(location); u.searchParams.set('tab', '" tab-id "'); history.replaceState(history.state, '', u)}"))
@@ -266,7 +273,9 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
   (page-html* {:resource->url @config/!resource->url :islands? (live-islands?)}
               {:title (-> presented :nextjournal/value :title)
                :toc-default (toc-default presented)
-               :head (list [:script {:type "module" :src datastar-url}]
+               :head (list (when (live-squint-islands?)
+                             [:script {:type "importmap"} (h/raw (squint/import-map "/_clerk/"))])
+                           [:script {:type "module" :src datastar-url}]
                            [:script {:type "module" :src "/_clerk/components.js"}]
                            ;; where islands send their messages, absent in static builds
                            (when (live-islands?)
@@ -715,12 +724,20 @@ show()")
                    (println "Clerk island message failed:" (ex-message e)))
                  {:status 500 :body (ex-message e)}))))
 
+(defn js-response [js]
+  {:status 200
+   :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
+   :body js})
+
 (defn app [{:as req :keys [uri]}]
   (cond
     (= "/_clerk/sse" uri) (sse-handler req)
     (and (= "/_clerk/island" uri) (live-islands?)) (island-handler req)
-    (= "/_clerk/components.js" uri) {:status 200
-                                     :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
-                                     :body (slurp (io/resource "nextjournal/clerk/datastar/components.js"))}
+    (= "/_clerk/components.js" uri) (js-response (components-js))
     (str/starts-with? uri "/_clerk/action/") (action-handler req)
+    (= "/_clerk/squint-core.js" uri) (js-response (squint/core-js))
+    (= "/_clerk/reagami.js" uri) (js-response @squint/reagami-js)
+    (str/starts-with? uri "/_clerk/squint/") (if-let [js (squint/module-js (second (re-matches #"/_clerk/squint/([0-9A-Za-z]+)\.js" uri)))]
+                                               (js-response js)
+                                               {:status 404})
     :else {:status 404}))

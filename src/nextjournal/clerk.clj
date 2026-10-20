@@ -476,6 +476,7 @@
   - `:index`     - path to a file to override Clerk's default index, will be added to paths.
   - `:frontend`  - `:datastar+sci-react-island` (default) renders notebooks on the server and keeps the browser updated
                    via Datastar, values whose viewers need the browser (`:render-fn`s) render in ClojureScript (SCI + React) islands.
+                   `:datastar-squint-island` renders those values with their `:render-fn` compiled by Squint and rendered by Reagami.
                    `:datastar` renders on the server only and throws for values whose viewers need the browser.
                    `:sci-react` renders notebooks in the browser using ClojureScript (SCI + React).
 
@@ -496,7 +497,7 @@
                                               :coerce :symbol}
                              :browse {:desc "Opens the browser on boot when set."
                                       :coerce :boolean}
-                             :frontend {:desc "One of `datastar+sci-react-island` (default), `datastar` or `sci-react`."
+                             :frontend {:desc "One of `datastar+sci-react-island` (default), `datastar-squint-island`, `datastar` or `sci-react`."
                                         :coerce :keyword}}
                       :order [:host :port :browse :watch-paths :show-filter-fn :paths :paths-fn :index :frontend]}}
   [config]

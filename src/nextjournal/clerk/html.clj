@@ -21,6 +21,8 @@
                     var, responsible for setting the input's `value`
   * `:ns`           the notebook's namespace symbol, to resolve unqualified symbols of synced atoms
   * `:islands?`     render values whose viewers need the browser as `<clerk-island>`s
+                    instead of throwing
+  * `:squint-islands?` render values whose viewers need the browser as `<clerk-squint-island>`s
                     instead of throwing"
   (:require [clojure.string :as str]
             [hiccup2.core :as h]
@@ -313,12 +315,23 @@
                     :data-ignore-morph true
                     :presented presented}]))
 
+(declare component)
+
+(defn squint-island
+  "Renders the presented value `x` with its `:render-fn` compiled by Squint in the browser."
+  [ctx {:as x :nextjournal/keys [viewer value render-opts] :keys [path]}]
+  (let [module ((requiring-resolve 'nextjournal.clerk.squint/register-render-fn!) (some-> viewer :render-fn :form))]
+    (component :clerk-squint-island ctx x {:module module
+                                           :value (->json value)
+                                           :opts (->json (assoc render-opts :path path))})))
+
 (defn unsupported
   "Renders `x` whose viewer needs the browser as an island when enabled, throws otherwise."
   [ctx x]
-  (if (:islands? ctx)
-    (island ctx x)
-    (throw (needs-browser-ex x))))
+  (cond
+    (:squint-islands? ctx) (squint-island ctx x)
+    (:islands? ctx) (island ctx x)
+    :else (throw (needs-browser-ex x))))
 
 (defn url-encode [s]
   (URLEncoder/encode (str s) StandardCharsets/UTF_8))

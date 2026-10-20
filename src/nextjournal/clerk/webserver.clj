@@ -36,9 +36,11 @@
   "Valid values of the `:frontend` option:
   * `:datastar+sci-react-island` (default) renders on the server, pushing html to the browser via Datastar,
     values whose viewers need the browser (`:render-fn`s) are rendered as islands using ClojureScript (SCI + React)
+  * `:datastar-squint-island` renders on the server, values whose viewers need the browser are rendered
+    as islands with their `:render-fn` compiled by Squint and rendered by Reagami
   * `:datastar` renders on the server only, values whose viewers need the browser show an error
   * `:sci-react` renders in the browser with ClojureScript (SCI + React)"
-  #{:datastar+sci-react-island :datastar :sci-react})
+  #{:datastar+sci-react-island :datastar-squint-island :datastar :sci-react})
 
 (def default-frontend :datastar+sci-react-island)
 
@@ -54,12 +56,17 @@
 (defn datastar?
   "Is a Datastar frontend used for the given serve or build `opts`?"
   [opts]
-  (contains? #{:datastar+sci-react-island :datastar} (frontend opts)))
+  (contains? #{:datastar+sci-react-island :datastar-squint-island :datastar} (frontend opts)))
 
 (defn islands?
   "Are values whose viewers need the browser rendered as SCI + React islands for the given serve or build `opts`?"
   [opts]
   (= :datastar+sci-react-island (frontend opts)))
+
+(defn squint-islands?
+  "Returns true if values whose viewers need the browser are rendered as Squint + Reagami islands for the given serve or build `opts`."
+  [opts]
+  (= :datastar-squint-island (frontend opts)))
 
 #_(view/doc->viewer (:doc @!state))
 #_(reset! !state {})
