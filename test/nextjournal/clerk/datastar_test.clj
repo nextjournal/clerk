@@ -4,7 +4,6 @@
             [nextjournal.clerk.datastar :as datastar]
             [nextjournal.clerk.eval :as eval]
             [nextjournal.clerk.html :as html]
-            [nextjournal.clerk.squint :as squint]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
             [nextjournal.clerk.webserver :as webserver])
@@ -258,9 +257,13 @@
   (is (not (webserver/datastar? {:frontend :sci-react})))
   (is (webserver/islands? {}))
   (is (not (webserver/islands? {:frontend :datastar})))
-  (is (webserver/datastar? {:frontend :datastar-squint-island}))
-  (is (webserver/squint-islands? {:frontend :datastar-squint-island}))
   (is (not (webserver/squint-islands? {})))
+  (if (webserver/squint-supported?)
+    (do (is (webserver/datastar? {:frontend :datastar-squint-island}))
+        (is (webserver/squint-islands? {:frontend :datastar-squint-island})))
+    (testing "`:datastar-squint-island` throws on Clojure 1.10"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"requires Clojure 1.11"
+                            (webserver/frontend {:frontend :datastar-squint-island})))))
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid `:frontend`" (webserver/frontend {:frontend :datastar+sci}))))
 
 (deftest datastar-without-islands
@@ -292,38 +295,49 @@
       (let [out (html/->html-str (datastar/render-static-doc {:islands? false} presented))]
         (is (re-find #"<input[^>]*type=\"range\"[^>]*value=\"3\"" out))))))
 
+(defmacro when-squint
+  "Runs `body` if Squint can be loaded.
+  Asserts that the `:datastar-squint-island` frontend throws if not."
+  [& body]
+  `(if (webserver/squint-supported?)
+     (do ~@body)
+     (is (~'thrown-with-msg? clojure.lang.ExceptionInfo #"requires Clojure 1.11"
+                             (webserver/frontend {:frontend :datastar-squint-island})))))
+
 (deftest squint-islands
-  (let [presented (present-string "(ns datastar-test.squint (:require [nextjournal.clerk :as clerk]))
+  (when-squint
+    (let [presented (present-string "(ns datastar-test.squint (:require [nextjournal.clerk :as clerk]))
 (clerk/with-viewer '(fn [x] [:div.text-red-500 (str \"Hello \" x)]) \"Squint\")")
-        out (html/->html-str (html/inspect {:squint-islands? true} presented))
-        module (second (re-find #"<clerk-squint-island[^>]* module=\"([^\"]+)\"" out))]
-    (testing "a `:render-fn` renders as a `<clerk-squint-island>` with its value as json"
-      (is module)
-      (is (str/includes? out "value=\"&quot;Squint&quot;\"")))
-    (testing "the module exports the compiled `:render-fn`"
-      (let [js (squint/module-js module)]
-        (is (str/includes? js "export { render_fn }"))
-        (is (str/includes? js "\"div.text-red-500\""))))
-    (with-redefs [datastar/live-squint-islands? (constantly true)]
-      (testing "the page maps the modules' imports"
-        (is (str/includes? (datastar/page-html {:presented presented} "tab" {}) "<script type=\"importmap\">")))
-      (testing "the module is served"
-        (is (= 200 (:status (datastar/app {:uri (str "/_clerk/squint/" module ".js")})))))
-      (testing "Reagami and the Squint core are served"
-        (is (str/includes? (:body (datastar/app {:uri "/_clerk/reagami.js"})) "export {"))
-        (is (= 200 (:status (datastar/app {:uri "/_clerk/squint-core.js"}))))))))
+          out (html/->html-str (html/inspect {:squint-islands? true} presented))
+          module (second (re-find #"<clerk-squint-island[^>]* module=\"([^\"]+)\"" out))]
+      (testing "a `:render-fn` renders as a `<clerk-squint-island>` with its value as json"
+        (is module)
+        (is (str/includes? out "value=\"&quot;Squint&quot;\"")))
+      (testing "the module exports the compiled `:render-fn`"
+        (let [js ((datastar/squint-fn 'module-js) module)]
+          (is (str/includes? js "export { render_fn }"))
+          (is (str/includes? js "\"div.text-red-500\""))))
+      (with-redefs [datastar/live-squint-islands? (constantly true)]
+        (testing "the page maps the modules' imports"
+          (is (str/includes? (datastar/page-html {:presented presented} "tab" {}) "<script type=\"importmap\">")))
+        (testing "the module is served"
+          (is (= 200 (:status (datastar/app {:uri (str "/_clerk/squint/" module ".js")})))))
+        (testing "Reagami and the Squint core are served"
+          (is (str/includes? (:body (datastar/app {:uri "/_clerk/reagami.js"})) "export {"))
+          (is (= 200 (:status (datastar/app {:uri "/_clerk/squint-core.js"})))))))))
 
 (deftest squint-render-fn-forms
-  (testing "`clojure.core` symbols are unqualified"
-    (is (= '(fn [x] (str x)) (squint/prepare-form '(fn [x] (clojure.core/str x))))))
-  (testing "`#()` forms compile"
-    (is (str/includes? (squint/compile-render-fn '#(vector :div %)) "export { render_fn }")))
-  (testing "a `:render-fn` with symbols outside `clojure.core` and `js/` throws"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"`nextjournal.clerk.render/inspect` in a `:render-fn` isn't supported"
-                          (squint/compile-render-fn '(fn [x] [nextjournal.clerk.render/inspect x])))))
-  (testing "presenting a notebook with such a `:render-fn` throws so the error shows up at the REPL"
-    (with-redefs [datastar/live-squint-islands? (constantly true)]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"isn't supported by the `:datastar-squint-island` frontend"
-                            (datastar/throw-if-not-renderable!
-                             (present-string "(ns datastar-test.squint-unsupported (:require [nextjournal.clerk :as clerk]))
-(clerk/with-viewer '(fn [x] [nextjournal.clerk.render/inspect x]) 1)")))))))
+  (when-squint
+    (testing "`clojure.core` symbols are unqualified"
+      (is (= '(fn [x] (str x)) ((datastar/squint-fn 'prepare-form) '(fn [x] (clojure.core/str x))))))
+    (testing "`#()` forms compile"
+      (is (str/includes? ((datastar/squint-fn 'compile-render-fn) '#(vector :div %)) "export { render_fn }")))
+    (testing "a `:render-fn` with symbols outside `clojure.core` and `js/` throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"`nextjournal.clerk.render/inspect` in a `:render-fn` isn't supported"
+                            ((datastar/squint-fn 'compile-render-fn) '(fn [x] [nextjournal.clerk.render/inspect x])))))
+    (testing "presenting a notebook with such a `:render-fn` throws so the error shows up at the REPL"
+      (with-redefs [datastar/live-squint-islands? (constantly true)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"isn't supported by the `:datastar-squint-island` frontend"
+                              (datastar/throw-if-not-renderable!
+                               (present-string "(ns datastar-test.squint-unsupported (:require [nextjournal.clerk :as clerk]))
+(clerk/with-viewer '(fn [x] [nextjournal.clerk.render/inspect x]) 1)"))))))))

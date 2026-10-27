@@ -44,6 +44,12 @@
 
 (def default-frontend :datastar+sci-react-island)
 
+(defn squint-supported?
+  "Returns true if the running Clojure version is 1.11 or later."
+  []
+  (let [{:keys [major minor]} *clojure-version*]
+    (or (< 1 major) (<= 11 minor))))
+
 (defn frontend
   "Returns the `:frontend` of the given serve or build `opts`, throwing on invalid values."
   [opts]
@@ -51,6 +57,9 @@
     (when-not (contains? frontends frontend)
       (throw (ex-info (str "Invalid `:frontend` " (pr-str (:frontend opts)) ", valid options are " (pr-str (sort frontends)) ".")
                       {:frontend (:frontend opts) :valid-options frontends})))
+    (when (and (= :datastar-squint-island frontend) (not (squint-supported?)))
+      (throw (ex-info "The `:datastar-squint-island` frontend requires Clojure 1.11 or later."
+                      {:frontend frontend :clojure-version (clojure-version)})))
     frontend))
 
 (defn datastar?

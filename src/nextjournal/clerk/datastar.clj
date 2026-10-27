@@ -18,7 +18,6 @@
             [hiccup2.core :as h]
             [nextjournal.clerk.config :as config]
             [nextjournal.clerk.html :as html]
-            [nextjournal.clerk.squint :as squint]
             [nextjournal.clerk.utils :as u]
             [nextjournal.clerk.view :as view]
             [nextjournal.clerk.viewer :as v]
@@ -133,6 +132,11 @@
   "Does the running server use SCI + React islands (`:frontend :datastar+sci-react-island`)?"
   []
   (webserver/islands? @webserver/!server))
+
+(defn squint-fn
+  "Returns the var `sym` of `nextjournal.clerk.squint`, loading it on first use."
+  [sym]
+  (requiring-resolve (symbol "nextjournal.clerk.squint" (name sym))))
 
 (defn live-squint-islands?
   "Returns true if the running server uses Squint + Reagami islands (`:frontend :datastar-squint-island`)."
@@ -274,7 +278,7 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
               {:title (-> presented :nextjournal/value :title)
                :toc-default (toc-default presented)
                :head (list (when (live-squint-islands?)
-                             [:script {:type "importmap"} (h/raw (squint/import-map "/_clerk/"))])
+                             [:script {:type "importmap"} (h/raw ((squint-fn 'import-map) "/_clerk/"))])
                            [:script {:type "module" :src datastar-url}]
                            [:script {:type "module" :src "/_clerk/components.js"}]
                            ;; where islands send their messages, absent in static builds
@@ -729,15 +733,20 @@ show()")
    :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
    :body js})
 
+(defn squint-response
+  "Responds with the Squint islands JavaScript at `uri`, or nil if there is none."
+  [uri]
+  (some-> (cond
+            (= "/_clerk/squint-core.js" uri) ((squint-fn 'core-js))
+            (= "/_clerk/reagami.js" uri) @@(squint-fn 'reagami-js)
+            :else (some->> (re-matches #"/_clerk/squint/([0-9A-Za-z]+)\.js" uri) second ((squint-fn 'module-js))))
+          js-response))
+
 (defn app [{:as req :keys [uri]}]
   (cond
     (= "/_clerk/sse" uri) (sse-handler req)
     (and (= "/_clerk/island" uri) (live-islands?)) (island-handler req)
     (= "/_clerk/components.js" uri) (js-response (components-js))
     (str/starts-with? uri "/_clerk/action/") (action-handler req)
-    (= "/_clerk/squint-core.js" uri) (js-response (squint/core-js))
-    (= "/_clerk/reagami.js" uri) (js-response @squint/reagami-js)
-    (str/starts-with? uri "/_clerk/squint/") (if-let [js (squint/module-js (second (re-matches #"/_clerk/squint/([0-9A-Za-z]+)\.js" uri)))]
-                                               (js-response js)
-                                               {:status 404})
-    :else {:status 404}))
+    :else (or (when (live-squint-islands?) (squint-response uri))
+              {:status 404})))
