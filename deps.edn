@@ -25,7 +25,7 @@
 
         juji/editscript {:mvn/version "0.7.0"}
 
-        io.github.squint-cljs/squint {:mvn/version "0.15.212"}
+        io.github.squint-cljs/squint {:git/tag "v0.15.212" :git/sha "422837d87122563d11d2dde940fff5bf927f507e"}
         io.github.borkdude/reagami {:git/tag "v0.2.41" :git/sha "04ae80fa49c1bae619d7eaf7819d45b94b70a4ee"}}
 
  :aliases {:nextjournal/clerk {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"} ;; for `:as-alias` support in static build
