@@ -646,6 +646,19 @@
 #_(defcached my-expansive-thing
     (do (Thread/sleep 4200) 42))
 
+(defmacro defelement
+  "Defines the custom element `name` with the Squint `defclass` `body` for the Datastar frontends.
+  Defines `name` as the element's tag keyword.
+  A class extending `ClerkElement` gets `render` called with the parsed `value` attribute."
+  [name & body]
+  (let [tag (str name)]
+    (when (neg? (compare ((juxt :major :minor) *clojure-version*) [1 11]))
+      (throw (ex-info "`defelement` requires Clojure 1.11 or later." {:name name})))
+    (when-not (str/includes? tag "-")
+      (throw (ex-info (str "The custom element name `" tag "` must contain a dash.") {:name name})))
+    `(do ((requiring-resolve 'nextjournal.clerk.squint/register-element!) ~tag '~body)
+         (def ~(vary-meta name assoc :nextjournal.clerk/no-cache true) ~(keyword tag)))))
+
 ;; And, as is the culture of our people, a comment block containing
 ;; pieces of code with which to pilot the system during development.
 (comment

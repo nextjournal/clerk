@@ -164,10 +164,18 @@
      (when-let [data (not-empty (ex-data e))]
        [:pre.mt-4.text-xs.text-red-600.dark:text-red-300.whitespace-pre-wrap (pr-str data)])]]])
 
+(defn element-modules
+  "Returns the module ids of the custom elements defined with `nextjournal.clerk/defelement`."
+  []
+  (when (find-ns 'nextjournal.clerk.squint)
+    ((requiring-resolve 'nextjournal.clerk.squint/element-modules))))
+
 (defn render-main [{:keys [presented status tabs]} tab-id]
   ;; not `#clerk` which the cljs viewer bundle would mount itself onto
   [:main#clerk-datastar
    (when (and presented (live-islands?)) (island-env presented))
+   (when-let [modules (seq (element-modules))]
+     [:clerk-elements {:modules (str/join " " modules)}])
    (when status (html/render-status status))
    (when presented
      ;; rendered to a string here so errors from lazily rendered children are caught too
@@ -262,11 +270,15 @@ html[data-clerk-toc=open] #clerk-toc-open-button { display: none; }
                  head]
                 (into [:body.dark:bg-gray-900 body-attrs] body)])))
 
+(def element-import-map
+  "{\"imports\":{\"squint-cljs/core.js\":\"/_clerk/squint-core.js\",\"clerk-element\":\"/_clerk/clerk-element.js\",\"clerk-element/\":\"/_clerk/element/\"}}")
+
 (defn page-html [{:as state :keys [presented]} tab-id {:keys [replace-url?]}]
   (page-html* {:resource->url @config/!resource->url :islands? (live-islands?)}
               {:title (-> presented :nextjournal/value :title)
                :toc-default (toc-default presented)
-               :head (list [:script {:type "module" :src datastar-url}]
+               :head (list [:script {:type "importmap"} (h/raw element-import-map)]
+                           [:script {:type "module" :src datastar-url}]
                            [:script {:type "module" :src "/_clerk/components.js"}]
                            ;; where islands send their messages, absent in static builds
                            (when (live-islands?)
@@ -715,6 +727,23 @@ show()")
                    (println "Clerk island message failed:" (ex-message e)))
                  {:status 500 :body (ex-message e)}))))
 
+(defn js-response [js]
+  {:status 200
+   :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
+   :body js})
+
+(defn element-response
+  "Responds with the custom elements JavaScript at `uri`, or nil if there is none."
+  [uri]
+  (some-> (cond
+            (= "/_clerk/clerk-element.js" uri) (slurp (io/resource "nextjournal/clerk/datastar/clerk_element.js"))
+            (not (find-ns 'nextjournal.clerk.squint)) nil
+            (= "/_clerk/squint-core.js" uri) ((requiring-resolve 'nextjournal.clerk.squint/core-js))
+            :else (some->> (re-matches #"/_clerk/element/([0-9A-Za-z]+)\.js" uri)
+                           second
+                           ((requiring-resolve 'nextjournal.clerk.squint/module-js))))
+          js-response))
+
 (defn app [{:as req :keys [uri]}]
   (cond
     (= "/_clerk/sse" uri) (sse-handler req)
@@ -723,4 +752,4 @@ show()")
                                      :headers {"Content-Type" "text/javascript" "Cache-Control" "no-cache"}
                                      :body (slurp (io/resource "nextjournal/clerk/datastar/components.js"))}
     (str/starts-with? uri "/_clerk/action/") (action-handler req)
-    :else {:status 404}))
+    :else (or (element-response uri) {:status 404})))

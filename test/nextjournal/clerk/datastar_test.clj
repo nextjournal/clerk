@@ -287,3 +287,31 @@
     (testing "unqualified symbols resolve in the notebook's namespace so the slider renders on the server"
       (let [out (html/->html-str (datastar/render-static-doc {:islands? false} presented))]
         (is (re-find #"<input[^>]*type=\"range\"[^>]*value=\"3\"" out))))))
+
+(deftest elements
+  (if (neg? (compare ((juxt :major :minor) *clojure-version*) [1 11]))
+    (is (re-find #"requires Clojure 1.11"
+                 (try (macroexpand-1 '(nextjournal.clerk/defelement test-element))
+                      (catch Exception e (ex-message (ex-cause e))))))
+    (let [presented (present-string "(ns datastar-test.elements (:require [nextjournal.clerk :as clerk]))
+(clerk/defelement test-element
+  (extends ClerkElement)
+  Object
+  (render [this {:keys [a]}] (set! (.-textContent (.-shadowRoot this)) a)))
+(clerk/with-viewer {:transform-fn clerk/mark-presented
+                    :render-hiccup (fn [{:nextjournal/keys [value]}] [test-element {:value value}])}
+  {:a 1})")
+          out (html/->html-str (datastar/render-main {:presented presented} "tab"))
+          module (second (re-find #"<clerk-elements modules=\"[^\"]*?([0-9A-Za-z]+)\"" out))]
+      (testing "a `:render-hiccup` viewer renders the element with its `:value` as json"
+        (is (str/includes? out "<test-element value=\"{&quot;a&quot;:1}\"></test-element>")))
+      (testing "the page loads the element's module"
+        (is (str/includes? (:body (datastar/app {:uri (str "/_clerk/element/" module ".js")}))
+                           "defineElement(\"test-element\"")))
+      (testing "`ClerkElement` and the Squint core are served"
+        (is (str/includes? (:body (datastar/app {:uri "/_clerk/clerk-element.js"})) "export class ClerkElement"))
+        (is (= 200 (:status (datastar/app {:uri "/_clerk/squint-core.js"})))))
+      (testing "an element name without a dash throws"
+        (is (re-find #"must contain a dash"
+                     (try (macroexpand-1 '(nextjournal.clerk/defelement nodash))
+                          (catch Exception e (ex-message (ex-cause e))))))))))

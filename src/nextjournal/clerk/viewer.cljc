@@ -1550,7 +1550,7 @@
           viewers (->viewers hoisted-wrapped-value)
           _ (when (empty? viewers)
               (throw (ex-info "cannot apply empty viewers" {:wrapped-value wrapped-value})))
-          {:as viewer viewers-to-add :add-viewers :keys [render-fn transform-fn]}
+          {:as viewer viewers-to-add :add-viewers :keys [render-fn render-hiccup transform-fn]}
           (viewer-for viewers hoisted-wrapped-value)
           transformed-value (cond-> (ensure-wrapped-with-viewers viewers
                                                                  (cond-> (-> hoisted-wrapped-value
@@ -1561,7 +1561,7 @@
           wrapped-value' (cond-> transformed-value
                            (-> transformed-value ->value wrapped-value?)
                            (merge (->value transformed-value)))]
-      (if (and transform-fn (not render-fn))
+      (if (and transform-fn (not render-fn) (not render-hiccup))
         (if (<= 10 recursion-counter)
           (throw (ex-info "Clerk detected an infinte loop during presentation." wrapped-value'))
           (recur (inc recursion-counter) wrapped-value'))
