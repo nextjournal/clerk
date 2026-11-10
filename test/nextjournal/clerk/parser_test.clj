@@ -52,20 +52,20 @@ line\""}]
   {:nextjournal.clerk/markdown {:disable-inline-formulas true}}
   (:require [nextjournal.clerk :as clerk]))
 
-;; $1 + $2 = $3
+;; $a + b$ = c
 
 {:nextjournal.clerk/markdown {:disable-inline-formulas false}}
 
-;; $1 + $2 = $3
+;; $a + b$ = c
 
 {:nextjournal.clerk/markdown {:disable-inline-formulas true}}
 
-;; $1 + $2 = $3")
+;; $a + b$ = c")
           blocks (take-nth 2 (rest (:blocks parsed)))
           contents (map #(-> % :doc :content first :content) blocks)]
-      (is (match? '([{:type :text, :text "$1 + $2 = $3"}]
-                    [{:type :formula, :text "1 + "} {:type :text, :text "2 = $3"}]
-                    [{:type :text, :text "$1 + $2 = $3"}])
+      (is (match? '([{:type :text, :text "$a + b$ = c"}]
+                    [{:type :formula, :text "a + b"} {:type :text, :text " = c"}]
+                    [{:type :text, :text "$a + b$ = c"}])
                   contents))))
 
   (testing "heading ids are preserved in toc (#804)"
