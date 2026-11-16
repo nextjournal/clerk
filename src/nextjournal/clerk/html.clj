@@ -62,7 +62,30 @@
             (throw (ex-info (str "Could not resolve `:render-hiccup` " render-hiccup ".") {:viewer viewer})))
         render-hiccup))))
 
-(declare unsupported)
+(declare unsupported ->json)
+
+(defn custom-element?
+  "Returns true if the name of `tag` contains a dash."
+  [tag]
+  (str/includes? (re-find #"^[^.#]+" (name tag)) "-"))
+
+(deftype JsonValue [json]
+  Object
+  (toString [_] json))
+
+(defn encode-element-values
+  "Returns `hiccup` with the `:value` of custom elements in its vectors encoded as JSON."
+  [hiccup]
+  (if (and (vector? hiccup) (keyword? (first hiccup)))
+    (let [[tag attrs & children] hiccup]
+      (if (map? attrs)
+        (into [tag (cond-> attrs
+                     (and (custom-element? tag) (contains? attrs :value) (not (instance? JsonValue (:value attrs))))
+                     (update :value #(JsonValue. (->json %))))]
+              (map encode-element-values)
+              children)
+        (into [tag] (map encode-element-values) (rest hiccup))))
+    hiccup))
 
 (defn inspect
   "Renders the presented value `x` to hiccup, passing the render context `ctx` along in it under `:nextjournal/ctx`."
@@ -71,7 +94,7 @@
    (when x
      (let [x (assoc x :nextjournal/ctx ctx)]
        (if-let [render-hiccup (render-hiccup-fn x)]
-         (render-hiccup x)
+         (encode-element-values (render-hiccup x))
          (unsupported ctx x))))))
 
 (defn inspect-children [ctx xs]

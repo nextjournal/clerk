@@ -141,6 +141,17 @@ customElements.define('clerk-island', class extends ClerkComponent {
   }
 })
 
+// Loads the modules of the custom elements defined with `nextjournal.clerk/defelement`.
+customElements.define('clerk-elements', class extends HTMLElement {
+  static observedAttributes = ['modules']
+
+  attributeChangedCallback () {
+    for (const module of (this.getAttribute('modules') ?? '').split(' ').filter(Boolean)) {
+      importModule(`clerk-element/${module}.js`).catch((error) => console.error(error))
+    }
+  }
+})
+
 // ## Table of contents & dark mode
 // Per browser ui state kept in localStorage (same keys as the cljs viewer)
 // and on the <html> element which morphing never touches.
