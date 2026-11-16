@@ -292,7 +292,7 @@
   (if (neg? (compare ((juxt :major :minor) *clojure-version*) [1 11]))
     (is (re-find #"requires Clojure 1.11"
                  (try (macroexpand-1 '(nextjournal.clerk/defelement test-element))
-                      (catch Exception e (ex-message (ex-cause e))))))
+                      (catch Exception e (ex-message (or (ex-cause e) e))))))
     (let [presented (present-string "(ns datastar-test.elements (:require [nextjournal.clerk :as clerk]))
 (clerk/defelement test-element
   (extends ClerkElement)
@@ -314,4 +314,4 @@
       (testing "an element name without a dash throws"
         (is (re-find #"must contain a dash"
                      (try (macroexpand-1 '(nextjournal.clerk/defelement nodash))
-                          (catch Exception e (ex-message (ex-cause e))))))))))
+                          (catch Exception e (ex-message (or (ex-cause e) e))))))))))
