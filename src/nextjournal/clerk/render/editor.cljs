@@ -144,9 +144,8 @@
   (update doc :blocks (partial map (fn [{:as cell :keys [type text var form]}]
                                      (cond-> cell
                                        (= :code type)
-                                       (assoc :result {:nextjournal/value
-                                                       (cond->> (eval-string text)
-                                                         var (hash-map :nextjournal.clerk/var-from-def))}))))))
+                                       (assoc :result (cond-> {:nextjournal/value (eval-string text)}
+                                                        var (assoc :nextjournal.clerk/var-from-def var))))))))
 
 (defn eval-notebook [code]
   (->> code
