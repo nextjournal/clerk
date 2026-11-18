@@ -429,27 +429,46 @@
 (defn var-from-def? [x]
   (var? (get-safe x :nextjournal.clerk/var-from-def)))
 
+(def unwrap-var-value (some-fn :nextjournal.clerk/var-snapshot
+                               (comp deref :nextjournal.clerk/var-from-def)))
+
 (def var-from-def-viewer
   {:name `var-from-def-viewer
    :pred var-from-def?
-   :transform-fn (update-val (some-fn :nextjournal.clerk/var-snapshot
-                                      (comp deref :nextjournal.clerk/var-from-def)))})
+   :transform-fn (update-val unwrap-var-value)})
 
 (defn apply-viewer-unwrapping-var-from-def
-  "Applies the `viewer` (if set) to the given result `result`. In case
-  the `value` is a `var-from-def?` it will be unwrapped unless the
-  viewer opts out with a truthy `:nextjournal.clerk/var-from-def`."
+  "Applies the `viewer` (if set) to the given result `result`. By default
+  the `value` of a `var-from-def?` is unwrapped so that the viewer
+  operates on the def's value. A viewer that wants the raw wrapper
+  sets `:var-from-def? true` — on the viewer map directly, or on the
+  viewer map that a fn viewer returns (the fn will be called a second
+  time with the raw `var-from-def?` value in that case)."
   [{:as result :nextjournal/keys [value viewer]}]
   (if viewer
-    (let [value+viewer (if (or (var? viewer) (fn? viewer))
-                         (viewer value)
-                         {:nextjournal/value value
-                          :nextjournal/viewer (normalize-viewer viewer)})
-          {unwrap-var :transform-fn var-from-def? :pred} var-from-def-viewer]
-      (assoc result :nextjournal/value (cond-> value+viewer
-                                         (and (var-from-def? value)
-                                              (-> value+viewer ->viewer :var-from-def? not))
-                                         unwrap-var)))
+    (let [fn-viewer? (or (var? viewer) (fn? viewer))
+          is-var? (var-from-def? value)
+          keep-wrapped? (and (map? viewer) (:var-from-def? viewer))
+          apply-vw (fn [v]
+                     (if fn-viewer?
+                       (viewer v)
+                       {:nextjournal/value v
+                        :nextjournal/viewer (normalize-viewer viewer)}))
+          first-try (apply-vw (cond-> value
+                                (and is-var? fn-viewer? (not keep-wrapped?))
+                                unwrap-var-value))
+          return-keep-wrapped? (boolean (-> first-try ->viewer :var-from-def?))
+          value+viewer (cond
+                         ;; map viewer that doesn't want the wrapper -> unwrap
+                         (and is-var? (not fn-viewer?) (not keep-wrapped?))
+                         (update first-try :nextjournal/value unwrap-var-value)
+
+                         ;; fn viewer returned a viewer that wants the wrapper -> re-run with it
+                         (and is-var? fn-viewer? return-keep-wrapped?)
+                         (apply-vw value)
+
+                         :else first-try)]
+      (assoc result :nextjournal/value value+viewer))
     result))
 
 #?(:clj
