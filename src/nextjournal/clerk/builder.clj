@@ -238,7 +238,7 @@
 
 (defn cleanup [build-opts]
   (cond-> (select-keys build-opts
-                       [:package :render-router :path->doc :current-path :resource->url :exclude-js? :index :html])
+                       [:package :render-router :path->doc :paths :current-path :resource->url :exclude-js? :index :html])
     (-> build-opts :doc :katex?)
     (assoc :katex? true)))
 

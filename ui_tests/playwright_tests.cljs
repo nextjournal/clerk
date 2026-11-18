@@ -69,10 +69,9 @@
                         "div")]
      (println "Visiting" (str url "#/" txt))
      (p/do (.click link)
-           (p/let [loc (.locator page selector)
-                   loc (.first loc #js {:timeout 10000})
-                   _ (.waitFor loc #js {:state "visible"})
-                   visible? (.isVisible loc)]
+           (p/let [loc (.first (.locator page selector))
+                   visible? (p/-> (.waitFor loc #js {:state "visible" :timeout 30000})
+                                  (p/then (constantly true)))]
              (is visible?))))))
 
 (deftest index-page-test
@@ -103,8 +102,63 @@
           (p/delay 30000) ;; allow errors to be logged to console
           (is (zero? (count @console-errors))
               (str/join "\n" (map (fn [{:keys [msg notebook]}]
-                                    [msg notebook])
+                                    [(if (fn? (.-text msg)) (.text msg) (str msg)) notebook])
                                   @console-errors))))
+        (.catch (fn [err]
+                  (js/console.log err)
+                  (is false)))
+        (.finally done))))
+
+(defn index-link-href [page]
+  (p/let [_ (.waitFor (.first (.locator page "a:text-is(\"Index\")")) #js {:timeout 30000})]
+    (.evaluate page "[...document.querySelectorAll('a')].find(a => a.textContent.trim() === 'Index').href")))
+
+(defn router-marker [page]
+  (.evaluate page "window.routerMarker === true"))
+
+(deftest router-navigation-test
+  (async done
+    (-> (p/let [{:keys [index url]} @!opts]
+          (when-not (false? index)
+            (p/let [page (.newPage @browser)
+                    errors (atom [])
+                    _ (.on page "pageerror" #(swap! errors conj %))
+                    _ (.on page "console" (fn [msg]
+                                            (when (= "error" (.type msg))
+                                              (swap! errors conj (.text msg)))))
+                    _ (goto page url)
+                    fetch-edn? (.evaluate page "Boolean(history.state && history.state.edn_path)")]
+              (when fetch-edn?
+                (p/let [root (str/replace url #"index\.html$" "")
+                        _ (is (= root (.url page)) "load replaces index.html with the build root")
+                        link (.first (.locator page "text=/.*\\.clj$/i"))
+                        link-text (.innerText link)
+                        doc-path (str/replace link-text #"\.cljc?$" "")
+                        page-url (str root doc-path "/")
+                        _ (.evaluate page "window.routerMarker = true")
+                        _ (.click link)
+                        _ (.waitForURL page page-url #js {:timeout 10000})
+                        routed? (router-marker page)
+                        _ (is routed? "left-click inside the build uses the router")
+                        href (index-link-href page)
+                        _ (is (= root href) "Index link after left-click points to the build root")
+                        _ (.goBack page)
+                        _ (.waitForURL page root #js {:timeout 10000})
+                        _ (.waitFor (.first (.locator page "h1:has-text(\"Clerk\")")) #js {:timeout 30000})
+                        _ (goto page page-url)
+                        href (index-link-href page)
+                        _ (is (= root href) "Index link after reload points to the build root")
+                        _ (is (empty? @errors) (str/join "\n" @errors))
+                        outside-url (str root "not-a-notebook/")
+                        _ (.evaluate page (str "window.routerMarker = true;"
+                                               "var a = document.createElement('a');"
+                                               "a.id = 'outside-link'; a.textContent = 'outside';"
+                                               "a.href = '" outside-url "';"
+                                               "document.body.appendChild(a)"))
+                        _ (.dispatchEvent (.locator page "#outside-link") "click")
+                        _ (.waitForURL page outside-url #js {:timeout 10000})
+                        routed? (router-marker page)]
+                  (is (not routed?) "link outside the build loads a new page"))))))
         (.catch (fn [err]
                   (js/console.log err)
                   (is false)))
